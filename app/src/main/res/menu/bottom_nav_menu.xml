@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_nav_home"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/nav_personas"
+        android:icon="@drawable/ic_nav_personas"
+        android:title="@string/nav_personas" />
+    <item
+        android:id="@+id/nav_explore"
+        android:icon="@drawable/ic_nav_explore"
+        android:title="@string/nav_explore" />
+    <item
+        android:id="@+id/nav_studio"
+        android:icon="@drawable/ic_nav_studio"
+        android:title="@string/nav_studio" />
+</menu>
