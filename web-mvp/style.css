@@ -1,0 +1,400 @@
+/* ================================================================
+   style.css — Mausam Personalized Weather App — SIH MVP
+   Clean, functional design. Readable. Professional.
+================================================================ */
+
+/* --- Google Font --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- CSS Variables --- */
+:root {
+  --bg:        #0f1117;
+  --surface:   #1a1d27;
+  --border:    #2a2d3d;
+  --text:      #e8eaf0;
+  --text-muted:#8b8fa8;
+  --accent:    #4f8ef7;
+  --success:   #4caf82;
+  --warning:   #e0a83a;
+  --danger:    #e05c5c;
+  --radius:    10px;
+  --shadow:    0 2px 12px rgba(0,0,0,0.35);
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ================================================================
+   PERSONA SELECTION SCREEN
+================================================================ */
+#persona-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.logo-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.logo-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.logo-ps {
+  font-size: 0.75rem;
+  background: #1e2a40;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 3px 12px;
+  margin-bottom: 32px;
+}
+
+.section-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.ai-detect-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.ai-detect-box .ai-icon { font-size: 2rem; }
+.ai-detect-box .ai-text { flex: 1; }
+.ai-detect-box .ai-text p { color: var(--text-muted); font-size: 0.85rem; }
+#ai-result {
+  display: none;
+  margin-top: 10px;
+  background: #1b2a1e;
+  border: 1px solid var(--success);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+#ai-result .ai-persona-name { font-weight: 600; color: var(--success); }
+#ai-result .ai-conf { font-size: 0.8rem; color: var(--text-muted); }
+
+.divider {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 8px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.persona-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.persona-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.persona-card:hover {
+  border-color: var(--accent);
+  background: #1e2233;
+}
+.persona-card .p-icon { font-size: 1.8rem; margin-bottom: 8px; }
+.persona-card .p-name { font-weight: 600; font-size: 0.9rem; }
+.persona-card .p-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+/* ================================================================
+   DASHBOARD SCREEN
+================================================================ */
+#dashboard-screen { display: none; }
+
+/* Header */
+.app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: 12px; }
+.app-name { font-weight: 700; font-size: 1.1rem; color: var(--accent); }
+.persona-badge {
+  background: #1e2a40;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+select:focus { outline: none; border-color: var(--accent); }
+
+.btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn:hover { border-color: var(--accent); background: #1e2233; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: #3a7ae8; border-color: #3a7ae8; }
+
+/* Main content */
+.dashboard-content {
+  padding: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Alert Banner */
+.alert-banner {
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  border-left: 4px solid;
+}
+.alert-warning { background: #2a2010; border-color: var(--warning); color: #e8d5a8; }
+.alert-danger  { background: #2a1010; border-color: var(--danger);  color: #e8a8a8; }
+.alert-success { background: #102a18; border-color: var(--success); color: #a8e8c0; }
+
+/* Cards Grid */
+.cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.card-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.card-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.card-unit { font-size: 0.85rem; font-weight: 400; color: var(--text-muted); }
+.card-sub  { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+.card-highlight { border-color: var(--accent); }
+
+/* Main weather card */
+.weather-main-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.weather-main-left .city-name { font-size: 1.3rem; font-weight: 700; }
+.weather-main-left .city-state { font-size: 0.8rem; color: var(--text-muted); }
+.weather-main-left .weather-desc { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+.weather-main-left .sun-times { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+.weather-main-right { text-align: right; }
+.weather-main-right .temp-big {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.weather-main-right .feels-like { font-size: 0.8rem; color: var(--text-muted); }
+.weather-main-right .w-icon { font-size: 2.5rem; }
+
+/* Persona widget */
+.widget-card {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.widget-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.widget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.widget-row:last-child { border-bottom: none; }
+.widget-row-label { color: var(--text-muted); }
+.widget-row-value { font-weight: 500; text-align: right; max-width: 60%; }
+
+/* Forecast strip */
+.forecast-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.forecast-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+}
+.forecast-card .f-day   { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
+.forecast-card .f-icon  { font-size: 1.6rem; margin-bottom: 6px; }
+.forecast-card .f-temp  { font-weight: 600; font-size: 0.95rem; }
+.forecast-card .f-rain  { font-size: 0.78rem; color: #6ab0e8; margin-top: 4px; }
+.forecast-card .f-cond  { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* Footer note */
+.footer-note {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+}
+
+/* ================================================================
+   MODAL (Persona Switch)
+================================================================ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.modal-title { font-weight: 700; font-size: 1rem; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+/* Utility */
+.hidden { display: none !important; }
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  .weather-main-right .temp-big { font-size: 2.5rem; }
+  .persona-grid { grid-template-columns: repeat(2, 1fr); }
+  .forecast-strip { grid-template-columns: 1fr; }
+}

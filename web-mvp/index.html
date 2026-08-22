@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mausam — Personalized Weather</title>
+  <meta name="description" content="Mausam — Personalized weather homepage by India Meteorological Department. Tailored dashboards for fitness enthusiasts, travelers, commuters, farmers, and event planners." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ================================================================
+     SCREEN 1: PERSONA SELECTION
+================================================================ -->
+<div id="persona-screen">
+
+  <div class="logo-title">☁️ Mausam</div>
+  <div class="logo-sub">India Meteorological Department &nbsp;|&nbsp; Ministry of Earth Sciences</div>
+  <div class="logo-ps">SIH Problem ID: 26076</div>
+
+  <!-- AI Smart Detect -->
+  <p class="section-label">AI-Assisted Profile Setup</p>
+  <div class="ai-detect-box">
+    <div class="ai-icon">🤖</div>
+    <div class="ai-text">
+      <strong>Smart Persona Detect</strong>
+      <p>Let AI analyse your usage pattern and suggest the right weather profile for you.</p>
+      <div id="ai-result"></div>
+    </div>
+    <button class="btn btn-primary" onclick="runAIDetect()" id="detect-btn">Detect</button>
+  </div>
+
+  <div class="divider">or choose manually</div>
+
+  <p class="section-label">Select Your Profile</p>
+  <div class="persona-grid" id="persona-grid">
+    <!-- Populated by app.js -->
+  </div>
+
+</div>
+
+
+<!-- ================================================================
+     SCREEN 2: PERSONALIZED DASHBOARD
+================================================================ -->
+<div id="dashboard-screen">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-name">☁️ Mausam</span>
+      <span class="persona-badge" id="persona-badge-text">Loading...</span>
+    </div>
+    <div class="header-right">
+      <!-- City Selector -->
+      <select id="city-select" onchange="onCityChange(this.value)">
+        <option value="delhi">Delhi</option>
+        <option value="mumbai">Mumbai</option>
+        <option value="bengaluru">Bengaluru</option>
+      </select>
+      <!-- Switch Profile -->
+      <button class="btn" onclick="openSwitchModal()">Switch Profile</button>
+    </div>
+  </header>
+
+  <!-- Dashboard Content -->
+  <div class="dashboard-content">
+
+    <!-- Alert Banner -->
+    <div class="alert-banner alert-warning" id="alert-banner">
+      Loading your personalized alerts...
+    </div>
+
+    <!-- Main Weather Overview Card -->
+    <div class="weather-main-card">
+      <div class="weather-main-left">
+        <div class="city-name" id="city-name">—</div>
+        <div class="city-state" id="city-state">—</div>
+        <div class="weather-desc" id="weather-desc">—</div>
+        <div class="sun-times" id="sun-times">—</div>
+      </div>
+      <div class="weather-main-right">
+        <div class="w-icon" id="weather-icon">⛅</div>
+        <div class="temp-big" id="temp-big">—°C</div>
+        <div class="feels-like" id="feels-like">—</div>
+      </div>
+    </div>
+
+    <!-- Metric Cards (persona-aware) -->
+    <div class="cards-row" id="metric-cards">
+      <!-- Populated by app.js renderMetricCards() -->
+    </div>
+
+    <!-- Persona-Specific Widget -->
+    <div class="widget-card" id="persona-widget">
+      <!-- Populated by app.js renderPersonaWidget() -->
+    </div>
+
+    <!-- 3-Day Forecast -->
+    <p class="section-label" style="margin-bottom:12px;">3-Day Forecast</p>
+    <div class="forecast-strip" id="forecast-strip">
+      <!-- Populated by app.js renderForecast() -->
+    </div>
+
+    <div class="footer-note">
+      Data source: India Meteorological Department (IMD) &nbsp;·&nbsp;
+      Demo database — SIH 2026 Internal Round &nbsp;·&nbsp;
+      <span style="color: var(--accent);">Mausam v1.0 MVP</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ================================================================
+     MODAL: Switch Persona
+================================================================ -->
+<div class="modal-overlay" id="switch-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Switch Weather Profile</span>
+      <button class="modal-close" onclick="closeSwitchModal()">✕</button>
+    </div>
+    <div class="persona-grid" id="modal-persona-grid">
+      <!-- Populated by app.js -->
+    </div>
+  </div>
+</div>
+
+
+<!-- Scripts — data first, then app logic -->
+<script src="data.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
