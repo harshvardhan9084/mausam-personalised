@@ -3,8 +3,10 @@
 **Live: https://harshvardhan9084.github.io/mausam-personalised**
 
 Mausam is a zero-build, zero-account weather PWA for India. Open it and the full
-dashboard is already there — current conditions, 24 hours, a temperature curve,
-the 7-day outlook, CPCB air quality, sun times and "Mausam Says" insights.
+dashboard is already there — current conditions with a **vs-yesterday** pill and
+one-tap **share**, your **saved places** with live temperatures, a **15-minute
+rain nowcast** for the next 2 hours, 48 hours, a temperature curve, the
+**10-day outlook**, CPCB air quality, sun times and "Mausam Says" insights.
 Personalisation is a 30-second, strictly **additive** layer on top — it never
 hides or gates anything.
 
@@ -16,7 +18,7 @@ progressively by a lightweight contract between the AI and the app.
 
 ## Why it feels like a product, not a prototype
 
-| Old prototype | Mausam v3 |
+| Old prototype | Mausam v4 |
 |---|---|
 | 5 hardcoded persona presets, dashboard locked to the chosen one | One generous dashboard for everyone; personal tips render **on top**, never instead |
 | Forced multi-step onboarding before seeing anything | Data first, always. A dismissible nudge invites the optional profile |
@@ -26,10 +28,13 @@ progressively by a lightweight contract between the AI and the app.
 
 ### 1. Generous by default
 Open the app → New Delhi (or your saved city) is already fully populated:
-hero, alerts, 24-hour strip, SVG temperature curve, 7-day outlook, detailed
-stats (humidity, wind/gusts, UV, visibility, pressure, dew, cloud), CPCB AQI
-with dominant pollutant, sunrise/sunset/daylight, and insight cards computed
-from real scoring models.
+hero (with a "2° warmer than yesterday" pill and a share button), your places
+rail (auto-remembered cities with live temps, one-tap switch, one-tap forget),
+a 15-minute rain nowcast for the next 2 hours ("rain likely around 6:45 PM"),
+a 48-hour strip, SVG temperature curve, 10-day outlook, detailed stats
+(humidity, wind/gusts, UV, visibility, pressure, dew, cloud), CPCB AQI with
+dominant pollutant, sunrise/sunset/daylight, and insight cards computed from
+real scoring models.
 
 ### 2. Optional, additive personalisation ("For You")
 Tap **✨ For you** → name, commute times, activities, sensitivities — saved to

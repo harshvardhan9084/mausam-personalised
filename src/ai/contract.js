@@ -35,9 +35,17 @@ export const FENCE = 'mausam-ui';
  */
 const isStr = (v) => typeof v === 'string';
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+/**
+ * Aggressive numeric coercion — models love "29°C", "35%", "\u22122", "~30".
+ * Pull the first number out of a string; handles unicode minus.
+ */
 const toNum = (v) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const m = v.replace('\u2212', '-').match(/-?\d+(?:\.\d+)?/);
+    return m ? Number(m[0]) : null;
+  }
+  return null;
 };
 function arr(v, max) {
   if (!Array.isArray(v)) throw new Error('expected array');
@@ -50,6 +58,13 @@ function numOr(v, fallback = null) {
   const n = toNum(v);
   return n == null ? fallback : n;
 }
+/** First defined value among aliases. */
+function pick(obj, ...keys) {
+  for (const k of keys) {
+    if (obj && obj[k] != null) return obj[k];
+  }
+  return undefined;
+}
 
 export const REGISTRY = {
   'now-card': {
@@ -57,16 +72,16 @@ export const REGISTRY = {
     validate(d) {
       if (!d || typeof d !== 'object') throw new Error('now-card needs data');
       return {
-        place: str(d.place),
-        temp: numOr(d.temp),
-        feels: numOr(d.feels),
-        cond: str(d.cond),
-        icon: str(d.icon),
-        hi: numOr(d.hi),
-        lo: numOr(d.lo),
-        humidity: numOr(d.humidity),
-        wind: numOr(d.wind),
-        updated: str(d.updated),
+        place: str(pick(d, 'place', 'city', 'location', 'area')),
+        temp: numOr(pick(d, 'temp', 'tempC', 'temperature')),
+        feels: numOr(pick(d, 'feels', 'feelsLike', 'feels_C', 'apparent')),
+        cond: str(pick(d, 'cond', 'condition', 'conditions', 'summary', 'text')),
+        icon: str(pick(d, 'icon', 'emoji')),
+        hi: numOr(pick(d, 'hi', 'max', 'maxC', 'high', 'tempMax')),
+        lo: numOr(pick(d, 'lo', 'min', 'minC', 'low', 'tempMin')),
+        humidity: numOr(pick(d, 'humidity', 'humidityPct', 'rh')),
+        wind: numOr(pick(d, 'wind', 'windKmh', 'windSpeed')),
+        updated: str(pick(d, 'updated', 'asOf', 'time')),
       };
     },
   },
@@ -74,12 +89,12 @@ export const REGISTRY = {
   'hourly-timeline': {
     blurb: 'horizontal hour-by-hour strip',
     validate(d) {
-      const hours = arr(d?.hours, 24).map((h) => ({
-        time: str(h?.time),
-        temp: numOr(h?.temp),
-        pop: numOr(h?.pop),
-        icon: str(h?.icon),
-        cond: str(h?.cond),
+      const hours = arr(pick(d, 'hours', 'items', 'list', 'rows', 'data'), 24).map((h) => ({
+        time: str(pick(h ?? {}, 'time', 'hour', 'label', 'at')),
+        temp: numOr(pick(h ?? {}, 'temp', 'tempC', 'temperature')),
+        pop: numOr(pick(h ?? {}, 'pop', 'rain', 'rainPop', 'precip', 'precipProb')),
+        icon: str(pick(h ?? {}, 'icon', 'emoji')),
+        cond: str(pick(h ?? {}, 'cond', 'condition')),
       })).filter((h) => h.time || isNum(h.temp));
       if (!hours.length) throw new Error('no usable hours');
       return { hours };
@@ -89,10 +104,10 @@ export const REGISTRY = {
   'temp-chart': {
     blurb: 'temperature trend line chart',
     validate(d) {
-      const labels = arr(d?.labels ?? d?.times, 48).map((l) => str(l));
-      const temps = arr(d?.temps ?? d?.values ?? d?.temperatures, 48).map(toNum);
+      const labels = arr(pick(d, 'labels', 'times', 'hours'), 48).map((l) => str(l));
+      const temps = arr(pick(d, 'temps', 'values', 'temperatures', 'temp'), 48).map(toNum);
       if (labels.length < 2 || temps.length < 2) throw new Error('need ≥2 points');
-      const feelsRaw = d?.feels ?? d?.feels_like ?? d?.apparent;
+      const feelsRaw = pick(d, 'feels', 'feels_like', 'apparent', 'feelsC');
       const feels = Array.isArray(feelsRaw) ? arr(feelsRaw, 48).map(toNum) : null;
       return { labels, temps, feels: feels && feels.some(isNum) ? feels : null, unit: str(d?.unit, '°C') };
     },
@@ -101,8 +116,8 @@ export const REGISTRY = {
   'rain-bars': {
     blurb: 'precipitation probability bars',
     validate(d) {
-      let labels = arr(d?.labels ?? d?.times, 24).map((l) => str(l));
-      const pops = arr(d?.pops ?? d?.values ?? d?.bars ?? d?.probabilities ?? d?.chances, 24)
+      let labels = arr(pick(d, 'labels', 'times', 'hours') ?? [], 24).map((l) => str(l));
+      const pops = arr(pick(d, 'pops', 'values', 'bars', 'probabilities', 'chances', 'rainChances', 'rain'), 24)
         .map((p) => Math.max(0, Math.min(100, numOr(p, 0))));
       if (!pops.length) throw new Error('need points');
       // numeric hour labels → readable h12 strings
@@ -120,14 +135,14 @@ export const REGISTRY = {
   'daily-list': {
     blurb: 'multi-day forecast list',
     validate(d) {
-      const days = arr(d?.days, 7).map((x) => ({
-        label: str(x?.label ?? x?.day),
-        date: str(x?.date),
-        icon: str(x?.icon),
-        cond: str(x?.cond ?? x?.condition),
-        hi: numOr(x?.hi ?? x?.max ?? x?.maxC ?? x?.high),
-        lo: numOr(x?.lo ?? x?.min ?? x?.minC ?? x?.low),
-        pop: numOr(x?.pop ?? x?.rainPop ?? x?.rain ?? x?.precip),
+      const days = arr(pick(d, 'days', 'items', 'list', 'forecast'), 10).map((x) => ({
+        label: str(pick(x ?? {}, 'label', 'day', 'date', 'name')),
+        date: str(pick(x ?? {}, 'date')),
+        icon: str(pick(x ?? {}, 'icon', 'emoji')),
+        cond: str(pick(x ?? {}, 'cond', 'condition', 'summary')),
+        hi: numOr(pick(x ?? {}, 'hi', 'max', 'maxC', 'high', 'tempMax', 'temp_max')),
+        lo: numOr(pick(x ?? {}, 'lo', 'min', 'minC', 'low', 'tempMin', 'temp_min')),
+        pop: numOr(pick(x ?? {}, 'pop', 'rainPop', 'rain', 'precip', 'popMax', 'precipProb')),
       })).filter((x) => x.label || isNum(x.hi));
       if (!days.length) throw new Error('no days');
       return { days };
@@ -137,10 +152,10 @@ export const REGISTRY = {
   'metrics-grid': {
     blurb: 'grid of labelled stat tiles',
     validate(d) {
-      const items = arr(d?.items, 8).map((x) => ({
-        label: str(x?.label),
-        value: str(x?.value),
-        icon: str(x?.icon),
+      const items = arr(pick(d, 'items', 'stats', 'metrics', 'list'), 8).map((x) => ({
+        label: str(pick(x ?? {}, 'label', 'name', 'key')),
+        value: str(pick(x ?? {}, 'value', 'val', 'text')),
+        icon: str(pick(x ?? {}, 'icon', 'emoji')),
       })).filter((x) => x.label && x.value);
       if (!items.length) throw new Error('no items');
       return { items };
@@ -150,29 +165,38 @@ export const REGISTRY = {
   'advice': {
     blurb: 'contextual do/don’t advice card',
     validate(d) {
-      const tone = ['good', 'info', 'warn', 'danger'].includes(d?.tone) ? d.tone : 'info';
-      const items = arr(d?.items, 6).map((x) => str(x)).filter(Boolean);
+      const tone = ['good', 'info', 'warn', 'danger'].includes(pick(d, 'tone', 'severity', 'level')) ? pick(d, 'tone', 'severity', 'level') : 'info';
+      const items = arr(pick(d, 'items', 'list', 'points', 'tips'), 6).map((x) => {
+        if (typeof x === 'string') return x;
+        if (x && typeof x === 'object') return str(pick(x, 'text', 'item', 'tip', 'advice', 'title'));
+        return '';
+      }).filter(Boolean);
       if (!items.length) throw new Error('no advice items');
-      return { tone, title: str(d?.title), items: items.map((x) => ({ icon: null, text: x })) };
+      return { tone, title: str(pick(d, 'title', 'heading')), items: items.map((x) => ({ icon: null, text: x })) };
     },
   },
 
   'alert': {
     blurb: 'severity banner',
     validate(d) {
-      const severity = ['info', 'warn', 'danger'].includes(d?.severity) ? d.severity : 'warn';
-      const title = str(d?.title);
-      const text = str(d?.text);
+      const severityRaw = pick(d, 'severity', 'level', 'tone');
+      const severity = ['info', 'warn', 'danger'].includes(severityRaw) ? severityRaw : 'warn';
+      const title = str(pick(d, 'title', 'headline', 'heading'));
+      const text = str(pick(d, 'text', 'body', 'message', 'description'));
       if (!title && !text) throw new Error('empty alert');
-      return { severity, title, text, source: str(d?.source) };
+      return { severity, title, text, source: str(pick(d, 'source', 'via')) };
     },
   },
 
   'compare-table': {
     blurb: 'comparison table (days, cities)',
     validate(d) {
-      const columns = arr(d?.columns ?? d?.cols ?? d?.headers, 5).map((c) => str(c));
-      const rows = arr(d?.rows ?? d?.data, 8).map((r) => arr(Array.isArray(r) ? r : [r], 5).map((c) => str(c)));
+      const columns = arr(pick(d, 'columns', 'cols', 'headers'), 6).map((c) => str(c));
+      const rows = arr(pick(d, 'rows', 'data', 'values'), 10).map((r) => {
+        if (Array.isArray(r)) return arr(r, 6).map((c) => str(c ?? ''));
+        if (r && typeof r === 'object') return Object.values(r).slice(0, 6).map((c) => (c == null ? '' : typeof c === 'object' ? JSON.stringify(c) : String(c)));
+        return [str(r)];
+      });
       if (columns.length < 2 || !rows.length) throw new Error('need columns + rows');
       return { columns, rows: rows.map((r) => r.map((c) => c ?? '')) };
     },
@@ -181,18 +205,18 @@ export const REGISTRY = {
   'window-card': {
     blurb: 'best-time windows with verdict',
     validate(d) {
-      const windows = arr(d?.windows ?? d?.slots, 4).map((w) => ({
-        slot: str(w?.slot ?? w?.time ?? w?.window),
-        rating: str(w?.rating ?? w?.quality),
-        reason: str(w?.reason ?? w?.why ?? w?.note),
+      const windows = arr(pick(d, 'windows', 'slots'), 4).map((w) => ({
+        slot: str(pick(w ?? {}, 'slot', 'time', 'window', 'label')),
+        rating: str(pick(w ?? {}, 'rating', 'quality')),
+        reason: str(pick(w ?? {}, 'reason', 'why', 'note')),
       })).filter((w) => w.slot);
       if (!windows.length) throw new Error('no windows');
       const ratingColor = {
         Good: 'var(--green)', Fair: 'var(--yellow)', Poor: 'var(--red)',
       };
       return {
-        title: str(d?.title),
-        verdict: str(d?.verdict ?? d?.summary),
+        title: str(pick(d, 'title')),
+        verdict: str(pick(d, 'verdict', 'summary')),
         windows: windows.map((w) => ({ ...w, color: ratingColor[w.rating] ?? 'var(--blue)' })),
       };
     },
@@ -201,13 +225,13 @@ export const REGISTRY = {
   'aqi-card': {
     blurb: 'air quality summary',
     validate(d) {
-      const aqi = numOr(d?.aqi ?? d?.value ?? d?.index);
-      if (aqi == null && !str(d?.category)) throw new Error('no AQI data');
+      const aqi = numOr(pick(d, 'aqi', 'value', 'index', 'aqiValue', 'cpcbAqi'));
+      if (aqi == null && !str(pick(d, 'category', 'cat'))) throw new Error('no AQI data');
       return {
         aqi,
-        category: str(d?.category ?? d?.cat, 'Unknown'),
-        dominant: str(d?.dominant ?? d?.pollutant),
-        advice: str(d?.advice ?? d?.note),
+        category: str(pick(d, 'category', 'cat'), 'Unknown'),
+        dominant: str(pick(d, 'dominant', 'pollutant', 'dominantPollutant')),
+        advice: str(pick(d, 'advice', 'note', 'text')),
       };
     },
   },
@@ -228,12 +252,12 @@ export const REGISTRY = {
   'wear-list': {
     blurb: 'what to wear / carry list',
     validate(d) {
-      const items = arr(d?.items, 6).map((x) => {
+      const items = arr(pick(d, 'items', 'list', 'suggestions', 'wearables'), 6).map((x) => {
         if (typeof x === 'string') return { icon: '•', name: x, why: '' };
         return {
-          icon: str(x?.icon) || '•',
-          name: str(x?.name ?? x?.item ?? x?.title),
-          why: str(x?.why ?? x?.reason ?? x?.note),
+          icon: str(pick(x ?? {}, 'icon', 'emoji')) || '•',
+          name: str(pick(x ?? {}, 'name', 'item', 'title', 'label')),
+          why: str(pick(x ?? {}, 'why', 'reason', 'note')),
         };
       }).filter((x) => x.name);
       if (!items.length) throw new Error('no items');
@@ -244,7 +268,11 @@ export const REGISTRY = {
   'chips': {
     blurb: 'clickable follow-up suggestions',
     validate(d) {
-      const items = arr(d?.items, 6).map((x) => str(x)).filter(Boolean);
+      const items = arr(pick(d, 'items', 'options', 'suggestions', 'chips'), 6).map((x) => {
+        if (typeof x === 'string') return x;
+        if (x && typeof x === 'object') return str(pick(x, 'label', 'text', 'value', 'title'));
+        return '';
+      }).filter(Boolean);
       if (!items.length) throw new Error('no chips');
       return { items };
     },
@@ -253,7 +281,7 @@ export const REGISTRY = {
   'note': {
     blurb: 'small print',
     validate(d) {
-      const text = str(d?.text);
+      const text = str(pick(d, 'text', 'body', 'message'));
       if (!text) throw new Error('empty note');
       return { text };
     },
@@ -272,9 +300,16 @@ export function parseBlock(rawJSON) {
   } catch {
     return { ok: false, error: 'not valid JSON' };
   }
-  if (!parsed || typeof parsed !== 'object') return { ok: false, error: 'not an object' };
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, error: 'not an object' };
+  // Repair: model put component fields at the ROOT (no "d" wrapper) —
+  // e.g. {"v":1,"c":"wear-list","items":[…]} — rewrap everything except
+  // the envelope keys as the payload data.
+  if (parsed.d == null) {
+    const { v, c, t, ...rest } = parsed;
+    if (Object.keys(rest).length) parsed = { ...parsed, d: rest };
+  }
   const v = toNum(parsed.v);
-  if (v !== CONTRACT_VERSION) return { ok: false, error: `contract version ${v} unsupported` };
+  if (v != null && v !== CONTRACT_VERSION) return { ok: false, error: `contract version ${v} unsupported` };
   const c = parsed.c;
   if (!isStr(c) || !REGISTRY[c]) return { ok: false, error: `unknown component "${c}"` };
   try {

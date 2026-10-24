@@ -67,6 +67,20 @@ export function buildSnapshot(bundle) {
       })()
     : null;
 
+  // Yesterday comparison (drives the "x° warmer/cooler than yesterday" pill)
+  const yesterday = bundle.yesterday
+    ? {
+        date: bundle.yesterday.date,
+        tempMax: bundle.yesterday.temp_max,
+        tempMin: bundle.yesterday.temp_min,
+        wx: describeWeather(bundle.yesterday.weather_code, false),
+        precipitationSum: bundle.yesterday.precipitation_sum,
+        deltaMax: today?.temp_max != null && bundle.yesterday.temp_max != null
+          ? today.temp_max - bundle.yesterday.temp_max
+          : null,
+      }
+    : null;
+
   return {
     bundle,
     fetchedAt: bundle.fetchedAt,
@@ -79,13 +93,15 @@ export function buildSnapshot(bundle) {
       uvLabel: uvLabel(nowHour?.uv_index),
       visibility: nowHour?.visibility ?? null,
       pressure: bundle.current?.pressure_msl ?? null,
-      dew: nowHour?.dew_point ?? null,
+      dew: nowHour?.dew_point_2m ?? nowHour?.dew_point ?? null,
       cloud: bundle.current?.cloud_cover ?? null,
     },
     currentAqi, // CPCB AQI at the current hour
     uvNow: { value: nowHour?.uv_index ?? null, label: uvLabel(nowHour?.uv_index) },
-    hours, // 36h from now, enriched
-    days,  // 7 days
+    minutely: bundle.minutely ?? null, // 15-min precipitation nowcast (2h)
+    yesterday, // {date, tempMax, tempMin, wx, deltaMax} | null
+    hours, // 48h from now, enriched
+    days,  // 10 days
     sun: today ? { sunrise: today.sunrise, sunset: today.sunset, dayLength } : null,
   };
 }

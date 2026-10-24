@@ -168,3 +168,168 @@
 @media (prefers-reduced-motion: reduce) {
   .nudge-card, .welcome-hint { animation: none; }
 }
+
+/* ================================================================
+   v4 — places rail · nowcast · delta pill · share · toast
+================================================================ */
+
+/* ---------- hero top actions ---------- */
+.hero-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.delta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.delta-pill:hover { filter: brightness(1.15); }
+.delta-arrow { font-size: 0.68rem; }
+.hero-share {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card, rgba(255,255,255,0.04));
+  color: var(--fg, inherit);
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex: 0 0 auto;
+}
+.hero-share:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- places rail ---------- */
+.places-mount { margin: 2px 0 6px; }
+.places-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+}
+.place-chip-wrap { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; }
+.place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--card, rgba(255,255,255,0.03));
+  color: var(--fg, inherit);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.place-chip:hover { border-color: var(--accent); }
+.place-current { cursor: default; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.place-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+.place-name { font-weight: 600; }
+.place-temp { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.2em; text-align: right; }
+.place-forget {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg, #14161f);
+  color: var(--muted);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.place-chip-wrap:hover .place-forget, .place-forget:focus-visible { display: inline-flex; }
+.place-forget:hover { color: var(--red); border-color: var(--red); }
+.place-add { color: var(--accent); border-style: dashed; }
+
+/* ---------- nowcast ---------- */
+.nowcast-head { display: flex; flex-direction: column; gap: 12px; }
+.nowcast-verdict { font-weight: 600; font-size: 0.95rem; }
+.nowcast-verdict.wet { color: var(--blue); }
+.nowcast-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 64px;
+  padding-top: 4px;
+}
+.nowcast-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+  position: relative;
+}
+.nowcast-bar {
+  width: 70%;
+  max-width: 26px;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--border);
+  transition: height 0.4s ease;
+}
+.nowcast-bar.wet { background: var(--blue); }
+.nowcast-lbl {
+  position: absolute;
+  bottom: -16px;
+  font-size: 0.62rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.nowcast-head { padding-bottom: 14px; }
+
+/* ---------- toast ---------- */
+.mausam-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--card, #1c1f2b);
+  border: 1px solid var(--border);
+  color: var(--fg, #fff);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 400;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.mausam-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- fallback cards (v4 humanized) ---------- */
+.mu-fallback-why { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+.mu-fallback-title { font-weight: 700; margin-bottom: 4px; }
+.mu-fallback .mu-fallback-body { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }

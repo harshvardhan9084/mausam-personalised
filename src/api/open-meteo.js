@@ -1,10 +1,15 @@
 /**
  * open-meteo.js — API client for the free Open-Meteo services (no key required).
  *
- *  - fetchWeatherBundle()  : forecast + air-quality, normalised for the engine
+ *  - fetchWeatherBundle()  : nowcast + forecast + air-quality, normalised
  *  - geocodeSearch()       : city / place search
  *
- * All endpoints are CORS-enabled and cached by the service worker for offline use.
+ * ⚠ Two API realities this client respects (both caused a full outage once):
+ *   1. The forecast API does NOT split %2C-encoded commas — list params must
+ *      contain LITERAL "," separators (that's why we never use URLSearchParams
+ *      for them).
+ *   2. `dew_point` was renamed `dew_point_2m`; the old name 400s.
+ *
  * @see https://open-meteo.com/en/docs
  */
 
@@ -23,7 +28,7 @@ const HOURLY_VARS = [
   'wind_gusts_10m',
   'uv_index',
   'visibility',
-  'dew_point',
+  'dew_point_2m',
   'cloud_cover',
   'soil_moisture_0_to_1cm',
 ].join(',');
@@ -67,6 +72,23 @@ const AIR_VARS = [
   'us_aqi',
 ].join(',');
 
+/** Fixed daily range: 1 past day (yesterday) + 10 forecast days. */
+const PAST_DAYS = 1;
+const FORECAST_DAYS = 10;
+/** Hourly horizon sliced out of the response. */
+const HOUR_HORIZON = 48;
+/** 15-minute nowcast steps (8 × 15min = 2h). */
+const NOWCAST_STEPS = 8;
+
+/**
+ * Build a query string with literal commas preserved (Open-Meteo rejects
+ * %2C inside list params). Only join — every value we pass is already a
+ * safe constant or a number.
+ */
+function qs(pairs) {
+  return pairs.map(([k, v]) => `${k}=${v}`).join('&');
+}
+
 async function getJSON(url, signal, { retries = 2, backoffMs = 700 } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -85,7 +107,14 @@ async function getJSON(url, signal, { retries = 2, backoffMs = 700 } = {}) {
         throw new Error('Weather service rate limit reached — try again in a minute.');
       }
       if (!res.ok) {
-        throw new Error(`API ${res.status} for ${new URL(url).host}`);
+        // Surface the API's own reason when present (it names the exact
+        // bad parameter — invaluable when a variable gets renamed).
+        let reason = '';
+        try {
+          const body = await res.json();
+          reason = body?.reason ?? body?.error ?? '';
+        } catch { /* not json */ }
+        throw new Error(reason || `API ${res.status} for ${new URL(url).host}`);
       }
       const data = await res.json();
       if (data.error) {
@@ -122,24 +151,27 @@ function transposeHourly(hourly, start, end) {
  * @param {AbortSignal} [signal]
  */
 export async function fetchWeatherBundle(lat, lon, signal) {
-  const forecastQS = new URLSearchParams({
-    latitude: lat,
-    longitude: lon,
-    current: CURRENT_VARS,
-    hourly: HOURLY_VARS,
-    daily: DAILY_VARS,
-    timezone: 'auto',
-    forecast_days: '7',
-    past_days: '0',
-  });
+  const forecastQS = qs([
+    ['latitude', lat],
+    ['longitude', lon],
+    ['current', CURRENT_VARS],
+    ['minutely_15', 'precipitation'],
+    ['forecast_minutely_15', NOWCAST_STEPS],
+    ['past_minutely_15', '0'],
+    ['hourly', HOURLY_VARS],
+    ['daily', DAILY_VARS],
+    ['timezone', 'auto'],
+    ['past_days', PAST_DAYS],
+    ['forecast_days', FORECAST_DAYS],
+  ]);
 
-  const airQS = new URLSearchParams({
-    latitude: lat,
-    longitude: lon,
-    hourly: AIR_VARS,
-    timezone: 'auto',
-    forecast_days: '2',
-  });
+  const airQS = qs([
+    ['latitude', lat],
+    ['longitude', lon],
+    ['hourly', AIR_VARS],
+    ['timezone', 'auto'],
+    ['forecast_days', '2'],
+  ]);
 
   const [forecast, air] = await Promise.all([
     getJSON(`${FORECAST_URL}?${forecastQS}`, signal),
@@ -176,25 +208,50 @@ export async function fetchWeatherBundle(lat, lon, signal) {
     return airRows[idx] ?? null;
   };
 
-  const hours = transposeHourly(forecast.hourly, nowIdx, nowIdx + 36).map((h) => ({
+  const hours = transposeHourly(forecast.hourly, nowIdx, nowIdx + HOUR_HORIZON).map((h) => ({
     ...h,
     air: resolveAir(h.time),
   }));
 
-  const days = forecast.daily.time.map((date, i) => ({
-    date,
-    weather_code: forecast.daily.weather_code[i],
-    temp_max: forecast.daily.temperature_2m_max[i],
-    temp_min: forecast.daily.temperature_2m_min[i],
-    feels_max: forecast.daily.apparent_temperature_max[i],
-    precipitation_sum: forecast.daily.precipitation_sum[i],
-    precip_prob_max: forecast.daily.precipitation_probability_max?.[i] ?? 0,
-    wind_max: forecast.daily.wind_speed_10m_max[i],
-    gusts_max: forecast.daily.wind_gusts_10m_max?.[i],
-    uv_max: forecast.daily.uv_index_max[i],
-    sunrise: forecast.daily.sunrise[i],
-    sunset: forecast.daily.sunset[i],
-  }));
+  // daily: [yesterday, today, +9] — pull yesterday out, keep 10 forecast days
+  const daily = forecast.daily;
+  const yesterday = PAST_DAYS > 0 && daily.time.length > FORECAST_DAYS
+    ? {
+        date: daily.time[0],
+        weather_code: daily.weather_code[0],
+        temp_max: daily.temperature_2m_max[0],
+        temp_min: daily.temperature_2m_min[0],
+        precipitation_sum: daily.precipitation_sum[0],
+      }
+    : null;
+
+  const days = daily.time.slice(PAST_DAYS).map((date, i) => {
+    const j = i + PAST_DAYS;
+    return {
+      date,
+      weather_code: daily.weather_code[j],
+      temp_max: daily.temperature_2m_max[j],
+      temp_min: daily.temperature_2m_min[j],
+      feels_max: daily.apparent_temperature_max[j],
+      precipitation_sum: daily.precipitation_sum[j],
+      precip_prob_max: daily.precipitation_probability_max?.[j] ?? 0,
+      wind_max: daily.wind_speed_10m_max[j],
+      gusts_max: daily.wind_gusts_10m_max?.[j],
+      uv_max: daily.uv_index_max[j],
+      sunrise: daily.sunrise[j],
+      sunset: daily.sunset[j],
+    };
+  });
+
+  // 15-minute nowcast: next ~2 hours of precipitation (mm per step)
+  const m15 = forecast.minutely_15;
+  const minutely = m15?.time?.length
+    ? {
+        start: m15.time[0],
+        stepMin: 15,
+        mm: m15.precipitation.map((v) => (v == null ? 0 : v)),
+      }
+    : null;
 
   return {
     fetchedAt: Date.now(),
@@ -215,8 +272,10 @@ export async function fetchWeatherBundle(lat, lon, signal) {
       pressure: forecast.current.pressure_msl,
       cloud: forecast.current.cloud_cover,
     },
-    hours, // 36h from now
-    days,  // 7 days
+    minutely, // 15-min precipitation nowcast (2h)
+    hours,    // 48h from now
+    days,     // 10 days
+    yesterday,
   };
 }
 
@@ -228,8 +287,8 @@ export async function fetchWeatherBundle(lat, lon, signal) {
  */
 export async function geocodeSearch(query, signal) {
   if (!query || query.trim().length < 2) return [];
-  const qs = new URLSearchParams({ name: query.trim(), count: '8', language: 'en', format: 'json' });
-  const data = await getJSON(`${GEO_URL}?${qs}`, signal);
+  const search = new URLSearchParams({ name: query.trim(), count: '8', language: 'en', format: 'json' });
+  const data = await getJSON(`${GEO_URL}?${search}`, signal);
   const results = data.results ?? [];
   // Sort India-first, then by population (if present) descending.
   return results.sort((a, b) => {

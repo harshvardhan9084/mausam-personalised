@@ -124,7 +124,7 @@
         <div class="settings-block">
           <div class="settings-h">About</div>
           <div class="set-help">
-            Mausam v3 — independent, open-source, no accounts, no tracking.
+            Mausam v4 — independent, open-source, no accounts, no tracking.
             Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment.
             Air quality: CPCB breakpoints computed on-device.
             Assistant: your choice of Gemini (your key), the built-in Z.ai preview model, or Mausam Core (on-device).
@@ -173,7 +173,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v3.0.0') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v4.0.0') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -183,15 +183,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v3.0.0') {
-            sessionStorage.setItem('mausam:swcheck', 'v3.0.0');
+          if (e && e.data && e.data.version === 'v4.0.0') {
+            sessionStorage.setItem('mausam:swcheck', 'v4.0.0');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v3.0.0');
+          sessionStorage.setItem('mausam:swcheck', 'v4.0.0');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {

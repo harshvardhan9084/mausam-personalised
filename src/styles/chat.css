@@ -321,3 +321,19 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-panel.active, .chat-msg { animation: none; }
 }
+
+/* ================================================================
+   v4 — code fences + inline salvaged cards
+================================================================ */
+.chat-code {
+  background: color-mix(in srgb, var(--border) 35%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 6px 0;
+}
+.chat-inline-card { margin: 6px 0; }

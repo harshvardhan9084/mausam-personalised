@@ -34,7 +34,8 @@ export function compactSnapshot(state) {
 
   return {
     place: [loc?.name, loc?.admin1, loc?.country].filter(Boolean).join(', ') || 'unknown location',
-    localTime: new Date().toLocaleString('en-IN', { timeZone: s.timezone, hour: 'numeric', minute: '2-digit', hour12: true }),
+    timezone: s.timezone,
+    localTime: new Date().toLocaleString('en-IN', { timeZone: s.timezone, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }),
     now: {
       tempC: round(s.now.temp, 1),
       feelsC: round(s.now.feels, 1),
@@ -58,13 +59,15 @@ export function compactSnapshot(state) {
     },
     next24h: next24.filter((_, i) => i % 2 === 0).map((h) => ({
       at: hh(h.time),
+      date: h.time.slice(0, 10),
       tempC: round(h.temperature_2m),
       feelsC: round(h.feels ?? h.hi),
       pop: Math.round(h.precipitation_probability ?? 0),
       cond: h.wx?.label,
     })),
-    next7days: s.days.map((d) => ({
+    next10days: s.days.map((d) => ({
       day: d.label,
+      date: d.date,
       icon: d.wx?.icon,
       cond: d.wx?.label,
       maxC: round(d.temp_max),
@@ -95,6 +98,43 @@ function personalBlock(you) {
 }
 
 /**
+ * Build the time block — the AI's clock. Without it "today", "tonight",
+ * "tomorrow morning" and "in 2 hours" are unanswerable.
+ */
+function timeBlock(state) {
+  const s = state.snapshot;
+  const tz = s?.timezone;
+  const now = new Date();
+  const fmt = (opts) => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: tz ?? undefined, ...opts }).format(now);
+    } catch {
+      return new Intl.DateTimeFormat('en-GB', opts).format(now);
+    }
+  };
+  const full = fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  const tzName = fmt({ timeZoneName: 'short' }).split(', ').pop() ?? '';
+  const todayISO = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: tz ?? undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+    } catch {
+      return now.toISOString().slice(0, 10);
+    }
+  })();
+  const tomorrowISO = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: tz ?? undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now.getTime() + 86400000));
+    } catch {
+      return new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+    }
+  })();
+  return `## TIME (authoritative — resolve every relative phrase against this)
+Right now at the place above: **${full} ${tzName}** (timezone ${tz ?? 'unknown'}). Today's date: **${todayISO}**.
+In the DATA block, "Today" = ${todayISO} and "Tomorrow" = ${tomorrowISO}; day rows carry their exact dates — trust the dates, not just labels.
+When the user says today/tonight/tomorrow/morning/evening/later, restate the concrete day you mean (e.g. "tomorrow, ${tomorrowISO}"). Times of day: morning < 12 PM, afternoon 12–5 PM, evening 5–9 PM, night after 9 PM.`;
+}
+
+/**
  * Build the full system prompt.
  * @param {Object} state window.__mausamState-like
  */
@@ -109,13 +149,14 @@ export function buildSystemPrompt(state) {
 ## Hard rules
 1. ${unitLine}
 2. NEVER invent weather numbers. Use ONLY the DATA block below and tool results. If something isn't in the data, say so plainly and offer what you do have.
-3. Keep prose SHORT — 2–5 sentences unless the user asks for depth. No headings, no tables in markdown. Bold key numbers with **…**.
+3. Answer with REAL substance — usually 2–3 short paragraphs (roughly 80–150 words): verdict first, then the why, then what to actually do about it. For planning, comparisons or "explain" questions, go deeper: 3–4 short paragraphs (up to ~250 words). Never reply with a single bare sentence unless the user literally asked for yes/no. Bold the key numbers with **…**. No markdown headings or tables in prose.
 4. If the user asks about another city, call the \`get_city_weather\` tool first; then answer. If a tool fails, say what happened and answer from what you have.
-5. You are data-aware: the DATA block is the live situation for ${snap?.place ?? 'the user\'s location'}. Treat it as ground truth for "now".
+5. You are data-aware: the DATA block is the live situation for ${snap?.place ?? 'the user\'s location'}. Treat it as ground truth for "now". The TIME block below tells you the current date and time — use it to resolve every "today", "tonight", "tomorrow" and "this morning".
 6. Never give medical advice; frame heat/air warnings practically (shade, hydration, masks, timing).
+7. NEVER write raw JSON outside a \`\`\`mausam-ui fence. Never wrap JSON in prose, quotes or \`\`\`json fences.
 
 ## MausamUI — rich response contract (v${CONTRACT_VERSION})
-Choose presentation deliberately: **plain text when text is enough, a visual component when it communicates better.** Most short answers need zero or one card. Never repeat the same numbers twice (prose + card both listing everything is noise).
+Choose presentation deliberately: **plain text when text is enough, a visual component when it communicates better.** Most short answers need zero or one card. Never repeat the same numbers twice (prose + card both listing everything is noise). ALWAYS write at least 2–3 sentences of prose around every card — a card alone is never a complete answer; the card carries the numbers, your prose carries the verdict, the why and the advice.
 
 To emit a card, drop this fenced block anywhere between your sentences:
 
@@ -153,7 +194,9 @@ Presentation guidance:
 - End answers that invite follow-up with \`chips\` (max 3 short options)
 
 ## DATA (live snapshot — ground truth)
-${snap ? JSON.stringify(snap) : '(weather data still loading — tell the user to try again in a moment; do NOT guess numbers)'}${personalBlock(state.you)}
+${snap ? JSON.stringify(snap) : '(weather data still loading — tell the user to try again in a moment; do NOT guess numbers)'}
+
+${timeBlock(state)}${personalBlock(state.you)}
 
 ## Opening style
 First message in a conversation: greet briefly (mention name only if provided), one line, no cards. Answer-first, always: verdict, then detail, then (only if useful) a card.`;

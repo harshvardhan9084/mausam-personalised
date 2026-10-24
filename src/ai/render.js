@@ -9,7 +9,7 @@
 
 import { el } from '../utils/dom.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
-import { parseBlock, FENCE } from './contract.js';
+import { parseBlock, REGISTRY, FENCE } from './contract.js';
 
 /* ---------------- text helpers ---------------- */
 
@@ -33,6 +33,19 @@ export function richText(text) {
 /** Multi-line text with paragraph + "- list" support (safe). */
 export function proseNode(text) {
   const wrap = el('div.chat-text');
+  for (const seg of salvageInlineUI(text)) {
+    if (seg.type === 'payload') {
+      const node = renderPayload(seg.payload);
+      if (node) wrap.appendChild(el('div.chat-inline-card', null, node));
+      continue;
+    }
+    if (seg.type === 'hold') break; // trailing incomplete payload — stop here
+    appendProse(wrap, seg.text);
+  }
+  return wrap;
+}
+
+function appendProse(wrap, text) {
   const lines = String(text).split('\n');
   let list = null;
   const flush = () => { if (list) { wrap.appendChild(list); list = null; } };
@@ -50,8 +63,85 @@ export function proseNode(text) {
     }
   }
   flush();
-  return wrap;
 }
+
+/* ---------------- inline-JSON salvage ---------------- */
+
+/** Find the index of the matching close-brace for the '{' at `start`. */
+function matchBrace(text, start) {
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Split prose into text / payload segments. Models sometimes emit the UI
+ * payload as a BARE JSON object (no fence) — those must never be shown as
+ * raw JSON text. Valid payloads become components; broken ones are dropped
+ * (the prose around them survives). Pure function (no DOM) — exported for tests.
+ */
+function salvageInlineUI(text) {
+  const s = String(text);
+  const out = [];
+  const rx = /\{\s*"(?:v|c|d|t)"\s*:/g;
+  let last = 0;
+  let m;
+  while ((m = rx.exec(s))) {
+    const start = m.index;
+    const end = matchBrace(s, start);
+    if (end < 0) continue; // unbalanced — leave as text
+    const raw = s.slice(start, end + 1);
+    // Only treat as a UI payload when it self-identifies: has a "c" whose
+    // value is a known component type (or "d"+"c" together).
+    let known = false;
+    try {
+      const probe = JSON.parse(raw);
+      known = probe && typeof probe === 'object' && typeof probe.c === 'string' && Boolean(REGISTRY[probe.c]);
+    } catch { known = false; }
+    if (!known) continue;
+    const before = s.slice(last, start);
+    if (before.trim()) out.push({ type: 'text', text: before });
+    const res = parseBlock(raw);
+    if (res.ok) out.push({ type: 'payload', payload: res.payload });
+    // broken known-type payload: dropped silently — a fallback card for a
+    // half-written object is more confusing than helpful
+    last = end + 1;
+    rx.lastIndex = last;
+  }
+  const tail = s.slice(last);
+  // Hold back a trailing INCOMPLETE payload (still streaming): an unbalanced
+  // "{…<envelope-key>" candidate is suppressed so raw JSON never flashes in
+  // the UI; once it completes, the loop above converts it.
+  let heldAt = -1;
+  {
+    const rx2 = /\{\s*"(?:v|c|d|t)"\s*:/g;
+    let m2;
+    while ((m2 = rx2.exec(tail))) {
+      if (matchBrace(tail, m2.index) === -1) { heldAt = m2.index; break; }
+    }
+  }
+  const visible = heldAt >= 0 ? tail.slice(0, heldAt) : tail;
+  const held = heldAt >= 0;
+  if (visible.trim() || (!out.length && !held)) out.push({ type: 'text', text: visible });
+  if (held) out.push({ type: 'hold' });
+  return out;
+}
+
+export { salvageInlineUI };
 
 /* ---------------- SVG charts ---------------- */
 
@@ -344,89 +434,174 @@ export function renderPayload(payload, handlers) {
 
 /**
  * Render a raw (unvalidated / failed) fence → readable fallback.
- * Called when parseBlock fails. Never throws.
+ * Called when parseBlock fails. NEVER dumps raw JSON into the chat —
+ * it salvages human-readable fields and shows those instead.
  */
 export function renderFallback(rawJSON, reason) {
-  // Try to salvage something human-readable.
-  let summary = null;
-  try {
-    const obj = JSON.parse(rawJSON);
-    const flat = [];
-    for (const [k, v] of Object.entries(obj)) {
-      if (k === 'v') continue;
-      flat.push([k, typeof v === 'object' ? JSON.stringify(v) : String(v)]);
-    }
-    summary = flat.slice(0, 8);
-  } catch { /* not JSON at all */ }
-
+  const salvage = salvageReadable(rawJSON);
   return el('div.mu-fallback',
-    el('div.mu-fallback-head', null, `🧩 ${reason ?? 'This card could not be rendered'}`),
-    summary
-      ? el('div.mu-fallback-body', summary.map(([k, v]) =>
-          el('div.mu-fallback-row', null, el('span', null, k), el('b', null, v))))
-      : el('div.mu-fallback-body.mu-fallback-raw', null, String(rawJSON).slice(0, 240))
+    el('div.mu-fallback-head', null, '🧩 Couldn’t draw that card'),
+    reason ? el('div.mu-fallback-why', null, humanReason(reason)) : null,
+    salvage
+      ? el('div.mu-fallback-body',
+          salvage.title ? el('div.mu-fallback-title', null, salvage.title) : null,
+          salvage.rows.map(([k, v]) => el('div.mu-fallback-row', null, el('span', null, k), el('b', null, v))))
+      : null
   );
 }
 
+/** Friendlier reason line (the raw validator text is for console). */
+function humanReason(reason) {
+  const r = String(reason);
+  if (r.includes('not valid JSON')) return 'The card data arrived malformed.';
+  if (r.startsWith('unknown component')) return `${r.replace('unknown component', 'This card type isn’t supported here:')} `;
+  if (r.includes('contract version')) return 'The card uses a different contract version.';
+  if (r.startsWith('bad ')) return 'The card data didn’t match what this card needs.';
+  return 'The card could not be rendered.';
+}
+
+/** Pull human-readable bits out of a failed payload — no raw JSON shown. */
+function salvageReadable(rawJSON) {
+  let obj;
+  try { obj = JSON.parse(rawJSON); } catch { return null; }
+  if (!obj || typeof obj !== 'object') return null;
+  const title = typeof obj.t === 'string' ? obj.t : typeof obj.title === 'string' ? obj.title : '';
+  const data = obj.d && typeof obj.d === 'object' ? obj.d : obj;
+  const rows = [];
+  const humanKey = (k) => k.replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
+  const humanVal = (v) => {
+    if (v == null) return '';
+    if (typeof v === 'number') return String(Math.round(v * 10) / 10);
+    if (typeof v === 'string') return v.length > 90 ? `${v.slice(0, 90)}…` : v;
+    if (typeof v === 'boolean') return v ? 'yes' : 'no';
+    if (Array.isArray(v)) {
+      if (v.length && v.every((x) => x && typeof x === 'object')) {
+        const first = v[0];
+        const label = first?.name ?? first?.label ?? first?.time ?? first?.slot;
+        return `${v.length} ${v.length === 1 ? 'entry' : 'entries'}${label ? ` · from ${label}` : ''}`;
+      }
+      return v.slice(0, 6).map((x) => String(x)).join(', ') + (v.length > 6 ? ', …' : '');
+    }
+    const vals = Object.values(v).filter((x) => x != null && typeof x !== 'object');
+    return vals.length ? vals.slice(0, 4).join(', ') : '—';
+  };
+  for (const [k, v] of Object.entries(data)) {
+    if (rows.length >= 6) break;
+    if (v == null || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue;
+    rows.push([humanKey(k), humanVal(v)]);
+  }
+  if (!rows.length && !title) return null;
+  return { title, rows };
+}
+
 function fallbackNode(title, reason, d) {
+  const rows = [];
+  if (d && typeof d === 'object') {
+    const humanKey = (k) => k.replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
+    for (const [k, v] of Object.entries(d).slice(0, 6)) {
+      if (v == null) continue;
+      rows.push([humanKey(k),
+        typeof v === 'object' ? (Array.isArray(v) ? `${v.length} items` : '…') : String(v).slice(0, 90)]);
+    }
+  }
   return el('div.mu-fallback',
     title ? el('div.mu-title', null, title) : null,
     el('div.mu-fallback-head', null, `🧩 ${reason}`),
-    d && typeof d === 'object'
-      ? el('div.mu-fallback-body', Object.entries(d).slice(0, 8).map(([k, v]) =>
-          el('div.mu-fallback-row', null,
-            el('span', null, k),
-            el('b', null, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''))))
-        )
+    rows.length
+      ? el('div.mu-fallback-body', rows.map(([k, v]) =>
+          el('div.mu-fallback-row', null, el('span', null, k), el('b', null, v))))
       : null
   );
 }
 
 /**
- * Progressive stream parser: feed text deltas, get events back.
- * Emits {text} for prose and {component|fallback} for completed fences.
+ * Progressive stream parser (v2) — feed text deltas, get events back.
+ *
+ * Events: {type:'text',text} · {type:'component',payload} ·
+ *         {type:'fallback',raw,reason} · {type:'code',text}
+ *
+ * Hard rules this parser enforces:
+ *  - ANY triple-backtick fence opens a block — never leaks to prose. The
+ *    tag decides the mode: mausam-ui/mausam/json/ui/empty → UI payload;
+ *    anything else (js, python…) → code block.
+ *  - A fence split across network chunks never leaks (partial openers are
+ *    held back; an opener without its tag line waits).
+ *  - A fence that fails validation becomes a humanized fallback — the
+ *    payload never surfaces as raw JSON.
  */
 export function createStreamParser() {
   let buf = '';
-  let inFence = false;
+  let mode = 'prose'; // 'prose' | 'tagwait' | 'fence' | 'code'
 
   const emitText = (t, out) => { if (t) out.push({ type: 'text', text: t }); };
 
+  /** Decide the mode from a fence tag (first word of the opener line). */
+  const modeForTag = (tag) => {
+    const t = String(tag ?? '').trim().toLowerCase().split(/\s+/)[0] ?? '';
+    return ['', FENCE, 'mausamui', 'mausam', 'json', 'ui', 'mu'].includes(t) ? 'fence' : 'code';
+  };
+
   return {
-    /** @returns {Array<{type:'text',text}|{type:'component',payload}|{type:'fallback',raw,reason}>} */
+    /** @returns {Array<{type:string, [k:string]:any}>} */
     push(delta) {
       buf += delta;
       const out = [];
       let guard = 0;
-      while (guard++ < 64) {
-        if (!inFence) {
-          const open = buf.indexOf('```' + FENCE);
+      while (guard++ < 128) {
+        if (mode === 'prose') {
+          const open = buf.indexOf('```');
           if (open < 0) {
-            // Hold back any trailing partial opener (a prefix of '```mausam-ui')
-            // so a fence split across network chunks never leaks as prose.
-            const OPENER = '```' + FENCE;
+            // Hold back a trailing partial opener ('`' or '``') so a fence
+            // split across chunks never leaks as prose.
             let hold = 0;
-            const maxJ = Math.min(OPENER.length - 1, buf.length);
-            for (let j = maxJ; j >= 1; j--) {
-              if (buf.endsWith(OPENER.slice(0, j))) { hold = j; break; }
-            }
+            if (buf.endsWith('``')) hold = 2;
+            else if (buf.endsWith('`')) hold = 1;
             const safe = hold ? buf.slice(0, buf.length - hold) : buf;
             emitText(safe, out);
             buf = buf.slice(safe.length);
             break;
           }
           emitText(buf.slice(0, open), out);
-          buf = buf.slice(open + 3 + FENCE.length);
-          inFence = true;
+          buf = buf.slice(open + 3);
+          mode = 'tagwait'; // opener consumed, waiting for the tag line
+        } else if (mode === 'tagwait') {
+          const nl = buf.indexOf('\n');
+          if (nl < 0) {
+            if (buf.length <= 64) break; // wait for the rest of the tag line
+            // absurdly long tag line — treat the first token as the tag
+            const tag = buf.split(/\s/, 1)[0] ?? '';
+            buf = buf.slice(tag.length);
+            mode = modeForTag(tag);
+            continue;
+          }
+          const tag = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          mode = modeForTag(tag);
         } else {
+          // fence or code: read until the closing ```
           const close = buf.indexOf('```');
-          if (close < 0) break; // wait for the rest of the fence
-          const raw = buf.slice(0, close).trim();
+          if (close < 0) break; // wait for the rest
+          const raw = buf.slice(0, close);
           buf = buf.slice(close + 3);
-          inFence = false;
-          const res = parseBlock(raw);
-          if (res.ok) out.push({ type: 'component', payload: res.payload });
-          else out.push({ type: 'fallback', raw, reason: res.error });
+          const wasCode = mode === 'code';
+          mode = 'prose';
+          if (wasCode) {
+            out.push({ type: 'code', text: raw });
+          } else {
+            // Defensive: a tag echoed on its own first line inside the body
+            // (```mausam-ui⏎mausam-ui⏎{…}) — drop it before parsing.
+            let body = raw.trim();
+            const firstNl = body.indexOf('\n');
+            if (firstNl > 0) {
+              const first = body.slice(0, firstNl).trim().toLowerCase();
+              if (/^[a-z][a-z0-9-]{0,20}$/.test(first) && !first.startsWith('{') && !first.startsWith('"')) {
+                body = body.slice(firstNl + 1).trim();
+              }
+            }
+            const res = parseBlock(body);
+            if (res.ok) out.push({ type: 'component', payload: res.payload });
+            else out.push({ type: 'fallback', raw: body, reason: res.error });
+          }
         }
       }
       return out;
@@ -434,15 +609,20 @@ export function createStreamParser() {
     /** Flush any unterminated content at end of stream. */
     end() {
       const out = [];
-      if (inFence) {
-        const res = parseBlock(buf.trim());
+      if (mode === 'fence') {
+        const raw = buf.trim();
+        const res = parseBlock(raw);
         if (res.ok) out.push({ type: 'component', payload: res.payload });
-        else out.push({ type: 'fallback', raw: buf.trim(), reason: res.error });
+        else out.push({ type: 'fallback', raw, reason: res.error });
+      } else if (mode === 'code') {
+        if (buf.trim()) out.push({ type: 'code', text: buf });
+      } else if (mode === 'tagwait') {
+        // stream ended right after an opener — truncated fence, drop silently
       } else {
         emitText(buf, out);
       }
       buf = '';
-      inFence = false;
+      mode = 'prose';
       return out;
     },
   };

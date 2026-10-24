@@ -15,6 +15,33 @@ const hh = (iso) => {
   return Number.isFinite(h) ? (h % 12 === 0 ? 12 : h % 12) + (h >= 12 ? ' PM' : ' AM') : null;
 };
 
+/** Friendly day label for an ISO timestamp, relative to the snapshot. */
+function dayLabelFor(s, iso) {
+  const date = iso?.slice(0, 10);
+  const d0 = s?.days?.[0]?.date;
+  const d1 = s?.days?.[1]?.date;
+  if (date && date === d0) return 'Today';
+  if (date && date === d1) return 'Tomorrow';
+  try {
+    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  } catch {
+    return date ?? '';
+  }
+}
+
+/** Local wall-clock time for a snapshot's timezone. */
+function localTimeOf(s) {
+  const tz = s?.timezone;
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz, weekday: 'long', day: 'numeric', month: 'long',
+      year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
+    }).format(new Date());
+  } catch {
+    return null;
+  }
+}
+
 /** Gemini-style function declarations. */
 export const TOOL_DECLARATIONS = [
   {
@@ -72,6 +99,7 @@ export function snapshotToCompact(s) {
   if (!s) return null;
   return {
     place: s.locationLabel || s.location?.name || 'unknown',
+    localTime: localTimeOf(s),
     now: {
       tempC: s.now.temp != null ? Math.round(s.now.temp * 10) / 10 : null,
       feelsC: s.now.feels != null ? Math.round(s.now.feels * 10) / 10 : null,
@@ -82,6 +110,7 @@ export function snapshotToCompact(s) {
     aqi: s.currentAqi?.aqi != null ? { cpcbAqi: s.currentAqi.aqi, category: s.currentAqi.category, dominant: s.currentAqi.dominant } : null,
     days: s.days.slice(0, 4).map((d) => ({
       day: d.label,
+      date: d.date,
       cond: d.wx?.label,
       maxC: d.temp_max != null ? Math.round(d.temp_max) : null,
       minC: d.temp_min != null ? Math.round(d.temp_min) : null,
@@ -111,10 +140,12 @@ export async function runTool(name, args = {}, state) {
       case 'get_next_hours': {
         const s = state?.snapshot;
         if (!s) return { error: 'Weather data is still loading.' };
-        const n = Math.min(36, Math.max(1, Math.round(args.hours ?? 12)));
+        const n = Math.min(48, Math.max(1, Math.round(args.hours ?? 12)));
         return {
           place: state.location?.name,
+          asOf: localTimeOf(s),
           hours: s.hours.slice(0, n).map((h) => ({
+            day: dayLabelFor(s, h.time),
             at: hh(h.time),
             tempC: h.temperature_2m != null ? Math.round(h.temperature_2m) : null,
             pop: Math.round(h.precipitation_probability ?? 0),
@@ -126,14 +157,16 @@ export async function runTool(name, args = {}, state) {
         const s = state?.snapshot;
         if (!s) return { error: 'Weather data is still loading.' };
         const idx = (Array.isArray(args.days) ? args.days : [0, 1])
-          .map((n) => Math.max(0, Math.min(6, Math.round(Number(n)))))
+          .map((n) => Math.max(0, Math.min(9, Math.round(Number(n)))))
           .filter((n) => Number.isFinite(n));
         return {
           place: state.location?.name,
+          asOf: localTimeOf(s),
           days: [...new Set(idx)].map((i) => {
             const d = s.days[i];
             return d ? {
               day: d.label,
+              date: d.date,
               cond: d.wx?.label,
               maxC: d.temp_max != null ? Math.round(d.temp_max) : null,
               minC: d.temp_min != null ? Math.round(d.temp_min) : null,

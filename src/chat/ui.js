@@ -183,6 +183,10 @@ export function wireChat(handlers = {}) {
         setProviderLabel(info.note ? `${info.badge} · ${info.note}` : info.badge);
       },
       onText: (delta) => { streamed += delta; flushStream(); },
+      onCode: async (text) => {
+        const pre = el('pre.chat-code', null, String(text).replace(/\s+$/, ''));
+        await turn.type(pre, 0);
+      },
       onComponent: async (payload) => {
         const node = renderPayload(payload, { onSend: (m) => send(m) });
         if (node) await turn.type(node);
@@ -245,22 +249,30 @@ export function wireChat(handlers = {}) {
 
   async function runChatTurnWithFallback(events) {
     if (events.forceOffline) {
-      // one-shot override: force the offline engine
-      const { PROVIDERS } = await import('../ai/client.js');
-      void PROVIDERS;
+      // one-shot override: force the offline engine (routed through the SAME
+      // stream parser so MausamUI fences render as cards, never as text)
       const state = events.getState?.() ?? {};
       const { offlineChat } = await import('../ai/offline.js');
       const { createStreamParser } = await import('../ai/render.js');
       const parser = createStreamParser();
       events.onOpen?.({ provider: 'offline', badge: 'Mausam Core · on-device' });
+      const pump = (delta) => {
+        for (const e of parser.push(delta)) {
+          if (e.type === 'text') events.onText?.(e.text);
+          else if (e.type === 'component') events.onComponent?.(e.payload);
+          else if (e.type === 'fallback') events.onFallback?.(e.raw, e.reason);
+          else if (e.type === 'code') events.onCode?.(e.text);
+        }
+      };
       try {
         await offlineChat({
-          userText: events.userText, onText: (d) => events.onText?.(d),
+          userText: events.userText, onText: pump,
           signal: events.signal, getState: events.getState,
         });
         for (const e of parser.end()) {
           if (e.type === 'component') events.onComponent?.(e.payload);
           else if (e.type === 'fallback') events.onFallback?.(e.raw, e.reason);
+          else if (e.type === 'code') events.onCode?.(e.text);
         }
         events.onDone?.({ provider: 'offline', badge: 'Mausam Core · on-device' });
       } catch (err) {

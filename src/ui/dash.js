@@ -1,8 +1,9 @@
 /**
  * dash.js — the one, generous dashboard.
  *
- * Every user sees every section: current conditions, 24h strip, temp
- * curve, 7-day outlook, details grid, CPCB air quality, sun times and
+ * Every user sees every section: places rail, current conditions (with a
+ * vs-yesterday pill + share), 15-minute rain nowcast, 48h strip, temp
+ * curve, 10-day outlook, details grid, CPCB air quality, sun times and
  * "Mausam Says" insights. The personal "For You" rail renders ON TOP
  * only when the user has filled the optional 30-second profile —
  * personalisation adds, it never removes or gates.
@@ -13,7 +14,19 @@ import { temp, wind, hourLabel, relativeTime, visibility } from '../utils/format
 import { compass } from '../api/wmo.js';
 import { computeAlerts, computeInsights, computeForYou } from '../core/insights.js';
 import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow } from './shared.js';
+import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
+
+/** Transient toast (share copied, etc.). */
+function toast(msg) {
+  const t = el('div.mausam-toast', { role: 'status' }, msg);
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 350);
+  }, 2200);
+}
 
 /** Rich text for insight strings (**bold**). */
 function rich(text) {
@@ -115,6 +128,74 @@ function tempCurve(hours) {
 }
 
 /* ================================================================
+   SHARE
+================================================================ */
+
+function shareWeather(s, units, loc) {
+  const n = s.now;
+  const today = s.days?.[0];
+  const aqi = s.currentAqi;
+  const lines = [
+    `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${n.wx?.label ?? ''}`,
+    today ? `High ${temp(today.temp_max, units)} / Low ${temp(today.temp_min, units)} · 💧 ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
+    aqi?.aqi != null ? `Air quality: AQI ${aqi.aqi} (${aqi.category})` : null,
+    '— via Mausam',
+  ].filter(Boolean);
+  const text = lines.join('\n');
+  if (navigator.share) {
+    navigator.share({ title: 'Weather — Mausam', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text)
+      .then(() => toast('Copied to clipboard ✓'))
+      .catch(() => toast('Could not copy'));
+  }
+}
+
+/* ================================================================
+   NOWCAST — next 2 hours, 15-minute steps
+================================================================ */
+
+function nowcastCard(s, units) {
+  const m = s.minutely;
+  if (!m?.mm?.length) return null;
+  const steps = m.mm.slice(0, 8);
+  const total = steps.reduce((a, b) => a + (b ?? 0), 0);
+  const firstWet = steps.findIndex((v) => (v ?? 0) > 0.03);
+  const startLabel = new Date(m.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  const head = el('div.nowcast-head');
+  let verdict;
+  if (total < 0.1) {
+    verdict = el('div.nowcast-verdict', null, '🌙 No rain expected in the next 2 hours');
+  } else if (firstWet === 0) {
+    verdict = el('div.nowcast-verdict.wet', null, `🌧 Rain around ${startLabel} — carry cover if stepping out`);
+  } else {
+    const at = new Date(new Date(m.start).getTime() + firstWet * 15 * 60000)
+      .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+    verdict = el('div.nowcast-verdict', null, `⏳ Rain likely around ${at}`);
+  }
+  head.appendChild(verdict);
+
+  const bars = el('div.nowcast-bars');
+  const max = Math.max(...steps, 0.5);
+  steps.forEach((v, i) => {
+    const col = el('div.nowcast-col', { title: `${Math.round((v ?? 0) * 10) / 10} mm / 15 min` });
+    const bar = el('div.nowcast-bar');
+    bar.style.height = `${Math.max((v ?? 0) / max, 0.04) * 100}%`;
+    if ((v ?? 0) > 0.03) bar.classList.add('wet');
+    col.appendChild(bar);
+    if (i % 2 === 0) {
+      const lbl = new Date(new Date(m.start).getTime() + i * 15 * 60000)
+        .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+      col.appendChild(el('span.nowcast-lbl', null, lbl));
+    }
+    bars.appendChild(col);
+  });
+  head.appendChild(bars);
+  return card(head);
+}
+
+/* ================================================================
    MAIN RENDER
 ================================================================ */
 
@@ -126,14 +207,43 @@ export function renderDashboard(root, snapshot, units, ctx) {
   clear(root);
 
   /* ---------- hero ---------- */
+  const yd = s.yesterday?.deltaMax;
+  const deltaPill = yd != null
+    ? el('button.delta-pill', {
+        type: 'button',
+        title: `Yesterday's high was ${temp(s.yesterday.tempMax, units)}`,
+        onclick: () => toast(`Today's high is ${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? 'warmer' : 'cooler'} than yesterday`)
+      },
+        el('span', { class: 'delta-arrow', 'aria-hidden': 'true' }, yd >= 0 ? '▲' : '▼'),
+        `${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? 'warmer' : 'cooler'} than yesterday`)
+    : null;
+  const shareBtn = el('button.hero-share', {
+    type: 'button', 'aria-label': 'Share this weather', title: 'Share this weather',
+    onclick: () => shareWeather(s, units, loc),
+  }, '↗');
   const heroCard = card(
     el('div.hero-now-top',
       el('div.hero-place', null, `📍 ${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
-      el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `Updated ${relativeTime(s.fetchedAt)}`)
+      el('div.hero-top-actions', deltaPill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `Updated ${relativeTime(s.fetchedAt)}`), shareBtn)
     ),
     nowRow(s, units)
   );
   root.appendChild(el('div', { class: 'dash-hero' }, heroCard));
+
+  /* ---------- your places rail ---------- */
+  const placesMount = el('div.places-mount');
+  root.appendChild(placesMount);
+  renderPlaces(placesMount, {
+    current: loc,
+    units,
+    onSelect: (p) => ctx.pickLocation?.(p),
+    onAdd: () => ctx.openSearch?.(),
+    onForget: (i) => {
+      store.destinations.removeAt(i);
+      ctx.rerender?.();
+      toast('Place removed');
+    },
+  });
 
   /* ---------- alert ---------- */
   const alert = computeAlerts(s);
@@ -142,6 +252,13 @@ export function renderDashboard(root, snapshot, units, ctx) {
       el('div.alert-title', null, `${alert.icon} ${alert.title}`),
       el('div', null, alert.text)
     ));
+  }
+
+  /* ---------- rain nowcast (next 2h, 15-min steps) ---------- */
+  const nowcast = nowcastCard(s, units);
+  if (nowcast) {
+    root.appendChild(sectionTitle('Rain nowcast · next 2 hours'));
+    root.appendChild(nowcast);
   }
 
   /* ---------- For You (additive, only if personalised) ---------- */
@@ -159,9 +276,9 @@ export function renderDashboard(root, snapshot, units, ctx) {
   }
 
   /* ---------- hourly strip ---------- */
-  root.appendChild(sectionTitle('Next 24 hours'));
-  const h24 = s.hours.slice(0, 24);
-  root.appendChild(hourlyStrip(h24, (h) => el('div.hour-card',
+  root.appendChild(sectionTitle('Next 48 hours'));
+  const h48 = s.hours.slice(0, 48);
+  root.appendChild(hourlyStrip(h48, (h) => el('div.hour-card',
     el('div.h-time', null, hourLabel(h.time)),
     el('div.h-icon', null, h.wx?.icon ?? '·'),
     el('div.h-val', null, temp(h.temperature_2m)),
@@ -169,14 +286,14 @@ export function renderDashboard(root, snapshot, units, ctx) {
   )));
 
   /* ---------- temp curve ---------- */
-  const curve = tempCurve(h24);
+  const curve = tempCurve(h48.slice(0, 24));
   if (curve) {
     root.appendChild(sectionTitle('Temperature trend'));
     root.appendChild(card(curve));
   }
 
-  /* ---------- 7-day ---------- */
-  root.appendChild(sectionTitle('7-day outlook'));
+  /* ---------- 10-day ---------- */
+  root.appendChild(sectionTitle('10-day outlook'));
   root.appendChild(weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units)));
 
   /* ---------- Mausam Says ---------- */

@@ -71,7 +71,7 @@ export const store = {
       const list = get('destinations', []);
       if (!list.some((d) => Math.abs(d.lat - dest.lat) < 0.01 && Math.abs(d.lon - dest.lon) < 0.01)) {
         list.push(dest);
-        set('destinations', list.slice(-6)); // cap at 6
+        set('destinations', list.slice(-8)); // cap at 8
       }
     },
     removeAt: (i) => {

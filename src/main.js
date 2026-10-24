@@ -22,6 +22,7 @@ import { store } from './core/storage.js';
 import { wireHeader } from './ui/header.js';
 import { wireSettings, openSettings } from './ui/settings.js';
 import { wireYou, openYou } from './ui/you.js';
+import { rememberPlace } from './ui/places.js';
 import { renderDashboard as renderDashboardUI, updateFreshness } from './ui/dash.js';
 import { skeleton, errorCard } from './ui/shared.js';
 import { wireChat } from './chat/ui.js';
@@ -73,11 +74,7 @@ const header = wireHeader(
   },
   {
     onLocationPick(loc) {
-      currentLocation = loc;
-      store.location.set(loc);
-      header.setLocation(loc);
-      store.flags.set('welcomeDismissed', true);
-      loadWeather(true);
+      applyLocation(loc);
     },
     onRefresh: () => loadWeather(true),
     onOpenYou: () => openYou(),
@@ -85,6 +82,16 @@ const header = wireHeader(
   }
 );
 header.setLocation(currentLocation);
+
+/** One place-selection path for search, GPS and the places rail. */
+function applyLocation(loc) {
+  currentLocation = loc;
+  store.location.set(loc);
+  rememberPlace(loc);
+  header.setLocation(loc);
+  store.flags.set('welcomeDismissed', true);
+  loadWeather(true);
+}
 
 /* ================= settings + you sheets ================= */
 wireSettings(
@@ -149,11 +156,7 @@ function maybeWelcomeHint() {
                   const addr = j?.address ?? {};
                   name = addr.city || addr.town || addr.village || addr.county || name;
                 } catch { /* keep default name */ }
-                currentLocation = { name, admin1: '', country: '', lat: latitude, lon: longitude, isGeo: true };
-                store.location.set(currentLocation);
-                header.setLocation(currentLocation);
-                store.flags.set('welcomeDismissed', true);
-                loadWeather(true);
+                applyLocation({ name, admin1: '', country: '', lat: latitude, lon: longitude, isGeo: true });
               },
               () => { header.openSearch(); },
               { timeout: 10000 }
@@ -280,6 +283,8 @@ function renderDashboardInto() {
     location: currentLocation,
     openYou,
     rerender: renderDashboard,
+    pickLocation: applyLocation,
+    openSearch: () => header.openSearch(),
   });
 }
 

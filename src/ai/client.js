@@ -83,6 +83,7 @@ export async function runChatTurn(ev) {
       if (e.type === 'text') ev.onText?.(e.text);
       else if (e.type === 'component') ev.onComponent?.(e.payload);
       else if (e.type === 'fallback') ev.onFallback?.(e.raw, e.reason);
+      else if (e.type === 'code') ev.onCode?.(e.text);
     }
   };
   const onText = (delta) => { if (delta) handleEvents(parser.push(delta)); };
