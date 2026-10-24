@@ -85,4 +85,25 @@ export const store = {
     get: (lat, lon) => get(`bundle:${lat.toFixed(2)},${lon.toFixed(2)}`),
     set: (lat, lon, bundle) => set(`bundle:${lat.toFixed(2)},${lon.toFixed(2)}`, bundle),
   },
+  imdKey: {
+    get: () => get('imdKey', ''),
+    set: (k) => set('imdKey', String(k ?? '').trim()),
+    has: () => Boolean(String(get('imdKey', '')).trim()),
+  },
+  ai: {
+    // AI assistant settings. The key never leaves this browser except to
+    // the provider the user chose (Google's Gemini API).
+    get: () => get('ai', { provider: 'auto', geminiKey: '', model: 'gemini-3.5-flash-lite' }),
+    set: (cfg) => set('ai', { ...get('ai', {}), ...cfg }),
+  },
+  you: {
+    // lightweight personalisation — additive only, never blocks anything
+    get: () => get('you', null), // {name, activities[], commute:{am,pm}, sensitive:{heat,cold,rain,air}, savedAt}
+    set: (p) => set('you', p),
+    clear: () => remove('you'),
+  },
+  flags: {
+    get: (name, fallback = null) => get(`flag:${name}`, fallback),
+    set: (name, value) => set(`flag:${name}`, value),
+  },
 };

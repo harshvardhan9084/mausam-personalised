@@ -1,7 +1,7 @@
 {
-  "name": "Mausam — Personalised Weather",
+  "name": "Mausam — Weather that works like it's yours",
   "short_name": "Mausam",
-  "description": "Personalised weather dashboards for India. One forecast, five points of view — fitness, commute, farm, travel and events. Powered by Open-Meteo.",
+  "description": "Generous real-time weather for India: hourly, 7-day, CPCB air quality and smart insights, plus Mausam Mitra — an AI assistant that answers with live charts and cards. Optional 30-second personalisation on top. No account.",
   "id": "/mausam-personalised/",
   "start_url": "./index.html",
   "scope": "./",
@@ -17,7 +17,7 @@
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Fitness dashboard", "url": "./index.html?persona=fitness", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Commuter dashboard", "url": "./index.html?persona=commuter", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Will it rain?", "url": "./index.html?chat=rain", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Air quality", "url": "./index.html?chat=aqi", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

@@ -1,0 +1,170 @@
+/* ================================================================
+   dash.css — v3 dashboard: hero, for-you rail, insights, curve,
+   details, AQI/sun row, IMD block, welcome hint, nudge
+================================================================ */
+
+/* ---------- hero ---------- */
+.dash-hero { margin-bottom: 16px; }
+.dash-hero .card { padding: 18px; }
+
+.hero-now-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.hero-place { font-size: 0.9rem; font-weight: 600; color: var(--muted); }
+.updated-pill {
+  font-size: 0.68rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.dash-hero .hero-now-row { margin-bottom: 0; }
+.dash-hero .hero-now-icon { font-size: 3rem; }
+.dash-hero .hero-now-temp { font-size: 2.6rem; letter-spacing: -0.03em; }
+.dash-hero .hero-now-meta { margin-top: 4px; font-size: 0.88rem; }
+
+.dash-alert { margin: 0 0 16px; }
+.dash-alert .alert-title { font-weight: 700; margin-bottom: 2px; }
+
+.welcome-hint .welcome-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.btn-sm { font-size: 0.78rem; padding: 6px 12px; }
+
+/* ---------- For You rail ---------- */
+.foryou-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.foryou-card { padding: 13px 14px; border-left: 3px solid var(--accent); }
+.foryou-card.insight-good   { border-left-color: var(--green); }
+.foryou-card.insight-warn   { border-left-color: var(--yellow); }
+.foryou-card.insight-danger { border-left-color: var(--red); }
+.foryou-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.86rem; margin-bottom: 4px; }
+.foryou-icon { font-size: 1rem; }
+.foryou-text { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+.foryou-text strong { color: var(--text); font-weight: 650; }
+
+/* ---------- temp curve ---------- */
+.dash-curve-wrap { width: 100%; }
+.dash-curve { width: 100%; height: auto; display: block; }
+.curve-lbl, .mchart-lbl {
+  fill: var(--text);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font);
+}
+.mchart-lbl.max { fill: var(--orange); }
+.mchart-lbl.min { fill: var(--sky); }
+.mchart-x, .dash-curve-labels, .dash-curve-rains {
+  fill: var(--muted);
+  font-size: 8px;
+  font-family: var(--font);
+}
+.dash-curve-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--muted);
+  padding: 4px 6px 0;
+}
+.dash-curve-rains {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.64rem;
+  color: var(--muted);
+  padding: 2px 6px 0;
+}
+.dash-curve-rains .wet { color: var(--blue); font-weight: 700; }
+
+/* ---------- insights ---------- */
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.insight-card { padding: 13px 14px; }
+.insight-head {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 0.86rem; margin-bottom: 4px;
+}
+.insight-icon { font-size: 1rem; }
+.insight-text { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
+.insight-text strong { color: var(--text); font-weight: 650; }
+.insight-card.insight-good   { border-color: color-mix(in srgb, var(--green) 35%, var(--border)); }
+.insight-card.insight-warn   { border-color: color-mix(in srgb, var(--yellow) 40%, var(--border)); }
+.insight-card.insight-danger { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+
+/* ---------- details ---------- */
+.card-h { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+.aqi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.aqi-head .card-h { margin-bottom: 0; }
+.aqi-advice { font-size: 0.82rem; line-height: 1.5; margin-bottom: 6px; }
+.aqi-dominant { font-size: 0.74rem; color: var(--muted); }
+
+/* ---------- IMD block ---------- */
+.imd-note { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+.imd-days { display: flex; flex-direction: column; gap: 0; }
+.imd-day {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.imd-day:last-child { border-bottom: none; }
+.imd-day-date { color: var(--muted); font-size: 0.74rem; font-weight: 600; }
+.imd-day-text { line-height: 1.4; }
+.imd-day-temp { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- nudge ---------- */
+.nudge-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  margin: 4px 0 20px;
+}
+.nudge-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 2px; }
+.nudge-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.5; max-width: 460px; }
+.nudge-actions { display: flex; gap: 8px; }
+
+/* ---------- header extras ---------- */
+.you-btn {
+  background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.you-btn:hover { filter: brightness(1.1); }
+.use-loc-btn { width: 100%; justify-content: center; margin: 4px 0 10px; }
+
+@media (max-width: 640px) {
+  .you-btn-label { display: none; }
+  .you-btn { padding: 4px 10px; }
+  .insight-grid, .foryou-rail { grid-template-columns: 1fr; }
+  .dash-hero .hero-now-temp { font-size: 2.2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nudge-card, .welcome-hint { animation: none; }
+}

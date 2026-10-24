@@ -1,32 +1,27 @@
 /**
- * header.js — app header: brand, persona badge, location switcher with
- * live search, settings menu (units / theme / refresh), offline pill.
+ * header.js — app header: brand, location switcher (search + GPS),
+ * offline pill, data-source pill, For You button, settings, refresh.
  */
 
 import { el, clear } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
 
+const GEO_TIMEOUT_MS = 10000;
+
 /**
  * @param {Object} refs DOM refs from index.html
- * @param {Object} handlers { onLocationPick, onRefresh, onUnitsChange, onThemeChange, onSwitchProfile, onNewProfile }
+ * @param {Object} handlers { onLocationPick, onRefresh, onOpenYou, onOpenSettings }
  */
 export function wireHeader(refs, handlers) {
   const {
-    brandEl, personaBadgeEl, cityBtn, cityLabel, refreshBtn, refreshIcon,
-    settingsBtn, settingsMenu, offlinePill,
-    searchOverlay, searchInput, searchResults, searchCloseBtn,
+    brandEl, cityBtn, cityLabel, refreshBtn, refreshIcon,
+    offlinePill, searchOverlay, searchInput, searchResults, searchCloseBtn, useLocBtn,
   } = refs;
 
   /* ---------- brand ---------- */
   brandEl.appendChild(el('img', { src: 'icons/favicon.svg', alt: '' }));
   brandEl.appendChild(el('span', null, 'Mausam'));
-
-  /* ---------- profile badge ---------- */
-  function setProfile(profile) {
-    personaBadgeEl.textContent = profile ? `${profile.emoji} ${profile.name}` : '—';
-  }
-  personaBadgeEl.addEventListener('click', () => handlers.onSwitchProfile?.());
 
   /* ---------- location label ---------- */
   function setLocation(loc) {
@@ -48,62 +43,23 @@ export function wireHeader(refs, handlers) {
     offlinePill.classList.toggle('show', on);
   }
 
-  /* ---------- settings menu ---------- */
-  function applyUnits(units) {
-    settingsMenu.querySelectorAll('[data-units]').forEach((b) =>
-      b.classList.toggle('active', b.dataset.units === units)
-    );
-  }
-  function applyTheme(theme) {
-    settingsMenu.querySelectorAll('[data-theme]').forEach((b) =>
-      b.classList.toggle('active', b.dataset.theme === theme)
-    );
+  /* ---------- data-source pill ---------- */
+  function setSource(imd) {
+    refs.srcPill.classList.add('show');
+    if (imd?.ok) {
+      refs.srcPill.classList.add('imd');
+      refs.srcLabel.textContent = 'IMD + Open-Meteo';
+      refs.srcPill.title = `Official IMD forecast via ${imd.station?.name ?? 'IMD station'}, merged with Open-Meteo`;
+    } else {
+      refs.srcPill.classList.remove('imd');
+      refs.srcLabel.textContent = 'Open-Meteo';
+      refs.srcPill.title = 'Live data from Open-Meteo (add a free IMD key in Settings for official data)';
+    }
   }
 
-  settingsMenu.addEventListener('click', (e) => {
-    const unitsBtn = e.target.closest('[data-units]');
-    if (unitsBtn) {
-      store.units.set(unitsBtn.dataset.units);
-      applyUnits(unitsBtn.dataset.units);
-      handlers.onUnitsChange?.(unitsBtn.dataset.units);
-      return;
-    }
-    const themeBtn = e.target.closest('[data-theme-btn]');
-    if (themeBtn) {
-      store.theme.set(themeBtn.dataset.themeBtn);
-      applyTheme(themeBtn.dataset.themeBtn);
-      handlers.onThemeChange?.(themeBtn.dataset.themeBtn);
-      return;
-    }
-    if (e.target.closest('[data-action="switch-profile"]')) {
-      closeSettings();
-      handlers.onSwitchProfile?.();
-      return;
-    }
-    if (e.target.closest('[data-action="new-profile"]')) {
-      closeSettings();
-      handlers.onNewProfile?.();
-    }
-  });
-
-  const openSettings = () => {
-    settingsMenu.style.display = 'block';
-    settingsBtn.setAttribute('aria-expanded', 'true');
-  };
-  const closeSettings = () => {
-    settingsMenu.style.display = 'none';
-    settingsBtn.setAttribute('aria-expanded', 'false');
-  };
-  settingsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    settingsMenu.style.display === 'block' ? closeSettings() : openSettings();
-  });
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.settings-wrap') && !e.target.closest('#chat-panel')) closeSettings();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeSettings();
-  });
+  /* ---------- header buttons ---------- */
+  refs.youBtn.addEventListener('click', () => handlers.onOpenYou?.());
+  refs.settingsBtn.addEventListener('click', () => handlers.onOpenSettings?.());
 
   /* ---------- location search modal ---------- */
   const openSearch = () => {
@@ -126,6 +82,47 @@ export function wireHeader(refs, handlers) {
     if (e.key === 'Escape' && searchOverlay.classList.contains('active')) closeSearch();
   });
 
+  /* use-my-location: GPS → Nominatim reverse geocode */
+  useLocBtn.addEventListener('click', () => {
+    if (!('geolocation' in navigator)) {
+      clear(searchResults).appendChild(el('div.search-empty', null, 'Geolocation not available in this browser.'));
+      return;
+    }
+    clear(searchResults).appendChild(el('div.search-empty', null, '📡 Requesting your location…'));
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10`, {
+            headers: { Accept: 'application/json' },
+            signal: AbortSignal.timeout(8000),
+          });
+          const j = await res.json();
+          const addr = j?.address ?? {};
+          const name = addr.city || addr.town || addr.village || addr.county || addr.state_district || j?.name || 'My location';
+          closeSearch();
+          handlers.onLocationPick?.({
+            name,
+            admin1: addr.state,
+            country: addr.country,
+            lat: latitude,
+            lon: longitude,
+            isGeo: true,
+          });
+        } catch {
+          closeSearch();
+          handlers.onLocationPick?.({ name: 'My location', admin1: '', country: '', lat: latitude, lon: longitude, isGeo: true });
+        }
+      },
+      (err) => {
+        clear(searchResults).appendChild(el('div.search-empty', null,
+          err.code === 1 ? 'Permission denied — you can search for your city instead.' : 'Could not get your location — try searching.'));
+      },
+      { timeout: GEO_TIMEOUT_MS, maximumAge: 300000 }
+    );
+  });
+
+  /* live city search */
   let abortSearch = null;
   let searchSeq = 0;
 
@@ -135,10 +132,7 @@ export function wireHeader(refs, handlers) {
     const controller = new AbortController();
     abortSearch = () => controller.abort();
 
-    if (q.trim().length < 2) {
-      clear(searchResults);
-      return;
-    }
+    if (q.trim().length < 2) { clear(searchResults); return; }
     clear(searchResults).appendChild(el('div.search-empty', null, 'Searching…'));
     try {
       const results = await geocodeSearch(q, controller.signal);
@@ -155,20 +149,16 @@ export function wireHeader(refs, handlers) {
             onclick: () => {
               closeSearch();
               handlers.onLocationPick?.({
-                name: r.name,
-                admin1: r.admin1,
-                country: r.country,
-                lat: r.latitude,
-                lon: r.longitude,
-                isGeo: false,
+                name: r.name, admin1: r.admin1, country: r.country,
+                lat: r.latitude, lon: r.longitude, isGeo: false,
               });
             },
           },
-          el('span.result-name', null, r.name),
-          el('span.result-sub', null, [r.admin1, r.country].filter(Boolean).join(', '))
-        )
-      );
-    }
+            el('span.result-name', null, r.name),
+            el('span.result-sub', null, [r.admin1, r.country].filter(Boolean).join(', '))
+          )
+        );
+      }
     } catch (err) {
       if (err.name !== 'AbortError' && seq === searchSeq) {
         clear(searchResults).appendChild(el('div.search-empty', null, 'Search failed — check connection'));
@@ -182,14 +172,5 @@ export function wireHeader(refs, handlers) {
     debounceTimer = setTimeout(() => runSearch(searchInput.value), 300);
   });
 
-  return {
-    setProfile,
-    setLocation,
-    setRefreshing,
-    setOffline,
-    applyUnits,
-    applyTheme,
-    openSearch,
-    openSettings,
-  };
+  return { setLocation, setRefreshing, setOffline, setSource, openSearch };
 }

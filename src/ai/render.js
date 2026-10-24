@@ -1,0 +1,449 @@
+/**
+ * render.js — the renderer side of the MausamUI contract.
+ *
+ * Maps validated contract payloads (see contract.js) to real components
+ * built with utils/dom.el — never innerHTML, so AI-produced strings can
+ * never inject markup. Unknown/broken payloads render as readable
+ * fallbacks instead of throwing.
+ */
+
+import { el } from '../utils/dom.js';
+import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
+import { parseBlock, FENCE } from './contract.js';
+
+/* ---------------- text helpers ---------------- */
+
+/** Render **bold** / `code` spans safely (no HTML parsing). */
+export function richText(text) {
+  const frag = document.createDocumentFragment();
+  const parts = String(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  for (const part of parts) {
+    if (!part) continue;
+    if (part.startsWith('**') && part.endsWith('**')) {
+      frag.appendChild(el('strong', null, part.slice(2, -2)));
+    } else if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      frag.appendChild(el('code.mono', null, part.slice(1, -1)));
+    } else {
+      frag.appendChild(document.createTextNode(part));
+    }
+  }
+  return frag;
+}
+
+/** Multi-line text with paragraph + "- list" support (safe). */
+export function proseNode(text) {
+  const wrap = el('div.chat-text');
+  const lines = String(text).split('\n');
+  let list = null;
+  const flush = () => { if (list) { wrap.appendChild(list); list = null; } };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) { flush(); continue; }
+    if (/^[-•*]\s+/.test(t)) {
+      if (!list) list = el('div.chat-ul');
+      list.appendChild(el('div.chat-li', null, richText(t.replace(/^[-•*]\s+/, ''))));
+    } else {
+      flush();
+      const p = el('div.chat-p');
+      p.appendChild(richText(t));
+      wrap.appendChild(p);
+    }
+  }
+  flush();
+  return wrap;
+}
+
+/* ---------------- SVG charts ---------------- */
+
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  return node;
+}
+
+/** Temperature trend: area + line + min/max labels. */
+function tempChartSVG({ labels, temps, feels, unit }) {
+  const W = 320, H = 110, PADX = 8, PADT = 14, PADB = 18;
+  const vals = temps.filter((v) => v != null);
+  if (vals.length < 2) return null;
+  const allVals = feels ? [...vals, ...feels.filter((v) => v != null)] : vals;
+  let min = Math.min(...allVals), max = Math.max(...allVals);
+  if (max - min < 4) { const mid = (max + min) / 2; min = mid - 2; max = mid + 2; }
+  const span = max - min;
+  const n = temps.length;
+  const x = (i) => PADX + (i * (W - PADX * 2)) / (n - 1);
+  const y = (v) => PADT + (1 - (v - min) / span) * (H - PADT - PADB);
+
+  const line = temps.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean).join(' ');
+  const area = `${PADX},${H - PADB} ${line} ${(W - PADX).toFixed(1)},${H - PADB}`;
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'mchart', role: 'img', 'aria-label': 'Temperature trend chart' });
+  const defs = svgEl('defs');
+  const grad = svgEl('linearGradient', { id: `tg${Math.random().toString(36).slice(2, 8)}`, x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.appendChild(svgEl('stop', { offset: '0%', 'stop-color': 'var(--accent)', 'stop-opacity': 0.34 }));
+  grad.appendChild(svgEl('stop', { offset: '100%', 'stop-color': 'var(--accent)', 'stop-opacity': 0 }));
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+  svg.appendChild(svgEl('polygon', { points: area, fill: `url(#${grad.id})`, stroke: 'none' }));
+  if (feels) {
+    const fline = feels.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean).join(' ');
+    svg.appendChild(svgEl('polyline', { points: fline, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.4, 'stroke-dasharray': '3 3', opacity: 0.8 }));
+  }
+  svg.appendChild(svgEl('polyline', { points: line, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+
+  // min / max chips
+  const maxI = temps.indexOf(Math.max(...vals));
+  const minI = temps.indexOf(Math.min(...vals));
+  for (const [i, cls] of [[maxI, 'max'], [minI, 'min']]) {
+    if (temps[i] == null) continue;
+    svg.appendChild(svgEl('circle', { cx: x(i), cy: y(temps[i]), r: 3, fill: 'var(--accent)' }));
+    const tx = svgEl('text', { x: x(i), y: y(temps[i]) - 7, 'text-anchor': i > n / 2 ? 'end' : 'start', class: `mchart-lbl ${cls}` });
+    tx.textContent = `${Math.round(temps[i])}${unit}`;
+    svg.appendChild(tx);
+  }
+  // x labels: first / middle / last
+  const picks = [0, Math.floor((n - 1) / 2), n - 1];
+  for (const i of new Set(picks)) {
+    if (!labels[i]) continue;
+    const tx = svgEl('text', { x: x(i), y: H - 4, 'text-anchor': i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle', class: 'mchart-x' });
+    tx.textContent = labels[i];
+    svg.appendChild(tx);
+  }
+  return svg;
+}
+
+/** Rain probability bars. */
+function rainBarsSVG({ labels, pops }) {
+  const W = 320, H = 96, PADB = 16, GAP = 3;
+  const n = pops.length;
+  const bw = (W - GAP * (n - 1)) / n;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'mchart', role: 'img', 'aria-label': 'Rain chance chart' });
+  pops.forEach((p, i) => {
+    const h = Math.max(p > 0 ? 4 : 1.5, (p / 100) * (H - PADB - 8));
+    const rect = svgEl('rect', {
+      x: (i * (bw + GAP)).toFixed(1), y: (H - PADB - h).toFixed(1),
+      width: bw.toFixed(1), height: h.toFixed(1), rx: 2.5,
+      fill: p >= 60 ? 'var(--blue)' : p >= 30 ? 'color-mix(in srgb, var(--blue) 60%, var(--border))' : 'var(--border)',
+    });
+    svg.appendChild(rect);
+    if (p >= 30) {
+      const tx = svgEl('text', { x: i * (bw + GAP) + bw / 2, y: H - PADB - h - 3, 'text-anchor': 'middle', class: 'mchart-x' });
+      tx.textContent = `${Math.round(p)}`;
+      svg.appendChild(tx);
+    }
+  });
+  const picks = [0, Math.floor((n - 1) / 2), n - 1];
+  for (const i of new Set(picks)) {
+    if (!labels[i]) continue;
+    const tx = svgEl('text', { x: i * (bw + GAP) + bw / 2, y: H - 3, 'text-anchor': 'middle', class: 'mchart-x' });
+    tx.textContent = labels[i];
+    svg.appendChild(tx);
+  }
+  return svg;
+}
+
+/* ---------------- component renderers ---------------- */
+
+const R = {
+  'now-card'(p) {
+    const d = p.d;
+    const unit = window.__mausamState?.units ?? 'metric';
+    return el('div.mu-now.card',
+      el('div.mu-now-main',
+        el('div.mu-now-icon', { 'aria-hidden': 'true' }, d.icon || '🌤️'),
+        el('div',
+          el('div.mu-now-temp', null, d.temp != null ? `${fmtTemp(d.temp, unit, true)}` : '—'),
+          el('div.mu-now-cond', null, d.cond || '—')
+        )
+      ),
+      el('div.mu-now-side',
+        d.feels != null ? el('div', null, `Feels ${fmtTemp(d.feels, unit, true)}`) : null,
+        d.humidity != null ? el('div', null, `💧 ${Math.round(d.humidity)}%`) : null,
+        d.wind != null ? el('div', null, `🌬 ${fmtWind(d.wind, unit)}`) : null,
+        d.hi != null && d.lo != null ? el('div', null, `H ${fmtTemp(d.hi, unit)} · L ${fmtTemp(d.lo, unit)}`) : null
+      ),
+      d.place ? el('div.mu-now-place', null, `📍 ${d.place}`) : null
+    );
+  },
+
+  'hourly-timeline'(p) {
+    const unit = window.__mausamState?.units ?? 'metric';
+    return el('div.mu-hourly',
+      { role: 'list' },
+      p.d.hours.map((h) => el('div.mu-hour', { role: 'listitem', class: (h.pop ?? 0) >= 50 ? 'wet' : '' },
+        el('div.mu-hour-t', null, h.time || '—'),
+        el('div.mu-hour-i', null, h.icon || '·'),
+        el('div.mu-hour-v', null, h.temp != null ? fmtTemp(h.temp, unit) : '—'),
+        h.pop != null ? el('div.mu-hour-p', null, `${Math.round(h.pop)}%`) : null
+      ))
+    );
+  },
+
+  'temp-chart'(p) {
+    const svg = tempChartSVG(p.d);
+    if (!svg) return null;
+    return el('div.mu-chart', svg,
+      p.d.feels ? el('div.mu-legend', null, el('span', null, '— temperature'), el('span.dashed', null, '-- feels like')) : null
+    );
+  },
+
+  'rain-bars'(p) {
+    const svg = rainBarsSVG(p.d);
+    return el('div.mu-chart', svg);
+  },
+
+  'daily-list'(p) {
+    const unit = window.__mausamState?.units ?? 'metric';
+    const his = p.d.days.map((x) => x.hi).filter((v) => v != null);
+    const los = p.d.days.map((x) => x.lo).filter((v) => v != null);
+    const wMax = Math.max(...his, -99), lMin = Math.min(...los, 99);
+    const range = Math.max(1, wMax - lMin);
+    return el('div.mu-days',
+      p.d.days.map((d) => el('div.mu-day',
+        el('span.mu-day-l', null, d.label || d.date || '—'),
+        el('span.mu-day-i', { title: d.cond || '' }, d.icon || '·'),
+        el('div.mu-day-bar',
+          el('div.mu-day-fill', {
+            style: {
+              left: d.lo != null ? `${((d.lo - lMin) / range) * 100}%` : '0%',
+              width: d.hi != null && d.lo != null ? `${Math.max(8, ((d.hi - d.lo) / range) * 100)}%` : '8%',
+            },
+          })
+        ),
+        el('span.mu-day-v', null, `${d.hi != null ? fmtTemp(d.hi, unit) : '—'} / ${d.lo != null ? fmtTemp(d.lo, unit) : '—'}`),
+        d.pop != null ? el('span.mu-day-p', null, `${Math.round(d.pop)}%`) : null
+      ))
+    );
+  },
+
+  'metrics-grid'(p) {
+    return el('div.mu-metrics', p.d.items.map((m) =>
+      el('div.mu-metric',
+        el('div.mu-metric-v', null, (m.icon ? `${m.icon} ` : '') + m.value),
+        el('div.mu-metric-l', null, m.label)
+      )
+    ));
+  },
+
+  'advice'(p) {
+    return el(`div.mu-advice.mu-tone-${p.d.tone}`,
+      p.d.title ? el('div.mu-advice-t', null, p.d.title) : null,
+      el('div.mu-advice-list', p.d.items.map((i) =>
+        el('div.mu-advice-row', null, i.icon ? el('span', null, i.icon) : null, el('span', null, i.text))
+      ))
+    );
+  },
+
+  'alert'(p) {
+    const icon = { info: 'ℹ️', warn: '⚠️', danger: '🚨' }[p.d.severity] ?? '⚠️';
+    return el(`div.alert.alert-${p.d.severity === 'info' ? 'info' : p.d.severity === 'danger' ? 'danger' : 'warn'}.mu-alert`,
+      el('div.alert-title', null, `${icon} ${p.d.title || 'Alert'}`),
+      p.d.text ? el('div', null, p.d.text) : null,
+      p.d.source ? el('div.mu-alert-src', null, p.d.source) : null
+    );
+  },
+
+  'compare-table'(p) {
+    return el('div.mu-tablewrap',
+      el('table.mu-table',
+        el('thead', null, el('tr', null, p.d.columns.map((c) => el('th', null, c)))),
+        el('tbody', null, p.d.rows.map((row) =>
+          el('tr', null, row.map((cell, i) => el(i === 0 ? 'th' : 'td', null, cell)))
+        ))
+      )
+    );
+  },
+
+  'window-card'(p) {
+    return el('div.mu-windows',
+      p.d.verdict ? el('div.mu-verdict', null, p.d.verdict) : null,
+      p.d.windows.map((w) => el('div.win-row', { style: { borderLeftColor: w.color } },
+        el('div.win-slot', null, w.slot),
+        w.rating ? el('div.win-badge', { style: { background: w.color } }, w.rating) : null,
+        w.reason ? el('div.win-why', null, w.reason) : null
+      ))
+    );
+  },
+
+  'aqi-card'(p) {
+    const cat = window.__mausamState?.snapshot?.currentAqi;
+    const color = p.d.aqi != null
+      ? (p.d.aqi <= 50 ? 'var(--green)' : p.d.aqi <= 100 ? '#9ccc65' : p.d.aqi <= 200 ? 'var(--yellow)' : p.d.aqi <= 300 ? 'var(--orange)' : p.d.aqi <= 400 ? 'var(--red)' : '#b04040')
+      : (cat?.color ?? 'var(--muted)');
+    return el('div.aqi-card.card.mu-aqi',
+      el('div.aqi-big', { style: { color } }, p.d.aqi != null ? String(Math.round(p.d.aqi)) : '—'),
+      el('div',
+        el('div.aqi-cat', { style: { color } }, p.d.category || 'Unknown'),
+        el('div.aqi-note', null,
+          p.d.advice || (p.d.dominant ? `Dominant pollutant: ${p.d.dominant}` : 'Air quality summary')
+        )
+      )
+    );
+  },
+
+  'sun-card'(p) {
+    const d = p.d;
+    return el('div.sun-card.card',
+      d.sunrise ? el('div.sun-row', null, '🌅 ', el('b', null, d.sunrise), ' sunrise') : null,
+      d.sunset ? el('div.sun-row', null, '🌇 ', el('b', null, d.sunset), ' sunset') : null,
+      d.dayLength ? el('div.sun-row', null, '⏳ ', el('b', null, d.dayLength), ' of daylight') : null,
+      d.moonrise || d.moonset
+        ? el('div.sun-row.sun-moon', null, `🌙 ${d.moonrise || '—'} ↑ · ${d.moonset || '—'} ↓`)
+        : null,
+      d.source ? el('div.sun-src', null, `via ${d.source} official data`) : null
+    );
+  },
+
+  'wear-list'(p) {
+    return el('div.wear-list', p.d.items.map((i) =>
+      el('div.wear-row',
+        el('span.wear-icon', null, i.icon),
+        el('div', null,
+          el('div.wear-name', null, i.name),
+          i.why ? el('div.wear-why', null, i.why) : null
+        )
+      )
+    ));
+  },
+
+  'chips'(p, handlers) {
+    return el('div.chat-chips', p.d.items.map((label) =>
+      el('button.chip', { type: 'button', onclick: () => handlers?.onSend?.(label) }, label)
+    ));
+  },
+
+  'note'(p) {
+    return el('div.chat-note', null, p.d.text);
+  },
+};
+
+/* ---------------- public API ---------------- */
+
+/** Card wrapper with optional title. */
+function withTitle(payload, node) {
+  if (!payload.t) return node;
+  return el('div.mu-cardwrap', el('div.mu-title', null, payload.t), node);
+}
+
+/**
+ * Render one validated payload → Node.
+ * @returns {Node|null}
+ */
+export function renderPayload(payload, handlers) {
+  const fn = R[payload.c];
+  if (!fn) return fallbackNode(payload.t, `Unsupported component "${payload.c}"`, payload.d);
+  let node = null;
+  try {
+    node = fn(payload, handlers);
+  } catch (err) {
+    console.warn('MausamUI render failed:', err);
+    return fallbackNode(payload.t, 'This card could not be displayed.', payload.d);
+  }
+  return node ? withTitle(payload, node) : null;
+}
+
+/**
+ * Render a raw (unvalidated / failed) fence → readable fallback.
+ * Called when parseBlock fails. Never throws.
+ */
+export function renderFallback(rawJSON, reason) {
+  // Try to salvage something human-readable.
+  let summary = null;
+  try {
+    const obj = JSON.parse(rawJSON);
+    const flat = [];
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === 'v') continue;
+      flat.push([k, typeof v === 'object' ? JSON.stringify(v) : String(v)]);
+    }
+    summary = flat.slice(0, 8);
+  } catch { /* not JSON at all */ }
+
+  return el('div.mu-fallback',
+    el('div.mu-fallback-head', null, `🧩 ${reason ?? 'This card could not be rendered'}`),
+    summary
+      ? el('div.mu-fallback-body', summary.map(([k, v]) =>
+          el('div.mu-fallback-row', null, el('span', null, k), el('b', null, v))))
+      : el('div.mu-fallback-body.mu-fallback-raw', null, String(rawJSON).slice(0, 240))
+  );
+}
+
+function fallbackNode(title, reason, d) {
+  return el('div.mu-fallback',
+    title ? el('div.mu-title', null, title) : null,
+    el('div.mu-fallback-head', null, `🧩 ${reason}`),
+    d && typeof d === 'object'
+      ? el('div.mu-fallback-body', Object.entries(d).slice(0, 8).map(([k, v]) =>
+          el('div.mu-fallback-row', null,
+            el('span', null, k),
+            el('b', null, typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''))))
+        )
+      : null
+  );
+}
+
+/**
+ * Progressive stream parser: feed text deltas, get events back.
+ * Emits {text} for prose and {component|fallback} for completed fences.
+ */
+export function createStreamParser() {
+  let buf = '';
+  let inFence = false;
+
+  const emitText = (t, out) => { if (t) out.push({ type: 'text', text: t }); };
+
+  return {
+    /** @returns {Array<{type:'text',text}|{type:'component',payload}|{type:'fallback',raw,reason}>} */
+    push(delta) {
+      buf += delta;
+      const out = [];
+      let guard = 0;
+      while (guard++ < 64) {
+        if (!inFence) {
+          const open = buf.indexOf('```' + FENCE);
+          if (open < 0) {
+            // Hold back any trailing partial opener (a prefix of '```mausam-ui')
+            // so a fence split across network chunks never leaks as prose.
+            const OPENER = '```' + FENCE;
+            let hold = 0;
+            const maxJ = Math.min(OPENER.length - 1, buf.length);
+            for (let j = maxJ; j >= 1; j--) {
+              if (buf.endsWith(OPENER.slice(0, j))) { hold = j; break; }
+            }
+            const safe = hold ? buf.slice(0, buf.length - hold) : buf;
+            emitText(safe, out);
+            buf = buf.slice(safe.length);
+            break;
+          }
+          emitText(buf.slice(0, open), out);
+          buf = buf.slice(open + 3 + FENCE.length);
+          inFence = true;
+        } else {
+          const close = buf.indexOf('```');
+          if (close < 0) break; // wait for the rest of the fence
+          const raw = buf.slice(0, close).trim();
+          buf = buf.slice(close + 3);
+          inFence = false;
+          const res = parseBlock(raw);
+          if (res.ok) out.push({ type: 'component', payload: res.payload });
+          else out.push({ type: 'fallback', raw, reason: res.error });
+        }
+      }
+      return out;
+    },
+    /** Flush any unterminated content at end of stream. */
+    end() {
+      const out = [];
+      if (inFence) {
+        const res = parseBlock(buf.trim());
+        if (res.ok) out.push({ type: 'component', payload: res.payload });
+        else out.push({ type: 'fallback', raw: buf.trim(), reason: res.error });
+      } else {
+        emitText(buf, out);
+      }
+      buf = '';
+      inFence = false;
+      return out;
+    },
+  };
+}

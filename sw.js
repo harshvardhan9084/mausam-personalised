@@ -2,18 +2,21 @@
    sw.js — Mausam service worker
    Strategy:
    - App shell (same-origin): stale-while-revalidate, precached.
-   - Open-Meteo APIs: network-first with cached fallback (offline).
+   - Open-Meteo / Nominatim APIs: network-first with cached fallback.
    - Navigation fallback: index.html (SPA safety net).
+   NOTE: /api/chat & /api/health (Z.ai preview) are never intercepted —
+   the provider probe must reflect the real server.
 ================================================================ */
 
-const VERSION = 'v2.0.1';
+const VERSION = 'v3.0.0';
 const SHELL_CACHE = `mausam-shell-${VERSION}`;
 const DATA_CACHE = `mausam-data-${VERSION}`;
 const API_HOSTS = [
   'api.open-meteo.com',
   'air-quality-api.open-meteo.com',
   'geocoding-api.open-meteo.com',
-  'nominatim.openstreetmap.org', // onboarding “use my location” reverse geocode
+  'nominatim.openstreetmap.org',
+  'generativelanguage.googleapis.com', // Gemini: network-only, no caching of auth'd calls
 ];
 
 const SHELL_ASSETS = [
@@ -31,30 +34,31 @@ const SHELL_ASSETS = [
   './src/styles/layout.css',
   './src/styles/components.css',
   './src/styles/plus.css',
-  './src/styles/onboarding.css',
+  './src/styles/dash.css',
   './src/styles/chat.css',
+  './src/styles/rich.css',
+  './src/styles/sheets.css',
   './src/api/open-meteo.js',
   './src/api/imd.js',
   './src/api/wmo.js',
   './src/core/aqi-cpcb.js',
   './src/core/engine.js',
-  './src/core/personas.js',
-  './src/core/profiles.js',
-  './src/core/personalise.js',
+  './src/core/insights.js',
   './src/core/scoring.js',
   './src/core/storage.js',
-  './src/ui/onboarding.js',
-  './src/ui/profile-manager.js',
   './src/ui/header.js',
   './src/ui/shared.js',
-  './src/ui/dashboards/fitness.js',
-  './src/ui/dashboards/commuter.js',
-  './src/ui/dashboards/agriculture.js',
-  './src/ui/dashboards/traveler.js',
-  './src/ui/dashboards/event.js',
-  './src/chat/nlu.js',
-  './src/chat/brain.js',
-  './src/chat/components.js',
+  './src/ui/dash.js',
+  './src/ui/settings.js',
+  './src/ui/you.js',
+  './src/ai/contract.js',
+  './src/ai/render.js',
+  './src/ai/prompt.js',
+  './src/ai/tools.js',
+  './src/ai/gemini.js',
+  './src/ai/zai.js',
+  './src/ai/offline.js',
+  './src/ai/client.js',
   './src/chat/ui.js',
   './src/utils/dom.js',
   './src/utils/format.js',
@@ -80,14 +84,25 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'MAUSAM_VERSION' && event.ports?.[0]) {
+    event.ports[0].postMessage({ version: VERSION });
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
 
-  // --- Open-Meteo / geocoding APIs: network-first, fall back to last good response ---
+  // Never touch the preview AI endpoints — probes must be honest.
+  if (url.pathname.startsWith('/api/')) return;
+
+  // --- External APIs: network-first, fall back to last good response ---
   if (API_HOSTS.includes(url.hostname)) {
+    // Gemini calls are auth'd + personal: no cache fallback.
+    if (url.hostname === 'generativelanguage.googleapis.com') return;
     event.respondWith(
       fetch(request)
         .then((response) => {

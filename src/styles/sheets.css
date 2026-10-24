@@ -1,0 +1,106 @@
+/* ================================================================
+   sheets.css — settings & "For you" bottom sheets + form controls
+================================================================ */
+
+.sheet-overlay { align-items: flex-end; }
+.sheet-box {
+  max-width: 560px;
+  max-height: 88dvh;
+  padding: 20px 22px 18px;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-scroll { overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+@media (min-width: 641px) {
+  .sheet-overlay { align-items: center; }
+  .sheet-box { border-radius: 20px; max-height: 86vh; }
+}
+
+/* ---------- settings blocks ---------- */
+.settings-block {
+  padding: 14px 2px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-block:last-child { border-bottom: none; }
+.settings-h {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.set-seg { margin-bottom: 8px; }
+.set-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 10px 0 5px;
+}
+.set-help {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 4px;
+}
+.set-help a { color: var(--accent); }
+
+.set-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.set-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.set-input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+
+.key-row { display: flex; gap: 8px; }
+.key-row .set-input { flex: 1; }
+.key-row .btn-xs { font-size: 0.72rem; padding: 6px 10px; white-space: nowrap; }
+.key-actions { display: flex; gap: 8px; margin-top: 10px; }
+.key-actions .btn { font-size: 0.78rem; padding: 7px 13px; }
+
+.set-status { font-size: 0.76rem; margin-top: 8px; line-height: 1.5; min-height: 1em; }
+.set-status.ok { color: var(--green); }
+.set-status.bad { color: var(--red); }
+.set-status.busy { color: var(--muted); }
+
+/* ---------- you sheet ---------- */
+.you-block { padding: 13px 2px 15px; border-bottom: 1px solid var(--border); }
+.you-block:first-child { padding-top: 2px; }
+.you-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.you-times { display: flex; gap: 12px; flex-wrap: wrap; }
+.you-time { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--muted); }
+.you-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 0.82rem;
+}
+.you-select:focus { outline: 2px solid var(--accent); }
+
+.chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.you-chip { opacity: 0.75; }
+.you-chip.on {
+  opacity: 1;
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 650;
+}
+.you-note { font-size: 0.72rem; color: var(--muted); margin-top: 14px; line-height: 1.55; }

@@ -1,160 +1,140 @@
-# ☁️ Mausam — Your Weather, Your Profile
+# ☁️ Mausam — weather that works like it's yours
 
-**Not a weather app. Your weather app.** Mausam builds a personal profile in 60
-seconds — no account — and turns raw forecast data into decisions: *when should I
-run, what should I wear, will it rain on my commute, should I irrigate today, what
-do I pack for Shimla?* And when you'd rather just ask, **Mausam Mitra** — the
-built-in weather assistant — answers with real cards built from live data, not links.
+**Live: https://harshvardhan9084.github.io/mausam-personalised**
 
-> Born from the SIH 2026 (Problem 26076) concept. v1 replaced the mock-only MVP
-> with live data; **v2 replaces the five hardcoded persona presets with real,
-> user-created profiles, official IMD integration and a data-aware chatbot.**
+Mausam is a zero-build, zero-account weather PWA for India. Open it and the full
+dashboard is already there — current conditions, 24 hours, a temperature curve,
+the 7-day outlook, CPCB air quality, sun times and "Mausam Says" insights.
+Personalisation is a 30-second, strictly **additive** layer on top — it never
+hides or gates anything.
 
-![Mausam](icons/icon-512.png)
+And **Mausam Mitra**, the chat assistant, answers like a modern AI chat:
+streamed prose *plus* real UI — charts, timelines, cards and tables — rendered
+progressively by a lightweight contract between the AI and the app.
 
 ---
 
-## ✨ What's new in v2
+## Why it feels like a product, not a prototype
 
-| | v1 (prototype) | v2 (product) |
-|---|---|---|
-| Profiles | 5 hardcoded presets | **User-built profiles** via onboarding — name, avatar, accent, home city, focus lens, sensitivities |
-| Identity | Persona only | **Multi-profile** — every family member gets their own view, switch in one tap |
-| Personalisation | Same thresholds for all | **Sensitivity-tuned alerts** — heat/cold/rain/air-sensitive users get warned earlier |
-| Data | Open-Meteo only | **Open-Meteo + official IMD** (7-day city forecast, observations, moon times) via free API key |
-| Assistant | — | **Mausam Mitra**: context- & data-aware chatbot, component-driven answers, full error handling |
-| First run | Persona picker | **Guided onboarding wizard** with a personal watch-list preview |
+| Old prototype | Mausam v3 |
+|---|---|
+| 5 hardcoded persona presets, dashboard locked to the chosen one | One generous dashboard for everyone; personal tips render **on top**, never instead |
+| Forced multi-step onboarding before seeing anything | Data first, always. A dismissible nudge invites the optional profile |
+| Rule-based "chatbot" returning canned text | Real streaming AI that **decides presentation**: text when text is enough, rich cards when they help |
 
-## 🧑‍🤝‍🧑 Profiles, not accounts
+## The three pillars
 
-Everything personal stays in `localStorage` on your device. A profile is:
+### 1. Generous by default
+Open the app → New Delhi (or your saved city) is already fully populated:
+hero, alerts, 24-hour strip, SVG temperature curve, 7-day outlook, detailed
+stats (humidity, wind/gusts, UV, visibility, pressure, dew, cloud), CPCB AQI
+with dominant pollutant, sunrise/sunset/daylight, and insight cards computed
+from real scoring models.
 
-- **Name + avatar + accent colour** — yours, visually
-- **Home city** — anchors every forecast; you can still check anywhere
-- **Focus lens** — what the dashboard optimises for: 🏃 fitness · 🚗 commute ·
-  🌾 farming · ✈️ travel · 🎉 events (the old presets, now *starting points*)
-- **Sensitivities** — 🥵 heat · 🥶 cold · ☔ rain · 😷 air quality — these shift
-  alert thresholds (a rain-sensitive user gets umbrella warnings from 40% instead
-  of 55%; an air-sensitive user gets mask advice from AQI 100 instead of 150)
+### 2. Optional, additive personalisation ("For You")
+Tap **✨ For you** → name, commute times, activities, sensitivities — saved to
+`localStorage`, no account. The dashboard then gains a "For you" rail:
+commute verdicts, best hours for your activities, laundry advice and
+sensitivity callouts. Skip it and nothing changes. Reset any time.
 
-Create, edit, switch or delete profiles anytime from the header badge or Settings.
+### 3. An AI that shows, not just tells — the MausamUI contract
+The assistant may embed UI inside its streamed reply using a fenced block:
 
-## 🌦 Mausam Mitra — the assistant
-
-A weather-only chatbot that answers from the **same engine the dashboards use**:
-
-- **Data-aware** — every number comes from the live snapshot: rain timing by the
-  hour, CPCB AQI, UV, sunrise/sunset, best run/commute/event windows, irrigation
-  calls, packing lists
-- **Context-aware** — knows your profile, your sensitivities, the time of day,
-  the conversation ("*and tomorrow?*", "*what about the evening?*") and other
-  cities ("*weather in Shimla*" fetches live, your home stays untouched)
-- **Component-driven** — answers are composed of cards: mini current-conditions,
-  hourly rain timeline, rated time windows, 7-day strip, AQI badge, packing lists,
-  profile card, quick-reply chips
-- **Hinglish-friendly** — "*baarish?*", "*garmi kitni?*", "*kal shaam*"
-- **Honest error handling** — offline banner, retry chips on failed fetches,
-  "I'm a weather-only assistant" fallbacks with did-you-mean suggestions, and it
-  never invents a number it doesn't have
-
-## 📡 Data sources
-
-| Source | What it provides | Key needed |
-|---|---|---|
-| [Open-Meteo](https://open-meteo.com/) | Forecast (7-day, hourly 36 h), air quality, geocoding | No |
-| [IMD — api.imd.gov.in](https://api.imd.gov.in) | Official 7-day city forecast text, observations (max/min, 24 h rain, RH), sunrise/sunset & moon times | Free key — register → Dashboard → API key |
-| [CPCB](https://cpcb.nic.in/) | National AQI breakpoints — computed client-side from pollutant concentrations | — |
-| [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | Reverse geocoding for "use my location" during onboarding | No |
-
-**IMD is an optional enrichment layer.** Paste your free key in Settings →
-"IMD official data", hit *Test connection*, and the app merges official IMD
-data (badge shows `IMD + Open-Meteo`). The test reports exactly what's wrong if
-anything fails — rejected key, CORS block, rate limit. Without a key, everything
-works on Open-Meteo and nothing blocks.
-
-## 🏗 Architecture
-
-Zero dependencies, zero build step. Native ES modules only — ~28 modules.
-
+~~~
+```mausam-ui
+{"v":1,"c":"temp-chart","t":"Temperature — next 24 hours",
+ "d":{"labels":["12 AM","9 AM","6 PM"],"temps":[24,31,28],"feels":[23,33,29],"unit":"°C"}}
 ```
-mausam-personalised/
-├── index.html                  # App shell: profiles · onboarding · dashboard · modals
-├── manifest.webmanifest        # Installable PWA
-├── sw.js                       # Service worker: SWR shell + network-first API cache
-├── icons/                      # Generated PNG icons + SVG favicon
-└── src/
-    ├── main.js                 # Boot, profile routing, IMD enrichment, chat wiring
-    ├── styles/                 # tokens · base · layout · components · plus · onboarding · chat
-    ├── api/
-    │   ├── open-meteo.js       # Forecast + air quality + geocoding (retry, abort)
-    │   ├── imd.js              # Official IMD gateway client (x-api-key, station matching,
-    │   │                       #   typed error diagnostics: auth/cors/network/http/shape)
-    │   └── wmo.js              # WMO weather-code → label/icon
-    ├── core/
-    │   ├── aqi-cpcb.js         # Official CPCB AQI breakpoints + sub-index math
-    │   ├── scoring.js          # run / event / drive / field / day scoring models
-    │   ├── engine.js           # Lens advisory engine
-    │   ├── profiles.js         # User profiles: model, validation, CRUD, legacy migration
-    │   ├── personalise.js      # Sensitivity thresholds, greetings, personal alerts
-    │   ├── personas.js         # Lens registry (visual metadata)
-    │   └── storage.js          # Namespaced localStorage wrapper (offline state)
-    ├── ui/
-    │   ├── onboarding.js       # 5-step profile wizard (create / edit / first-run)
-    │   ├── profile-manager.js  # Profile grid + switch modal
-    │   ├── header.js           # Brand, profile badge, city search, settings, IMD key
-    │   ├── shared.js           # Hero, strips, cards, badges, error/skeleton states
-    │   └── dashboards/         # fitness · commuter · agriculture · traveler · event
-    ├── chat/
-    │   ├── nlu.js              # Intent classification + entity extraction (day/time/place)
-    │   ├── brain.js            # Data-aware answer builder (reuses engine maths)
-    │   ├── components.js       # Chat card renderers
-    │   └── ui.js               # Panel, composer, typing, error handling, history
-    └── utils/                  # dom (hyperscript el) · format (units, heat index)
-```
+~~~
 
-**Data flow:** `fetchWeatherBundle()` → optional `fetchImdBundle()` merge →
-`buildSnapshot()` (enriches hours with CPCB AQI, heat index, night flag) →
-lens advisor + `personalise.js` → dashboard. The chatbot reads the same
-snapshot through `brain.js`, so dashboard and assistant never disagree.
+- **AI decides** — the system prompt instructs text-first, visuals when they
+  genuinely communicate better (≤3 cards per reply, numbers must come from data)
+- **Tools provide data** — `get_city_weather`, `get_next_hours`, `compare_days`
+  (native function-calling on Gemini); every answer is grounded in the live snapshot
+- **Frontend renders** — `src/ai/render.js` maps ~15 whitelisted component types
+  (`now-card`, `hourly-timeline`, `temp-chart`, `rain-bars`, `daily-list`,
+  `metrics-grid`, `advice`, `alert`, `compare-table`, `window-card`, `aqi-card`,
+  `sun-card`, `wear-list`, `chips`, `note`) to the app's design system. Built with
+  a DOM helper, never `innerHTML` — AI strings cannot inject markup
+- **Errors degrade gracefully** — malformed JSON, unknown types or bad payloads
+  render as readable fallback cards; the chat itself never breaks
 
-## 🚀 Run it
+## AI providers (pick in ⚙️ Settings)
+
+| Provider | Where it works | Key needed | Notes |
+|---|---|---|---|
+| **Z.ai (preview)** | this repo's web-dev preview (`node server.mjs`) | none | `/api/chat` proxies to the backend-only `z-ai-web-dev-sdk` |
+| **Gemini** | anywhere (GitHub Pages included) | your own free key, pasted in Settings | default model **`gemini-3.5-flash-lite`**, editable; key lives in your browser only, streams via SSE with function-calling |
+| **Mausam Core** | everywhere, always | none | on-device engine: intents → the same tools & the same MausamUI cards. The zero-config default and the graceful fallback |
+
+`Auto` (default) uses Z.ai when the preview endpoint is present, then Gemini if
+a key is set, then Mausam Core — with honest labels under every answer, a stop
+button, retry chips and provider-aware error cards ("bad key → open settings",
+"model not found → pick another", rate limits, timeouts…).
+
+## Weather data
+
+- **Base**: [Open-Meteo](https://open-meteo.com) (no key, CORS, CC-BY 4.0) — forecast + air quality + geocoding
+- **IMD official enrichment (optional)**: paste a free [api.imd.gov.in](https://api.imd.gov.in) key in
+  Settings → the app merges the India Meteorological Department's official 7-day city
+  forecast, observations and moon times (nearest station via their catalogue), clearly
+  labelled in the header pill and an "IMD official forecast" card. IMD failures never
+  block the app; the source pill always tells the truth.
+- **AQI**: CPCB (India) breakpoints computed on-device from Open-Meteo pollutant data
+
+## Run it
 
 ```bash
-# any static server works
-npx serve .            # or: python3 -m http.server
+# static (what GitHub Pages serves)
+npx serve .            # or any static file server
+
+# dev / preview with the built-in Z.ai assistant
+npm i z-ai-web-dev-sdk   # workspace root or repo root
+node server.mjs          # → http://localhost:3000 (static + /api/chat)
 ```
 
-Open the printed URL. No install, no build.
+## Architecture
 
-### Deploy
+```
+index.html                 shell + sheets (search / settings / for-you)
+sw.js                      PWA: precache shell, network-first APIs
+server.mjs                 preview server: static + /api/chat (Z.ai SDK)
+src/
+  main.js                  boot: location → loadWeather → dashboard → chat
+  api/open-meteo.js        forecast + AQ + geocoding (retry/429-aware)
+  api/imd.js               official IMD gateway client (x-api-key, typed errors)
+  api/wmo.js               WMO code → label/icon
+  core/engine.js           snapshot builder (AQI, heat index, day/night)
+  core/scoring.js          run / event / drive / day scoring models
+  core/insights.js         alerts + "Mausam Says" + For You (additive)
+  core/aqi-cpcb.js         official CPCB AQI maths
+  core/storage.js          localStorage wrapper
+  ai/contract.js           the MausamUI wire contract + validators
+  ai/prompt.js             system prompt + compact live-data snapshot
+  ai/tools.js              get_city_weather / get_next_hours / compare_days
+  ai/gemini.js             SSE streaming + function-calling loop
+  ai/zai.js                preview provider (same-origin /api/chat)
+  ai/offline.js            Mausam Core on-device engine
+  ai/client.js             provider resolution + event pump + fence parser
+  ai/render.js             component registry → DOM (charts/tables/cards)
+  chat/ui.js               streaming chat panel
+  ui/*                     header, dashboard, settings, you, shared
+  utils/dom.js             hyperscript el() (XSS-safe by construction)
+  utils/format.js          units, heat index, labels
+```
 
-Static hosting only — zero config on **GitHub Pages** (Settings → Pages →
-Deploy from branch → `main` / root), Netlify, Vercel or Cloudflare Pages.
-The service worker makes it installable and offline-capable.
+## Privacy
 
-## 🔢 The scoring models
+No accounts, no analytics, no tracking. Your Gemini/IMD keys and personalisation
+live in your browser's `localStorage`. The Gemini key is sent only to Google's
+API; the IMD key only to IMD's gateway.
 
-Every number is derived, never invented:
+## Credits & disclaimer
 
-- **Run score** — apparent-temperature comfort window (8–28 °C), humidity ramp,
-  UV penalty (≥ 6), rain probability, CPCB-AQI breathing penalty (≥ 100)
-- **Event score** — rain-dominant weighting, then feels-like (17–30 °C), UV,
-  gusts (≥ 30 km/h), humidity
-- **Drive score** — visibility bands (< 400 m severe), precipitation, gusts,
-  explicit fog/thunderstorm WMO codes
-- **Day score** — event model on daily aggregates; powers "best day" claims
-- **CPCB AQI** — sub-index per pollutant via linear interpolation on official
-  breakpoints; overall AQI = max sub-index; dominant pollutant reported
+Data: [Open-Meteo](https://open-meteo.com) (CC-BY 4.0) · Official data:
+[IMD](https://mausam.imd.gov.in) / [api.imd.gov.in](https://api.imd.gov.in) ·
+AQI standard: [CPCB](https://cpcb.nic.in/) · Geocoding: Open-Meteo & OpenStreetMap.
+Mausam is an independent open-source project and is **not** affiliated with IMD or CPCB.
+Weather is probabilistic — for life-safety decisions always follow official IMD bulletins.
 
-## ⚠️ Disclaimer
-
-Mausam is an independent open-source project and is **not affiliated with the
-India Meteorological Department (IMD)** or CPCB; IMD data is used via the
-official public API with a user-supplied key and proper attribution. Model data
-(Open-Meteo) is not a substitute for official IMD nowcasts or CPCB station
-measurements — always verify critical agricultural, aviation or health decisions
-against official sources.
-
-## 📄 License
-
-[MIT](LICENSE) © harsh vardhan
+MIT © harshvardhan9084

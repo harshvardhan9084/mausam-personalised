@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-  <title>Mausam — Your Weather, Your Profile</title>
-  <meta name="description" content="Build a personal weather profile in 60 seconds — no account. Personalised dashboards, IMD official data, CPCB air quality, and Mausam Mitra, a weather assistant that answers with real cards, not links." />
+  <title>Mausam — weather that works like it's yours</title>
+  <meta name="description" content="Generous, real-time weather for India: hourly, 7-day, CPCB air quality, smart insights — plus Mausam Mitra, an AI assistant that answers with live charts and cards. Personalise on top in 30 seconds. No account." />
   <meta name="theme-color" content="#0f1117" />
   <meta name="color-scheme" content="dark light" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Mausam — Your Weather, Your Profile" />
-  <meta property="og:description" content="Personal profiles, official IMD data, CPCB air quality and a weather assistant that answers with cards. No account needed." />
+  <meta property="og:title" content="Mausam — weather that works like it's yours" />
+  <meta property="og:description" content="Live weather, air quality and an AI assistant that answers with real charts and cards. Zero sign-up." />
   <meta property="og:image" content="icons/icon-512.png" />
 
   <!-- PWA -->
@@ -30,41 +30,21 @@
   <link rel="stylesheet" href="src/styles/layout.css" />
   <link rel="stylesheet" href="src/styles/components.css" />
   <link rel="stylesheet" href="src/styles/plus.css" />
-  <link rel="stylesheet" href="src/styles/onboarding.css" />
+  <link rel="stylesheet" href="src/styles/dash.css" />
   <link rel="stylesheet" href="src/styles/chat.css" />
+  <link rel="stylesheet" href="src/styles/rich.css" />
+  <link rel="stylesheet" href="src/styles/sheets.css" />
 </head>
 <body data-theme="dark">
 
   <a class="skip-link" href="#main">Skip to content</a>
 
   <div id="app">
-
-    <!-- ============ SCREEN 1 · PROFILES ============ -->
-    <section class="screen" id="persona-screen" aria-label="Choose a profile">
-      <div class="logo-block">
-        <div class="logo-title" id="logo-title">Mausam</div>
-        <div class="logo-sub">Personalised weather for how you actually live</div>
-        <div class="logo-tag">Live data · Open-Meteo · CPCB air quality · IMD official (optional)</div>
-      </div>
-
-      <p class="select-label" id="profiles-label">Who's checking the weather?</p>
-      <div class="persona-grid" id="persona-grid"><!-- built by profile-manager.js --></div>
-
-      <p class="privacy-line">🔒 Profiles live only on this device — no account, no sign-up.</p>
-    </section>
-
-    <!-- ============ SCREEN 2 · ONBOARDING ============ -->
-    <section class="screen" id="onboarding-screen" aria-label="Set up your profile">
-      <div id="onboarding-root"><!-- wizard mounts here --></div>
-    </section>
-
-    <!-- ============ SCREEN 3 · DASHBOARD ============ -->
-    <section class="screen" id="dashboard-screen" aria-label="Weather dashboard">
+    <section class="screen active" id="dashboard-screen" aria-label="Weather dashboard">
 
       <header class="app-header">
         <div class="header-left">
           <span class="app-name" id="brand"></span>
-          <button class="persona-badge" id="persona-badge" type="button" title="Switch profile" aria-haspopup="dialog">—</button>
           <button class="city-btn" id="city-btn" type="button" aria-haspopup="dialog" title="Change location">
             <span aria-hidden="true">📍</span>
             <span class="city-name" id="city-label">…</span>
@@ -80,51 +60,9 @@
             <span id="refresh-icon" aria-hidden="true">⟳</span>
           </button>
 
-          <div class="settings-wrap">
-            <button class="btn btn-icon" id="settings-btn" type="button"
-                    aria-haspopup="menu" aria-expanded="false" title="Settings" aria-label="Settings">⚙️</button>
-            <div class="settings-menu" id="settings-menu" role="menu" style="display:none;">
-              <div class="settings-section">
-                <div class="settings-label">Units</div>
-                <div class="seg-group" role="group" aria-label="Units">
-                  <button class="seg-btn" data-units="metric" type="button">°C · km/h</button>
-                  <button class="seg-btn" data-units="imperial" type="button">°F · mph</button>
-                </div>
-              </div>
-              <div class="settings-section">
-                <div class="settings-label">Theme</div>
-                <div class="seg-group" role="group" aria-label="Theme">
-                  <button class="seg-btn" data-theme-btn="auto" type="button">Auto</button>
-                  <button class="seg-btn" data-theme-btn="dark" type="button">Dark</button>
-                  <button class="seg-btn" data-theme-btn="light" type="button">Light</button>
-                </div>
-              </div>
-              <div class="settings-section">
-                <div class="settings-label">IMD official data (optional)</div>
-                <input class="imd-key-input" id="imd-key-input" type="password"
-                       placeholder="Paste your IMD API key"
-                       autocomplete="off" spellcheck="false" aria-label="IMD API key" />
-                <div class="imd-actions">
-                  <button class="btn" id="imd-save-btn" type="button">Save key</button>
-                  <button class="btn" id="imd-test-btn" type="button">Test connection</button>
-                </div>
-                <div class="imd-status" id="imd-status" role="status"></div>
-                <div class="imd-help">
-                  Free key from <a href="https://api.imd.gov.in" target="_blank" rel="noopener">api.imd.gov.in</a>
-                  (register → Dashboard → API key). Adds the official 7-day city forecast,
-                  observations &amp; moon times. Without it, everything still works via Open-Meteo.
-                </div>
-              </div>
-              <div class="settings-section">
-                <button class="settings-item" data-action="switch-profile" role="menuitem" type="button">
-                  <span>🔁 Switch profile</span><span aria-hidden="true">›</span>
-                </button>
-                <button class="settings-item" data-action="new-profile" role="menuitem" type="button">
-                  <span>➕ New profile</span><span aria-hidden="true">›</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <button class="you-btn" id="you-btn" type="button" title="Make Mausam yours" aria-haspopup="dialog">✨ <span class="you-btn-label">For you</span></button>
+
+          <button class="btn btn-icon" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">⚙️</button>
         </div>
       </header>
 
@@ -137,17 +75,6 @@
 
       <div class="updated-stamp" id="updated-stamp" style="text-align:center;"></div>
     </section>
-  </div>
-
-  <!-- ============ MODAL · SWITCH PROFILE ============ -->
-  <div class="modal-overlay" id="switch-modal" role="dialog" aria-modal="true" aria-label="Switch profile">
-    <div class="modal-box">
-      <div class="modal-header">
-        <span class="modal-title">Who's checking the weather?</span>
-        <button class="modal-close" id="switch-close" type="button" aria-label="Close">✕</button>
-      </div>
-      <div class="persona-grid" id="modal-persona-grid"></div>
-    </div>
   </div>
 
   <!-- ============ MODAL · LOCATION SEARCH ============ -->
@@ -163,16 +90,120 @@
                placeholder="Search any city — e.g. Ghaziabad, Shimla, Pune…"
                autocomplete="off" spellcheck="false" aria-label="Search for a city" />
       </div>
+      <button class="btn use-loc-btn" id="use-loc-btn" type="button">📡 Use my location</button>
       <div class="search-results" id="search-results" style="position:static; box-shadow:none; border:none; background:transparent;"></div>
     </div>
   </div>
 
+  <!-- ============ SHEET · SETTINGS ============ -->
+  <div class="modal-overlay sheet-overlay" id="settings-modal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="modal-box sheet-box">
+      <div class="modal-header">
+        <span class="modal-title">⚙️ Settings</span>
+        <button class="modal-close" id="settings-close" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="sheet-scroll">
+        <div class="settings-block">
+          <div class="settings-h">Temperature units</div>
+          <div class="seg-group set-seg" role="group" aria-label="Units">
+            <button class="seg-btn" data-units="metric" type="button">°C · km/h</button>
+            <button class="seg-btn" data-units="imperial" type="button">°F · mph</button>
+          </div>
+        </div>
+        <div class="settings-block">
+          <div class="settings-h">Theme</div>
+          <div class="seg-group set-seg" role="group" aria-label="Theme">
+            <button class="seg-btn" data-theme-btn="auto" type="button">Auto</button>
+            <button class="seg-btn" data-theme-btn="dark" type="button">Dark</button>
+            <button class="seg-btn" data-theme-btn="light" type="button">Light</button>
+          </div>
+        </div>
+        <div id="settings-ai"><!-- AI assistant section (settings.js) --></div>
+        <div id="settings-imd"><!-- IMD section (settings.js) --></div>
+        <div class="settings-block">
+          <div class="settings-h">About</div>
+          <div class="set-help">
+            Mausam v3 — independent, open-source, no accounts, no tracking.
+            Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment.
+            Air quality: CPCB breakpoints computed on-device.
+            Assistant: your choice of Gemini (your key), the built-in Z.ai preview model, or Mausam Core (on-device).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SHEET · FOR YOU ============ -->
+  <div class="modal-overlay sheet-overlay" id="you-modal" role="dialog" aria-modal="true" aria-label="Make Mausam yours">
+    <div class="modal-box sheet-box">
+      <div class="modal-header">
+        <span class="modal-title">✨ Make Mausam yours</span>
+        <button class="modal-close" id="you-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-scroll">
+        <div id="you-body"><!-- built by you.js --></div>
+        <div class="sheet-actions">
+          <button class="btn btn-primary" id="you-save" type="button">Save</button>
+          <button class="btn" id="you-reset" type="button">Reset to default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer-note">
+    Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC-BY 4.0) ·
+    AQI: CPCB breakpoints computed client-side ·
+    IMD official data optional (<a href="https://api.imd.gov.in" target="_blank" rel="noopener">api.imd.gov.in</a>) ·
+    Geocoding by Open-Meteo / OpenStreetMap ·
+    Mausam is an independent project, not affiliated with IMD.
+  </footer>
+
   <noscript>
     <div style="padding:40px; text-align:center; font-family:sans-serif;">
       <h1>Mausam needs JavaScript</h1>
-      <p>This app fetches live weather from Open-Meteo / IMD and renders personalised dashboards in your browser. Please enable JavaScript.</p>
+      <p>This app fetches live weather from Open-Meteo / IMD and renders charts, cards and an AI assistant in your browser. Please enable JavaScript.</p>
     </div>
   </noscript>
+
+  <script>
+    /* Upgrade shim: if a service worker from an older Mausam build is
+       controlling this page, clear it once and reload so every module is
+       served fresh. The new sw.js answers MAUSAM_VERSION; old ones can't. */
+    (function () {
+      try {
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v3.0.0') return;
+        var sw = navigator.serviceWorker.controller;
+        var done = false;
+        var t = setTimeout(function () {
+          if (done) return; done = true;
+          hardRefresh();
+        }, 450);
+        var ch = new MessageChannel();
+        ch.port1.onmessage = function (e) {
+          if (done) return; done = true; clearTimeout(t);
+          if (e && e.data && e.data.version === 'v3.0.0') {
+            sessionStorage.setItem('mausam:swcheck', 'v3.0.0');
+          } else {
+            hardRefresh();
+          }
+        };
+        sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
+        function hardRefresh() {
+          sessionStorage.setItem('mausam:swcheck', 'v3.0.0');
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+            if (window.caches && caches.keys) {
+              caches.keys().then(function (keys) {
+                keys.forEach(function (k) { caches.delete(k); });
+              }).finally(function () { location.reload(); });
+            } else location.reload();
+          }).catch(function () { location.reload(); });
+        }
+      } catch (e) { /* never block the app */ }
+    })();
+  </script>
 
   <script type="module" src="src/main.js"></script>
 </body>

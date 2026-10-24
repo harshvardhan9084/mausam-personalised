@@ -1,7 +1,7 @@
 {
   "name": "mausam-personalised",
-  "version": "2.0.0",
-  "description": "Your weather, your profile. User-built weather profiles with onboarding, official IMD data (optional), CPCB air quality and Mausam Mitra — a context-aware weather assistant. Zero dependencies, zero build.",
+  "version": "3.0.0",
+  "description": "Generous real-time weather for India — hourly, 7-day, CPCB air quality, insights — plus Mausam Mitra: an AI assistant with a rich component contract (MausamUI) that answers with live charts and cards. Runs on Z.ai (preview), Gemini (your key) or the on-device Mausam Core engine. Optional 30-second personalisation. Zero build.",
   "license": "MIT",
   "author": "harsh vardhan <203862698+harshvardhan9084@users.noreply.github.com>",
   "repository": {
@@ -16,17 +16,18 @@
     "aqi",
     "cpcb",
     "pwa",
-    "personalised",
-    "profiles",
+    "generative-ui",
     "chatbot",
+    "gemini",
+    "ai",
     "vanilla-js",
     "sih"
   ],
   "private": false,
   "type": "module",
   "scripts": {
-    "dev": "npx -y serve -l 3000 .",
-    "start": "npx -y serve -l 3000 ."
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
   },
   "engines": {
     "node": ">=18"

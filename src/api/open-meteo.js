@@ -23,6 +23,8 @@ const HOURLY_VARS = [
   'wind_gusts_10m',
   'uv_index',
   'visibility',
+  'dew_point',
+  'cloud_cover',
   'soil_moisture_0_to_1cm',
 ].join(',');
 
@@ -50,6 +52,8 @@ const CURRENT_VARS = [
   'wind_gusts_10m',
   'is_day',
   'precipitation',
+  'pressure_msl',
+  'cloud_cover',
 ].join(',');
 
 const AIR_VARS = [
@@ -208,6 +212,8 @@ export async function fetchWeatherBundle(lat, lon, signal) {
       gusts: forecast.current.wind_gusts_10m,
       is_day: forecast.current.is_day === 1,
       precip: forecast.current.precipitation,
+      pressure: forecast.current.pressure_msl,
+      cloud: forecast.current.cloud_cover,
     },
     hours, // 36h from now
     days,  // 7 days
