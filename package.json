@@ -1,0 +1,31 @@
+{
+  "name": "mausam-personalised",
+  "version": "1.0.0",
+  "description": "Personalised weather dashboards for India — one forecast, five points of view. Live Open-Meteo data, CPCB air quality, zero dependencies.",
+  "license": "MIT",
+  "author": "harsh vardhan <203862698+harshvardhan9084@users.noreply.github.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshvardhan9084/mausam-personalised.git"
+  },
+  "keywords": [
+    "weather",
+    "india",
+    "open-meteo",
+    "aqi",
+    "cpcb",
+    "pwa",
+    "personalised",
+    "vanilla-js",
+    "sih"
+  ],
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "dev": "npx -y serve -l 3000 .",
+    "start": "npx -y serve -l 3000 ."
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -2,73 +2,148 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mausam — Personalized Weather · Ghaziabad</title>
-  <meta name="description" content="Mausam — Personalized weather homepage by IMD. Tailored dashboards for fitness, commuters, farmers, travelers, and event planners." />
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <title>Mausam — Personalised Weather Dashboards for India</title>
+  <meta name="description" content="One forecast, five points of view. Personalised weather dashboards for outdoor fitness, commuters, farmers, travelers and event planners — powered by Open-Meteo with CPCB air quality." />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="color-scheme" content="dark light" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Mausam — Personalised Weather" />
+  <meta property="og:description" content="Weather that speaks your persona: fitness, commute, farm, travel, events." />
+  <meta property="og:image" content="icons/icon-512.png" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="src/styles/tokens.css" />
+  <link rel="stylesheet" href="src/styles/base.css" />
+  <link rel="stylesheet" href="src/styles/layout.css" />
+  <link rel="stylesheet" href="src/styles/components.css" />
 </head>
-<body>
+<body data-theme="dark">
 
-<!-- ================================================================
-     SCREEN 1: PERSONA SELECTION
-================================================================ -->
-<div id="persona-screen">
-  <div class="logo-block">
-    <div class="logo-title">☁️ Mausam</div>
-    <div class="logo-sub">India Meteorological Department &nbsp;·&nbsp; Ministry of Earth Sciences</div>
-    <div class="logo-tag">SIH 2026 &nbsp;·&nbsp; Problem ID 26076 &nbsp;·&nbsp; Ghaziabad, UP</div>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div id="app">
+
+    <!-- ============ SCREEN 1 · PERSONA SELECTION ============ -->
+    <section class="screen" id="persona-screen" aria-label="Choose your profile">
+      <div class="logo-block">
+        <div class="logo-title" id="logo-title">Mausam</div>
+        <div class="logo-sub">Personalised weather for how you actually live</div>
+        <div class="logo-tag">Live data · Open-Meteo · CPCB air quality</div>
+      </div>
+
+      <p class="select-label">Who are you? Select your profile.</p>
+      <div class="persona-grid" id="persona-grid"><!-- built by persona-picker.js --></div>
+    </section>
+
+    <!-- ============ SCREEN 2 · DASHBOARD ============ -->
+    <section class="screen" id="dashboard-screen" aria-label="Weather dashboard">
+
+      <header class="app-header">
+        <div class="header-left">
+          <span class="app-name" id="brand"></span>
+          <span class="persona-badge" id="persona-badge">—</span>
+          <button class="city-btn" id="city-btn" type="button" aria-haspopup="dialog" title="Change location">
+            <span aria-hidden="true">📍</span>
+            <span class="city-name" id="city-label">…</span>
+            <span aria-hidden="true" style="font-size:0.7rem;">▾</span>
+          </button>
+        </div>
+
+        <div class="header-right">
+          <span class="offline-pill" id="offline-pill" role="status">📴 Offline</span>
+
+          <button class="btn btn-icon" id="refresh-btn" type="button" title="Refresh" aria-label="Refresh weather">
+            <span id="refresh-icon" aria-hidden="true">⟳</span>
+          </button>
+
+          <div class="settings-wrap">
+            <button class="btn btn-icon" id="settings-btn" type="button"
+                    aria-haspopup="menu" aria-expanded="false" title="Settings" aria-label="Settings">⚙️</button>
+            <div class="settings-menu" id="settings-menu" role="menu" style="display:none;">
+              <div class="settings-section">
+                <div class="settings-label">Units</div>
+                <div class="seg-group" role="group" aria-label="Units">
+                  <button class="seg-btn" data-units="metric" type="button">°C · km/h</button>
+                  <button class="seg-btn" data-units="imperial" type="button">°F · mph</button>
+                </div>
+              </div>
+              <div class="settings-section">
+                <div class="settings-label">Theme</div>
+                <div class="seg-group" role="group" aria-label="Theme">
+                  <button class="seg-btn" data-theme-btn="auto" type="button">Auto</button>
+                  <button class="seg-btn" data-theme-btn="dark" type="button">Dark</button>
+                  <button class="seg-btn" data-theme-btn="light" type="button">Light</button>
+                </div>
+              </div>
+              <div class="settings-section">
+                <button class="settings-item" data-action="switch-profile" role="menuitem" type="button">
+                  <span>🔁 Switch profile</span><span aria-hidden="true">›</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="dash-content" id="main" aria-live="polite">
+        <!-- persona dashboard injected here -->
+        <div class="skeleton hero-skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </main>
+
+      <div class="updated-stamp" id="updated-stamp" style="text-align:center;"></div>
+    </section>
   </div>
 
-  <p class="select-label">Who are you? Select your profile.</p>
-
-  <div class="persona-grid" id="persona-grid">
-    <!-- Built by app.js -->
-  </div>
-</div>
-
-
-<!-- ================================================================
-     SCREEN 2: DASHBOARD (content injected by JS per persona)
-================================================================ -->
-<div id="dashboard-screen">
-
-  <header class="app-header">
-    <div class="header-left">
-      <span class="app-name">☁️ Mausam</span>
-      <span class="persona-badge" id="persona-badge-text">—</span>
-      <span class="city-label">📍 Ghaziabad, UP</span>
-    </div>
-    <div class="header-right">
-      <button class="btn" onclick="openSwitch()">Switch Profile</button>
-    </div>
-  </header>
-
-  <div class="dash-content">
-    <div id="dash-content-area">
-      <!-- Persona-specific content injected here -->
+  <!-- ============ MODAL · SWITCH PERSONA ============ -->
+  <div class="modal-overlay" id="switch-modal" role="dialog" aria-modal="true" aria-label="Switch your profile">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">Switch your profile</span>
+        <button class="modal-close" id="switch-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="persona-grid" id="modal-persona-grid"></div>
     </div>
   </div>
 
-</div>
-
-
-<!-- ================================================================
-     MODAL: Switch Persona
-================================================================ -->
-<div class="modal-overlay" id="switch-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">Switch Your Profile</span>
-      <button class="modal-close" onclick="closeSwitch()">✕</button>
-    </div>
-    <div class="persona-grid" id="modal-persona-grid">
-      <!-- Built by app.js -->
+  <!-- ============ MODAL · LOCATION SEARCH ============ -->
+  <div class="modal-overlay" id="search-modal" role="dialog" aria-modal="true" aria-label="Change location">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">Change location</span>
+        <button class="modal-close" id="search-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input class="search-input" id="search-input" type="search"
+               placeholder="Search any city — e.g. Ghaziabad, Shimla, Pune…"
+               autocomplete="off" spellcheck="false" aria-label="Search for a city" />
+      </div>
+      <div class="search-results" id="search-results" style="position:static; box-shadow:none; border:none; background:transparent;"></div>
     </div>
   </div>
-</div>
 
+  <noscript>
+    <div style="padding:40px; text-align:center; font-family:sans-serif;">
+      <h1>Mausam needs JavaScript</h1>
+      <p>This app fetches live weather from Open-Meteo and renders personalised dashboards in your browser. Please enable JavaScript.</p>
+    </div>
+  </noscript>
 
-<script src="data.js"></script>
-<script src="app.js"></script>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>

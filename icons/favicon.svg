@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#4f8ef7"/><stop offset="1" stop-color="#1a2b4f"/>
+  </linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="url(#sky)"/>
+  <circle cx="39" cy="22" r="7.5" fill="#f7c44f"/>
+  <g stroke="#f7c44f" stroke-width="2.6" stroke-linecap="round">
+    <line x1="39" y1="9.5" x2="39" y2="13"/><line x1="39" y1="31" x2="39" y2="34.5"/>
+    <line x1="26.5" y1="22" x2="30" y2="22"/><line x1="48" y1="22" x2="51.5" y2="22"/>
+    <line x1="30.2" y1="13.2" x2="32.7" y2="15.7"/><line x1="45.3" y1="28.3" x2="47.8" y2="30.8"/>
+    <line x1="47.8" y1="13.2" x2="45.3" y2="15.7"/><line x1="32.7" y1="28.3" x2="30.2" y2="30.8"/>
+  </g>
+  <g fill="#f0f4fc">
+    <ellipse cx="24" cy="40" rx="13" ry="8.5"/>
+    <ellipse cx="35" cy="35" rx="11" ry="8"/>
+    <ellipse cx="42" cy="41" rx="10" ry="7"/>
+    <rect x="14" y="38" width="36" height="10" rx="5"/>
+  </g>
+</svg>

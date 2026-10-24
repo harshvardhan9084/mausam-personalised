@@ -1,0 +1,100 @@
+/**
+ * aqi-cpcb.js — CPCB India Air Quality Index (AQI) computation.
+ *
+ * Implements the official CPCB (Central Pollution Control Board) AQI:
+ *   - Sub-index per pollutant via piecewise-linear interpolation on the
+ *     CPCB breakpoint table.
+ *   - Overall AQI = max(sub-indices); dominant pollutant = argmax.
+ *
+ * Reference: CPCB "National Air Quality Index — Report of the Expert Group"
+ * (2014). CO breakpoints use mg/m³, others µg/m³. Ozone uses the 8-hour
+ * breakpoints applied to the hourly value as an indicative estimate.
+ */
+
+const BREAKPOINTS = {
+  pm2_5: {
+    unit: 'µg/m³', c: ['PM2.5'],
+    table: [[0, 30, 0, 50], [30, 60, 51, 100], [60, 90, 101, 200], [90, 120, 201, 300], [120, 250, 301, 400], [250, 500, 401, 500]],
+  },
+  pm10: {
+    unit: 'µg/m³', c: ['PM10'],
+    table: [[0, 50, 0, 50], [50, 100, 51, 100], [100, 250, 101, 200], [250, 350, 201, 300], [350, 430, 301, 400], [430, 800, 401, 500]],
+  },
+  no2: {
+    unit: 'µg/m³', c: ['NO₂'],
+    table: [[0, 40, 0, 50], [40, 80, 51, 100], [80, 180, 101, 200], [180, 280, 201, 300], [280, 400, 301, 400], [400, 1000, 401, 500]],
+  },
+  so2: {
+    unit: 'µg/m³', c: ['SO₂'],
+    table: [[0, 40, 0, 50], [40, 80, 51, 100], [80, 380, 101, 200], [380, 800, 201, 300], [800, 1600, 301, 400], [1600, 2400, 401, 500]],
+  },
+  co: {
+    unit: 'mg/m³', c: ['CO'],
+    table: [[0, 1, 0, 50], [1, 2, 51, 100], [2, 10, 101, 200], [10, 17, 201, 300], [17, 34, 301, 400], [34, 50, 401, 500]],
+  },
+  o3: {
+    unit: 'µg/m³', c: ['O₃'],
+    table: [[0, 50, 0, 50], [50, 100, 51, 100], [100, 168, 101, 200], [168, 208, 201, 300], [208, 748, 301, 400], [748, 1000, 401, 500]],
+  },
+  nh3: {
+    unit: 'µg/m³', c: ['NH₃'],
+    table: [[0, 200, 0, 50], [200, 400, 51, 100], [400, 800, 101, 200], [800, 1200, 201, 300], [1200, 1800, 301, 400], [1800, 2400, 401, 500]],
+  },
+};
+
+/** CPCB AQI category descriptors. */
+export const AQI_CATEGORIES = [
+  { max: 50,  label: 'Good',        color: '#4caf82', advice: 'Air is clean. Ideal for outdoor activity.' },
+  { max: 100, label: 'Satisfactory',color: '#9ccc65', advice: 'Minor breathing discomfort possible for sensitive people.' },
+  { max: 200, label: 'Moderate',    color: '#f7c44f', advice: 'Breathing discomfort for people with lung or heart disease, children and older adults.' },
+  { max: 300, label: 'Poor',        color: '#f7874f', advice: 'Breathing discomfort for most on prolonged exposure. Limit outdoor exertion.' },
+  { max: 400, label: 'Very Poor',   color: '#e05c5c', advice: 'Respiratory illness on prolonged exposure. Avoid outdoor activity.' },
+  { max: 500, label: 'Severe',      color: '#b04040', advice: 'Serious health impact even for healthy people. Stay indoors.' },
+];
+
+/**
+ * Linear sub-index for one pollutant value against the CPCB table.
+ * @param {number} value pollutant concentration
+ * @param {Array<[number, number, number, number]>} table [Clow, Chigh, Ilow, Ihigh]
+ */
+function subIndex(value, table) {
+  for (const [cLow, cHigh, iLow, iHigh] of table) {
+    if (value <= cHigh) {
+      return Math.round(iLow + ((iHigh - iLow) / (cHigh - cLow)) * (value - cLow));
+    }
+  }
+  return 500; // beyond the highest breakpoint
+}
+
+/**
+ * Compute CPCB AQI from pollutant concentrations.
+ * @param {Object} conc concentrations: pm2_5, pm10, no2, so2, co (mg/m³), o3, nh3 — all nullable
+ * @returns {{aqi: number|null, category: string, color: string, advice: string,
+ *            dominant: string|null, subIndices: Object<string, number>}}
+ */
+export function computeCPCBAqi(conc) {
+  const subIndices = {};
+  for (const [key, spec] of Object.entries(BREAKPOINTS)) {
+    let v = conc?.[key];
+    if (v == null || Number.isNaN(v)) continue;
+    if (key === 'co') v = v / 1000; // Open-Meteo CO: µg/m³ → CPCB mg/m³
+    subIndices[spec.c[0]] = subIndex(v, spec.table);
+  }
+  const entries = Object.entries(subIndices);
+  if (entries.length === 0) {
+    return { aqi: null, category: 'Unknown', color: '#8b8fa8', advice: '', dominant: null, subIndices: {} };
+  }
+  const [dominant, aqi] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+  const cat = AQI_CATEGORIES.find((c) => aqi <= c.max) ?? AQI_CATEGORIES[AQI_CATEGORIES.length - 1];
+  return { aqi, category: cat.label, color: cat.color, advice: cat.advice, dominant, subIndices };
+}
+
+/** UV index → label. */
+export function uvLabel(uv) {
+  if (uv == null) return '—';
+  if (uv < 3) return 'Low';
+  if (uv < 6) return 'Moderate';
+  if (uv < 8) return 'High';
+  if (uv < 11) return 'Very High';
+  return 'Extreme';
+}

@@ -1,0 +1,62 @@
+/* ================================================================
+   tokens.css — design tokens: themes, persona accents, primitives
+================================================================ */
+
+:root {
+  /* Dark theme (default) */
+  --bg:        #0f1117;
+  --bg-soft:   #14171f;
+  --surface:   #1a1d27;
+  --surface-2: #20242f;
+  --border:    #2a2d3d;
+  --text:      #e8eaf0;
+  --muted:     #8b8fa8;
+  --text-on-accent: #0b0d12;
+
+  --green:  #4caf82;
+  --yellow: #f7c44f;
+  --orange: #f7874f;
+  --red:    #e05c5c;
+  --blue:   #4f8ef7;
+  --sky:    #6ab0e8;
+
+  --radius:     12px;
+  --radius-sm:  8px;
+  --shadow:     0 2px 14px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.55);
+
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  --header-h: 58px;
+}
+
+[data-theme='light'] {
+  --bg:        #f2f4f8;
+  --bg-soft:   #e9edf3;
+  --surface:   #ffffff;
+  --surface-2: #f3f5f9;
+  --border:    #d9dee8;
+  --text:      #1c2130;
+  --muted:     #5d6579;
+  --text-on-accent: #ffffff;
+
+  --green:  #2e8f66;
+  --yellow: #b8860b;
+  --orange: #c96a2b;
+  --red:    #c94040;
+  --blue:   #2f6fd8;
+  --sky:    #2b7cb8;
+
+  --shadow:     0 2px 10px rgba(20, 30, 60, 0.08);
+  --shadow-pop: 0 10px 32px rgba(20, 30, 60, 0.18);
+}
+
+/* Persona accent colors — set via body[data-persona] */
+body                { --accent: var(--blue); --accent-dim: color-mix(in srgb, var(--blue) 16%, transparent); }
+body[data-persona='fitness']     { --accent: var(--green);  --accent-dim: color-mix(in srgb, var(--green) 15%, transparent); }
+body[data-persona='commuter']    { --accent: var(--orange); --accent-dim: color-mix(in srgb, var(--orange) 15%, transparent); }
+body[data-persona='agriculture'] { --accent: #8bc34a;       --accent-dim: color-mix(in srgb, #8bc34a 15%, transparent); }
+body[data-persona='traveler']    { --accent: #9b59f7;       --accent-dim: color-mix(in srgb, #9b59f7 15%, transparent); }
+body[data-persona='event']       { --accent: var(--yellow); --accent-dim: color-mix(in srgb, var(--yellow) 15%, transparent); }
+
+[data-theme='light'] body[data-persona='agriculture'] { --accent: #5f8f1f; }
+[data-theme='light'] body[data-persona='traveler']    { --accent: #7d3fd8; }
