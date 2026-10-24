@@ -173,6 +173,9 @@ export function aqiPill(aqiInfo) {
 export function footerNote() {
   return el('div.footer-note', null,
     'Data: ', el('a', { href: 'https://open-meteo.com/', target: '_blank', rel: 'noopener' }, 'Open-Meteo'),
-    ' (CC-BY 4.0) · AQI: CPCB breakpoints computed client-side · Mausam is an independent project, not affiliated with IMD. '
+    ' (CC-BY 4.0) · AQI: CPCB breakpoints computed client-side · IMD official data optional (',
+    el('a', { href: 'https://api.imd.gov.in', target: '_blank', rel: 'noopener' }, 'api.imd.gov.in'),
+    ') · Geolocation naming by ', el('a', { href: 'https://nominatim.openstreetmap.org/', target: '_blank', rel: 'noopener' }, 'OpenStreetMap'),
+    ' · Mausam is an independent project, not affiliated with IMD. '
   );
 }

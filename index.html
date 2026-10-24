@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-  <title>Mausam — Personalised Weather Dashboards for India</title>
-  <meta name="description" content="One forecast, five points of view. Personalised weather dashboards for outdoor fitness, commuters, farmers, travelers and event planners — powered by Open-Meteo with CPCB air quality." />
+  <title>Mausam — Your Weather, Your Profile</title>
+  <meta name="description" content="Build a personal weather profile in 60 seconds — no account. Personalised dashboards, IMD official data, CPCB air quality, and Mausam Mitra, a weather assistant that answers with real cards, not links." />
   <meta name="theme-color" content="#0f1117" />
   <meta name="color-scheme" content="dark light" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Mausam — Personalised Weather" />
-  <meta property="og:description" content="Weather that speaks your persona: fitness, commute, farm, travel, events." />
+  <meta property="og:title" content="Mausam — Your Weather, Your Profile" />
+  <meta property="og:description" content="Personal profiles, official IMD data, CPCB air quality and a weather assistant that answers with cards. No account needed." />
   <meta property="og:image" content="icons/icon-512.png" />
 
   <!-- PWA -->
@@ -29,6 +29,9 @@
   <link rel="stylesheet" href="src/styles/base.css" />
   <link rel="stylesheet" href="src/styles/layout.css" />
   <link rel="stylesheet" href="src/styles/components.css" />
+  <link rel="stylesheet" href="src/styles/plus.css" />
+  <link rel="stylesheet" href="src/styles/onboarding.css" />
+  <link rel="stylesheet" href="src/styles/chat.css" />
 </head>
 <body data-theme="dark">
 
@@ -36,25 +39,32 @@
 
   <div id="app">
 
-    <!-- ============ SCREEN 1 · PERSONA SELECTION ============ -->
-    <section class="screen" id="persona-screen" aria-label="Choose your profile">
+    <!-- ============ SCREEN 1 · PROFILES ============ -->
+    <section class="screen" id="persona-screen" aria-label="Choose a profile">
       <div class="logo-block">
         <div class="logo-title" id="logo-title">Mausam</div>
         <div class="logo-sub">Personalised weather for how you actually live</div>
-        <div class="logo-tag">Live data · Open-Meteo · CPCB air quality</div>
+        <div class="logo-tag">Live data · Open-Meteo · CPCB air quality · IMD official (optional)</div>
       </div>
 
-      <p class="select-label">Who are you? Select your profile.</p>
-      <div class="persona-grid" id="persona-grid"><!-- built by persona-picker.js --></div>
+      <p class="select-label" id="profiles-label">Who's checking the weather?</p>
+      <div class="persona-grid" id="persona-grid"><!-- built by profile-manager.js --></div>
+
+      <p class="privacy-line">🔒 Profiles live only on this device — no account, no sign-up.</p>
     </section>
 
-    <!-- ============ SCREEN 2 · DASHBOARD ============ -->
+    <!-- ============ SCREEN 2 · ONBOARDING ============ -->
+    <section class="screen" id="onboarding-screen" aria-label="Set up your profile">
+      <div id="onboarding-root"><!-- wizard mounts here --></div>
+    </section>
+
+    <!-- ============ SCREEN 3 · DASHBOARD ============ -->
     <section class="screen" id="dashboard-screen" aria-label="Weather dashboard">
 
       <header class="app-header">
         <div class="header-left">
           <span class="app-name" id="brand"></span>
-          <span class="persona-badge" id="persona-badge">—</span>
+          <button class="persona-badge" id="persona-badge" type="button" title="Switch profile" aria-haspopup="dialog">—</button>
           <button class="city-btn" id="city-btn" type="button" aria-haspopup="dialog" title="Change location">
             <span aria-hidden="true">📍</span>
             <span class="city-name" id="city-label">…</span>
@@ -64,6 +74,7 @@
 
         <div class="header-right">
           <span class="offline-pill" id="offline-pill" role="status">📴 Offline</span>
+          <span class="src-pill" id="src-pill" role="status" title="Active data source"><span class="src-dot"></span><span id="src-label">Open-Meteo</span></span>
 
           <button class="btn btn-icon" id="refresh-btn" type="button" title="Refresh" aria-label="Refresh weather">
             <span id="refresh-icon" aria-hidden="true">⟳</span>
@@ -89,8 +100,27 @@
                 </div>
               </div>
               <div class="settings-section">
+                <div class="settings-label">IMD official data (optional)</div>
+                <input class="imd-key-input" id="imd-key-input" type="password"
+                       placeholder="Paste your IMD API key"
+                       autocomplete="off" spellcheck="false" aria-label="IMD API key" />
+                <div class="imd-actions">
+                  <button class="btn" id="imd-save-btn" type="button">Save key</button>
+                  <button class="btn" id="imd-test-btn" type="button">Test connection</button>
+                </div>
+                <div class="imd-status" id="imd-status" role="status"></div>
+                <div class="imd-help">
+                  Free key from <a href="https://api.imd.gov.in" target="_blank" rel="noopener">api.imd.gov.in</a>
+                  (register → Dashboard → API key). Adds the official 7-day city forecast,
+                  observations &amp; moon times. Without it, everything still works via Open-Meteo.
+                </div>
+              </div>
+              <div class="settings-section">
                 <button class="settings-item" data-action="switch-profile" role="menuitem" type="button">
                   <span>🔁 Switch profile</span><span aria-hidden="true">›</span>
+                </button>
+                <button class="settings-item" data-action="new-profile" role="menuitem" type="button">
+                  <span>➕ New profile</span><span aria-hidden="true">›</span>
                 </button>
               </div>
             </div>
@@ -99,7 +129,7 @@
       </header>
 
       <main class="dash-content" id="main" aria-live="polite">
-        <!-- persona dashboard injected here -->
+        <!-- dashboard injected here -->
         <div class="skeleton hero-skeleton"></div>
         <div class="skeleton"></div>
         <div class="skeleton"></div>
@@ -109,11 +139,11 @@
     </section>
   </div>
 
-  <!-- ============ MODAL · SWITCH PERSONA ============ -->
-  <div class="modal-overlay" id="switch-modal" role="dialog" aria-modal="true" aria-label="Switch your profile">
+  <!-- ============ MODAL · SWITCH PROFILE ============ -->
+  <div class="modal-overlay" id="switch-modal" role="dialog" aria-modal="true" aria-label="Switch profile">
     <div class="modal-box">
       <div class="modal-header">
-        <span class="modal-title">Switch your profile</span>
+        <span class="modal-title">Who's checking the weather?</span>
         <button class="modal-close" id="switch-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="persona-grid" id="modal-persona-grid"></div>
@@ -140,7 +170,7 @@
   <noscript>
     <div style="padding:40px; text-align:center; font-family:sans-serif;">
       <h1>Mausam needs JavaScript</h1>
-      <p>This app fetches live weather from Open-Meteo and renders personalised dashboards in your browser. Please enable JavaScript.</p>
+      <p>This app fetches live weather from Open-Meteo / IMD and renders personalised dashboards in your browser. Please enable JavaScript.</p>
     </div>
   </noscript>
 

@@ -12,13 +12,25 @@
  * @param {...(Node|string|null|undefined|false|Array)} children
  */
 export function el(selector, attrs = {}, ...children) {
+  // Tolerance: if `attrs` is actually a child (Node / array / string / number),
+  // shift it into the children list. This makes el('div', el('span'), …) and
+  // el('div', items.map(…)) behave like el('div', null, …) instead of silently
+  // stringifying children into attributes.
+  if (attrs != null && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) {
+    children = [attrs, ...children];
+    attrs = {};
+  }
+
   const [tag, ...classes] = selector.split('.');
   const node = document.createElement(tag || 'div');
   if (classes.length) node.className = classes.join(' ');
 
   for (const [key, value] of Object.entries(attrs ?? {})) {
     if (value == null || value === false) continue;
-    if (key.startsWith('on') && typeof value === 'function') {
+    if (key === 'class') {
+      // MERGE with selector classes instead of overwriting them.
+      node.classList.add(...String(value).split(/\s+/).filter(Boolean));
+    } else if (key.startsWith('on') && typeof value === 'function') {
       node.addEventListener(key.slice(2).toLowerCase(), value);
     } else if (key === 'dataset') {
       Object.assign(node.dataset, value);

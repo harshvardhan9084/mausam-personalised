@@ -69,6 +69,17 @@ async function getJSON(url, signal, { retries = 2, backoffMs = 700 } = {}) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     try {
       const res = await fetch(url, { signal });
+      if (res.status === 429) {
+        // Rate limited: honour Retry-After (capped) once, then fail with a
+        // clear message so the UI can explain what happened.
+        if (attempt < retries) {
+          const ra = Number(res.headers.get('retry-after') ?? 0);
+          const wait = Math.min(Math.max(ra, 1), 10) * 1000;
+          await new Promise((r) => setTimeout(r, Number.isFinite(wait) ? wait : backoffMs * 2));
+          continue;
+        }
+        throw new Error('Weather service rate limit reached — try again in a minute.');
+      }
       if (!res.ok) {
         throw new Error(`API ${res.status} for ${new URL(url).host}`);
       }

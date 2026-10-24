@@ -6,11 +6,10 @@
 import { el, clear } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
-import { PERSONAS } from '../core/personas.js';
 
 /**
  * @param {Object} refs DOM refs from index.html
- * @param {Object} handlers { onLocationPick, onRefresh, onUnitsChange, onThemeChange, onSwitchProfile }
+ * @param {Object} handlers { onLocationPick, onRefresh, onUnitsChange, onThemeChange, onSwitchProfile, onNewProfile }
  */
 export function wireHeader(refs, handlers) {
   const {
@@ -23,11 +22,11 @@ export function wireHeader(refs, handlers) {
   brandEl.appendChild(el('img', { src: 'icons/favicon.svg', alt: '' }));
   brandEl.appendChild(el('span', null, 'Mausam'));
 
-  /* ---------- persona badge ---------- */
-  function setPersona(id) {
-    const p = PERSONAS[id];
-    personaBadgeEl.textContent = p ? `${p.icon} ${p.name}` : '—';
+  /* ---------- profile badge ---------- */
+  function setProfile(profile) {
+    personaBadgeEl.textContent = profile ? `${profile.emoji} ${profile.name}` : '—';
   }
+  personaBadgeEl.addEventListener('click', () => handlers.onSwitchProfile?.());
 
   /* ---------- location label ---------- */
   function setLocation(loc) {
@@ -79,6 +78,11 @@ export function wireHeader(refs, handlers) {
     if (e.target.closest('[data-action="switch-profile"]')) {
       closeSettings();
       handlers.onSwitchProfile?.();
+      return;
+    }
+    if (e.target.closest('[data-action="new-profile"]')) {
+      closeSettings();
+      handlers.onNewProfile?.();
     }
   });
 
@@ -95,7 +99,7 @@ export function wireHeader(refs, handlers) {
     settingsMenu.style.display === 'block' ? closeSettings() : openSettings();
   });
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.settings-wrap')) closeSettings();
+    if (!e.target.closest('.settings-wrap') && !e.target.closest('#chat-panel')) closeSettings();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeSettings();
@@ -179,12 +183,13 @@ export function wireHeader(refs, handlers) {
   });
 
   return {
-    setPersona,
+    setProfile,
     setLocation,
     setRefreshing,
     setOffline,
     applyUnits,
     applyTheme,
     openSearch,
+    openSettings,
   };
 }

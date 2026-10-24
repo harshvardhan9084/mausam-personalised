@@ -1,0 +1,146 @@
+/* ================================================================
+   plus.css — extensions for the profile era:
+   accent palette, profile cards extras, IMD settings, source badge,
+   personal greeting/alert, misc product polish.
+================================================================ */
+
+/* ---------------- accent palette (profile colours) ---------------- */
+
+:root {
+  --accent-blue:   #4f8ef7;
+  --accent-green:  #4caf82;
+  --accent-orange: #f7874f;
+  --accent-leaf:   #8bc34a;
+  --accent-violet: #9b59f7;
+  --accent-yellow: #f7c44f;
+}
+
+/* Applied only when the user picked a custom accent (main.js sets it). */
+body[data-accent='green']  { --accent: var(--accent-green);  --accent-dim: color-mix(in srgb, var(--accent-green) 15%, transparent); }
+body[data-accent='orange'] { --accent: var(--accent-orange); --accent-dim: color-mix(in srgb, var(--accent-orange) 15%, transparent); }
+body[data-accent='leaf']   { --accent: var(--accent-leaf);   --accent-dim: color-mix(in srgb, var(--accent-leaf) 15%, transparent); }
+body[data-accent='violet'] { --accent: var(--accent-violet); --accent-dim: color-mix(in srgb, var(--accent-violet) 15%, transparent); }
+body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color-mix(in srgb, var(--accent-yellow) 15%, transparent); }
+
+/* ---------------- profiles grid ---------------- */
+
+.persona-card { position: relative; border: 1px solid var(--border); }
+.persona-card[style*('--pc')] { border-color: color-mix(in srgb, var(--pc) 38%, var(--border)); }
+.persona-card .p-icon { font-size: 1.9rem; }
+
+.persona-card.persona-new {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.p-icon-new { opacity: 0.85; }
+
+.profile-edit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+.profile-edit:hover { color: var(--text); border-color: var(--accent); transform: scale(1.06); }
+.profile-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------------- personal greeting + alert ---------------- */
+
+.dash-greet {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-greet-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dash-greet-sub { color: var(--muted); font-size: 0.85rem; }
+
+.personal-alert { margin: 0 0 16px; animation: alertIn 0.35s ease; }
+@keyframes alertIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.personal-alert .alert-title { font-weight: 650; margin-bottom: 2px; }
+
+/* ---------------- data-source badge (header) ---------------- */
+
+.src-pill {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.src-pill.show { display: inline-flex; }
+.src-pill .src-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.src-pill.imd { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.src-pill.imd .src-dot { background: var(--accent); }
+.src-pill.warn .src-dot { background: var(--yellow); }
+
+/* ---------------- IMD settings section ---------------- */
+
+.settings-menu { width: min(320px, 92vw); }
+
+.imd-key-input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.imd-key-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.imd-actions { display: flex; gap: 8px; margin-top: 8px; }
+.imd-actions .btn { font-size: 0.78rem; padding: 6px 12px; }
+
+.imd-status { font-size: 0.75rem; margin-top: 8px; line-height: 1.45; }
+.imd-status.ok { color: var(--green); }
+.imd-status.bad { color: var(--red); }
+.imd-status.busy { color: var(--muted); }
+.imd-help { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.imd-help a { color: var(--accent); }
+
+/* ---------------- header profile badge tweak ---------------- */
+
+.persona-badge { cursor: pointer; }
+.persona-badge:hover { border-color: var(--accent); }
+
+/* ---------------- mobile header: two tidy rows ---------------- */
+
+@media (max-width: 520px) {
+  .app-header { flex-wrap: wrap; row-gap: 7px; padding: 8px 12px; }
+  .header-left { flex: 1 1 100%; }
+  .header-right { flex: 1 1 100%; justify-content: flex-end; }
+  .app-name span { display: none; } /* icon-only brand frees space for badge + city */
+  .persona-badge { font-size: 0.72rem; padding: 3px 10px; }
+  .city-btn .city-name { max-width: 120px; }
+  .src-pill span:last-child { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* ---------------- reduced motion ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .personal-alert { animation: none; }
+}

@@ -1,41 +1,49 @@
 /**
- * main.js — application bootstrap & orchestration.
+ * main.js — application bootstrap & orchestration (profile era).
  *
- * Flow:
- *   1. apply stored theme + units
- *   2. register service worker
- *   3. resolve location (stored → default Ghaziabad)
- *   4. resolve persona (stored → selection screen)
- *   5. fetch bundle (cache-first paint) → buildSnapshot → render dashboard
+ * Boot flow:
+ *   1. theme + units, service worker
+ *   2. legacy migration (old persona preset → real profile, once)
+ *   3. no profiles? → onboarding wizard (mandatory first-run)
+ *      profiles?   → resume last active profile straight into dashboard
+ *   4. loadWeather: Open-Meteo bundle → optional IMD official enrichment
+ *      → buildSnapshot → dashboard render with personal greeting/alert
+ *   5. Mausam Mitra chat wired to the live snapshot
  *   6. auto-refresh every 15 min
  */
 
 import { el, clear } from './utils/dom.js';
-import { relativeTime, temp } from './utils/format.js';
+import { relativeTime } from './utils/format.js';
 import { fetchWeatherBundle } from './api/open-meteo.js';
+import { fetchImdBundle, imdSettings } from './api/imd.js';
 import { buildSnapshot } from './core/engine.js';
 import { store } from './core/storage.js';
-import { PERSONAS, PERSONA_IDS } from './core/personas.js';
-import { renderPersonaGrid, wireSwitchModal } from './ui/persona-picker.js';
+import {
+  listProfiles, activeProfile, setActiveProfile, getProfile,
+  migrateLegacy, LENS_INFO,
+} from './core/profiles.js';
+import { greeting, personalAlert } from './core/personalise.js';
+import { renderProfilesGrid, wireProfileModal } from './ui/profile-manager.js';
+import { runOnboarding } from './ui/onboarding.js';
 import { wireHeader } from './ui/header.js';
-import { skeleton, errorCard, offlineCard, footerNote } from './ui/shared.js';
+import { skeleton, errorCard } from './ui/shared.js';
 import { renderFitness } from './ui/dashboards/fitness.js';
 import { renderCommuter } from './ui/dashboards/commuter.js';
 import { renderAgriculture } from './ui/dashboards/agriculture.js';
 import { renderTraveler } from './ui/dashboards/traveler.js';
 import { renderEvent } from './ui/dashboards/event.js';
+import { wireChat } from './chat/ui.js';
 
-const DEFAULT_LOCATION = {
-  name: 'Ghaziabad',
-  admin1: 'Uttar Pradesh',
-  country: 'India',
-  lat: 28.6692,
-  lon: 77.4538,
-  isGeo: false,
-};
 const REFRESH_MS = 15 * 60 * 1000;
+const IMD_TIMEOUT_MS = 9000;
 
-const RENDERERS = { fitness: renderFitness, commuter: renderCommuter, agriculture: renderAgriculture, traveler: renderTraveler, event: renderEvent };
+const RENDERERS = {
+  fitness: renderFitness,
+  commuter: renderCommuter,
+  agriculture: renderAgriculture,
+  traveler: renderTraveler,
+  event: renderEvent,
+};
 
 /* ================= theme ================= */
 const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -49,18 +57,29 @@ mq.addEventListener('change', () => applyTheme(store.theme.get()));
 applyTheme(store.theme.get());
 
 /* ================= state ================= */
-let currentPersona = null;
+let currentProfile = null;
 let currentSnapshot = null;
 let currentUnits = store.units.get();
-let currentLocation = store.location.get() ?? DEFAULT_LOCATION;
+let currentLocation = null;
 let refreshTimer = null;
 let inflight = null;
 
 /* ================= DOM refs ================= */
 const $ = (id) => document.getElementById(id);
-const screens = { persona: $('persona-screen'), dashboard: $('dashboard-screen') };
+const screens = {
+  profiles: $('persona-screen'),
+  onboarding: $('onboarding-screen'),
+  dashboard: $('dashboard-screen'),
+};
 const dashContent = $('main');
 const updatedStamp = $('updated-stamp');
+const srcPill = $('src-pill');
+const srcLabel = $('src-label');
+
+function showScreen(name) {
+  Object.values(screens).forEach((s) => s.classList.remove('active'));
+  screens[name]?.classList.add('active');
+}
 
 /* ================= header ================= */
 const header = wireHeader(
@@ -92,49 +111,193 @@ const header = wireHeader(
       if (currentSnapshot) renderDashboard();
     },
     onThemeChange: applyTheme,
-    onSwitchProfile: () => switchModal.open(),
+    onSwitchProfile: () => profileModal.open(),
+    onNewProfile: () => startOnboarding('create'),
   }
 );
 header.applyUnits(currentUnits);
 header.applyTheme(store.theme.get());
 
-/* ================= persona flows ================= */
-function showScreen(name) {
-  Object.values(screens).forEach((s) => s.classList.remove('active'));
-  screens[name].classList.add('active');
-}
+/* ================= profile handling ================= */
 
-function selectPersona(id, { silent = false } = {}) {
-  if (!PERSONAS[id]) return;
-  currentPersona = id;
-  store.persona.set(id);
-  document.body.dataset.persona = id;
-  header.setPersona(id);
+function applyProfile(profile, { silent = false } = {}) {
+  currentProfile = profile;
+  document.body.dataset.persona = profile.lens; // lens accent (CSS)
+  if (profile.color && profile.color !== 'blue') {
+    document.body.dataset.accent = profile.color;
+  } else {
+    delete document.body.dataset.accent;
+  }
+  currentLocation = { ...profile.home };
+  store.location.set(currentLocation);
+  header.setProfile(profile);
+  header.setLocation(currentLocation);
   showScreen('dashboard');
   renderDashboard();
   loadWeather(false, { silent });
+  publishChatState();
 }
 
-const switchModal = wireSwitchModal(
+function selectProfile(id) {
+  const p = getProfile(id);
+  if (!p) return;
+  setActiveProfile(id);
+  applyProfile(p);
+}
+
+/* ---------- onboarding launcher ---------- */
+let wizard = null;
+
+function startOnboarding(mode, profileId = null) {
+  wizard?.destroy?.();
+  const profile = profileId ? getProfile(profileId) : null;
+  if (mode === 'edit' && !profile) return;
+  chat.setHidden(true); // no assistant while the wizard owns the screen
+
+  // dashboard keeps rendering behind? No — swap screens cleanly.
+  wizard = runOnboarding({
+    root: $('onboarding-root'),
+    mode,
+    profile,
+    onDone: (saved) => {
+      wizard?.destroy?.();
+      wizard = null;
+      chat.setHidden(false);
+      if (profileModal) profileModal.refresh();
+      if (saved?.id) selectProfile(saved.id);
+      else {
+        // fallback safety
+        const ap = activeProfile();
+        if (ap) applyProfile(ap);
+      }
+    },
+    onCancel: () => {
+      wizard?.destroy?.();
+      wizard = null;
+      chat.setHidden(false);
+      const ap = activeProfile();
+      if (ap) applyProfile(ap, { silent: true });
+      else startOnboarding('first');
+    },
+  });
+  showScreen('onboarding');
+}
+
+/* ================= profile switch modal ================= */
+const profileModal = wireProfileModal(
   { overlay: $('switch-modal'), grid: $('modal-persona-grid'), closeBtn: $('switch-close') },
-  (id) => {
-    switchModal.close?.();
-    selectPersona(id);
+  {
+    onSelect: (id) => {
+      profileModal.close?.();
+      selectProfile(id);
+    },
+    onNew: () => {
+      profileModal.close?.();
+      startOnboarding('create');
+    },
+    onEdit: (id) => {
+      profileModal.close?.();
+      startOnboarding('edit', id);
+    },
   }
 );
 
-/* persona selection screen */
-renderPersonaGrid($('persona-grid'), (id) => selectPersona(id));
-
-/* logo icon */
+/* logo icon on the profiles screen */
 $('logo-title').prepend(el('img', { src: 'icons/favicon.svg', alt: '' }));
 
+/* ================= IMD settings ================= */
+
+const imdInput = $('imd-key-input');
+const imdStatus = $('imd-status');
+
+function imdSetStatus(text, cls = '') {
+  imdStatus.textContent = text;
+  imdStatus.className = `imd-status ${cls}`;
+}
+
+imdInput.value = imdSettings.hasKey() ? imdSettings.getKey() : '';
+
+$('imd-save-btn').addEventListener('click', () => {
+  imdSettings.setKey(imdInput.value);
+  if (!imdSettings.hasKey()) {
+    imdSetStatus('Key cleared — forecasts will use Open-Meteo only.', 'busy');
+    setSourceBadge(null);
+    loadWeather(true, { silent: true });
+    return;
+  }
+  imdSetStatus('Key saved. Testing…', 'busy');
+  testImd();
+});
+
+$('imd-test-btn').addEventListener('click', () => {
+  imdSettings.setKey(imdInput.value);
+  testImd();
+});
+
+async function testImd() {
+  const { testImdKey } = await import('./api/imd.js');
+  imdSetStatus('Contacting the IMD gateway…', 'busy');
+  try {
+    const res = await testImdKey(imdSettings.getKey() || imdInput.value);
+    if (res.ok) {
+      imdSetStatus(`✓ ${res.message}${res.sample?.max != null ? ` Today: ${res.sample.max}°/${res.sample.min}°.` : ''}`, 'ok');
+      loadWeather(true, { silent: true });
+    } else {
+      imdSetStatus(`✗ ${res.message}${res.hint ? ` ${res.hint}` : ''}`, 'bad');
+    }
+  } catch {
+    imdSetStatus('✗ Test failed unexpectedly — check the console.', 'bad');
+  }
+}
+
+function setSourceBadge(imd) {
+  srcPill.classList.add('show');
+  if (imd?.ok) {
+    srcPill.classList.add('imd');
+    srcPill.classList.remove('warn');
+    srcLabel.textContent = 'IMD + Open-Meteo';
+    srcPill.title = `Official IMD forecast via ${imd.station?.name ?? 'IMD station'} merged with Open-Meteo`;
+  } else {
+    srcPill.classList.remove('imd');
+    srcPill.classList.remove('warn');
+    srcLabel.textContent = 'Open-Meteo';
+    srcPill.title = 'Live data from Open-Meteo (add a free IMD key in Settings for official data)';
+  }
+}
+
 /* ================= weather loading ================= */
+
 function setRefreshing(on) {
   header.setRefreshing(on);
 }
 
+async function enrichWithImd(bundle, signal) {
+  if (!imdSettings.hasKey()) {
+    setSourceBadge(null);
+    return bundle;
+  }
+  // IMD is an optional enrichment: hard timeout + never throws.
+  const relay = new AbortController();
+  const onOuter = () => relay.abort();
+  signal?.addEventListener('abort', onOuter, { once: true });
+  const timer = setTimeout(() => relay.abort(new DOMException('IMD timeout', 'TimeoutError')), IMD_TIMEOUT_MS);
+  try {
+    const imd = await fetchImdBundle(bundle.location.lat, bundle.location.lon, relay.signal);
+    bundle.imd = imd;
+    setSourceBadge(imd);
+    return bundle;
+  } catch {
+    setSourceBadge(null);
+    return bundle; // IMD failure never blocks the app
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onOuter);
+  }
+}
+
 async function loadWeather(force = false, { silent = false } = {}) {
+  if (!currentProfile || !currentLocation) return;
+  header.setOffline(!navigator.onLine); // connectivity state, always honest
   if (inflight) inflight.abort();
   const controller = new AbortController();
   inflight = controller;
@@ -142,17 +305,16 @@ async function loadWeather(force = false, { silent = false } = {}) {
   const cached = store.bundle.get(currentLocation.lat, currentLocation.lon);
   const cacheFresh = cached && Date.now() - cached.fetchedAt < REFRESH_MS;
 
-  // Fast path: fresh cache + not forced → paint from cache and stop.
   if (cached && cacheFresh && !force) {
     try {
       currentSnapshot = buildSnapshot(cached);
-      header.setLocation(currentLocation);
-      header.setOffline(false);
+      setSourceBadge(cached.imd);
       renderDashboard();
       if (!silent) setRefreshing(false);
+      if (inflight === controller) inflight = null; // fast path: never leaves "loading" stuck
       return;
     } catch {
-      /* unusable cache — fall through to the network path */
+      /* unusable cache — fall through */
     }
   }
 
@@ -161,11 +323,10 @@ async function loadWeather(force = false, { silent = false } = {}) {
     setRefreshing(true);
   }
 
-  // Instant paint from stale cache while the network round-trip runs.
   if (cached && !currentSnapshot) {
     try {
       currentSnapshot = buildSnapshot(cached);
-      header.setLocation(currentLocation);
+      setSourceBadge(cached.imd);
       renderDashboard();
     } catch {
       currentSnapshot = null;
@@ -173,7 +334,9 @@ async function loadWeather(force = false, { silent = false } = {}) {
   }
 
   try {
-    const bundle = await fetchWeatherBundle(currentLocation.lat, currentLocation.lon, controller.signal);
+    let bundle = await fetchWeatherBundle(currentLocation.lat, currentLocation.lon, controller.signal);
+    if (controller.signal.aborted) return;
+    bundle = await enrichWithImd(bundle, controller.signal);
     if (controller.signal.aborted) return;
     store.bundle.set(currentLocation.lat, currentLocation.lon, bundle);
     currentSnapshot = buildSnapshot(bundle);
@@ -182,8 +345,8 @@ async function loadWeather(force = false, { silent = false } = {}) {
     renderDashboard();
   } catch (err) {
     if (controller.signal.aborted || err.name === 'AbortError') return;
+    header.setOffline(true); // the fetch itself failed — surface it
     if (!currentSnapshot && cached) {
-      // offline fallback: last good bundle for this location
       try {
         currentSnapshot = buildSnapshot(cached);
         renderDashboard();
@@ -197,17 +360,22 @@ async function loadWeather(force = false, { silent = false } = {}) {
       clear(dashContent).appendChild(errorCard(err.message, () => loadWeather(true)));
     }
   } finally {
-    if (!controller.signal.aborted) setRefreshing(false);
+    if (inflight === controller) inflight = null;
+    if (!controller.signal.aborted) {
+      setRefreshing(false);
+      publishChatState();
+    }
   }
 }
 
 /* ================= dashboard render ================= */
+
 function renderDashboard() {
-  if (!currentSnapshot || !currentPersona) return;
+  if (!currentSnapshot || !currentProfile) return;
   currentSnapshot.locationLabel = currentLocation.name;
   clear(dashContent);
   try {
-    RENDERERS[currentPersona](dashContent, currentSnapshot, currentUnits, {
+    RENDERERS[currentProfile.lens]?.(dashContent, currentSnapshot, currentUnits, {
       openSearch: () => header.openSearch(),
       rerender: renderDashboard,
     });
@@ -216,8 +384,52 @@ function renderDashboard() {
     clear(dashContent).appendChild(errorCard('The dashboard hit an unexpected error.', renderDashboard));
     return;
   }
+
+  // Personal layer: greeting + profile-tuned alert (prepended to the top).
+  const alert = personalAlert(currentSnapshot, currentProfile, currentUnits);
+  const block = el('div.personal-block', null,
+    el('div.dash-greet', null,
+      el('div.dash-greet-name', null, `${currentProfile.emoji} ${greeting(currentProfile)}`),
+      el('div.dash-greet-sub', null, `📍 ${currentLocation.name}${currentLocation.admin1 ? `, ${currentLocation.admin1}` : ''}`)
+    ),
+    alert
+      ? el(`div.alert.alert-${alert.kind}.personal-alert`, { role: 'alert' },
+          el('div.alert-title', null, `${alert.icon} ${alert.title}`),
+          el('div', null, alert.text)
+        )
+      : null
+  );
+  dashContent.prepend(block);
+
   updatedStamp.textContent = `Updated ${relativeTime(currentSnapshot.fetchedAt)} · ${currentLocation.name}` +
     (currentUnits === 'imperial' ? ' · °F' : ' · °C');
+  publishChatState();
+}
+
+/* ================= chat ================= */
+
+const chat = wireChat({
+  onAction: (action) => {
+    switch (action) {
+      case 'new-profile': startOnboarding('create'); break;
+      case 'edit-profile': if (currentProfile) startOnboarding('edit', currentProfile.id); break;
+      case 'switch-profile': profileModal.open(); break;
+      case 'open-imd-settings': header.openSettings?.(); break;
+    }
+  },
+});
+
+/* live state bridge for the chatbot brain */
+function publishChatState() {
+  window.__mausamState = {
+    snapshot: currentSnapshot,
+    profile: currentProfile,
+    units: currentUnits,
+    location: currentLocation,
+    imd: currentSnapshot?.bundle?.imd ?? null,
+    loading: Boolean(inflight),
+    online: navigator.onLine,
+  };
 }
 
 /* ================= connectivity ================= */
@@ -227,40 +439,38 @@ window.addEventListener('online', () => {
   loadWeather(true);
 });
 
-/* ================= units change keeps cache paint ================= */
-// (re-render handled through header callback)
+/* ================= service worker ================= */
+const isSecureHost = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+if ('serviceWorker' in navigator && isSecureHost) {
+  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW registration failed:', err));
+}
 
 /* ================= boot ================= */
 async function boot() {
-  // deep link: ?persona=fitness (used by PWA shortcuts)
+  migrateLegacy();
+
   const params = new URLSearchParams(location.search);
-  const linkPersona = params.get('persona');
+  const linkLens = params.get('persona');
 
-  header.setLocation(currentLocation);
-  showScreen('persona');
-
-  const saved = store.persona.get();
-  const target = PERSONA_IDS.includes(linkPersona) ? linkPersona : saved;
-
-  if (target && PERSONAS[target]) {
-    selectPersona(target);
+  const profiles = listProfiles();
+  if (!profiles.length) {
+    showScreen('onboarding');
+    startOnboarding('first');
   } else {
-    showScreen('persona');
+    const target =
+      (linkLens && LENS_INFO[linkLens] && profiles.find((p) => p.lens === linkLens)) ||
+      activeProfile() ||
+      profiles[0];
+    applyProfile(target, { silent: false });
   }
 
-  // service worker (secure contexts: https, localhost, 127.0.0.1)
-  const isSecureHost = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
-  if ('serviceWorker' in navigator && isSecureHost) {
-    navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW registration failed:', err));
-  }
-
-  // periodic refresh
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') loadWeather(true, { silent: true });
+    if (document.visibilityState === 'visible' && currentProfile) {
+      loadWeather(true, { silent: true });
+    }
   }, REFRESH_MS);
 
-  // refresh "updated X ago" stamp
   setInterval(() => {
     if (currentSnapshot && screens.dashboard.classList.contains('active')) {
       updatedStamp.textContent = `Updated ${relativeTime(currentSnapshot.fetchedAt)} · ${currentLocation.name}` +

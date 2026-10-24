@@ -1,7 +1,7 @@
 {
   "name": "mausam-personalised",
-  "version": "1.0.0",
-  "description": "Personalised weather dashboards for India — one forecast, five points of view. Live Open-Meteo data, CPCB air quality, zero dependencies.",
+  "version": "2.0.0",
+  "description": "Your weather, your profile. User-built weather profiles with onboarding, official IMD data (optional), CPCB air quality and Mausam Mitra — a context-aware weather assistant. Zero dependencies, zero build.",
   "license": "MIT",
   "author": "harsh vardhan <203862698+harshvardhan9084@users.noreply.github.com>",
   "repository": {
@@ -11,11 +11,14 @@
   "keywords": [
     "weather",
     "india",
+    "imd",
     "open-meteo",
     "aqi",
     "cpcb",
     "pwa",
     "personalised",
+    "profiles",
+    "chatbot",
     "vanilla-js",
     "sih"
   ],

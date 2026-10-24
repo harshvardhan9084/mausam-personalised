@@ -6,10 +6,15 @@
    - Navigation fallback: index.html (SPA safety net).
 ================================================================ */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v2.0.1';
 const SHELL_CACHE = `mausam-shell-${VERSION}`;
 const DATA_CACHE = `mausam-data-${VERSION}`;
-const API_HOSTS = ['api.open-meteo.com', 'air-quality-api.open-meteo.com', 'geocoding-api.open-meteo.com'];
+const API_HOSTS = [
+  'api.open-meteo.com',
+  'air-quality-api.open-meteo.com',
+  'geocoding-api.open-meteo.com',
+  'nominatim.openstreetmap.org', // onboarding “use my location” reverse geocode
+];
 
 const SHELL_ASSETS = [
   './',
@@ -25,14 +30,21 @@ const SHELL_ASSETS = [
   './src/styles/base.css',
   './src/styles/layout.css',
   './src/styles/components.css',
+  './src/styles/plus.css',
+  './src/styles/onboarding.css',
+  './src/styles/chat.css',
   './src/api/open-meteo.js',
+  './src/api/imd.js',
   './src/api/wmo.js',
   './src/core/aqi-cpcb.js',
   './src/core/engine.js',
   './src/core/personas.js',
+  './src/core/profiles.js',
+  './src/core/personalise.js',
   './src/core/scoring.js',
   './src/core/storage.js',
-  './src/ui/persona-picker.js',
+  './src/ui/onboarding.js',
+  './src/ui/profile-manager.js',
   './src/ui/header.js',
   './src/ui/shared.js',
   './src/ui/dashboards/fitness.js',
@@ -40,6 +52,10 @@ const SHELL_ASSETS = [
   './src/ui/dashboards/agriculture.js',
   './src/ui/dashboards/traveler.js',
   './src/ui/dashboards/event.js',
+  './src/chat/nlu.js',
+  './src/chat/brain.js',
+  './src/chat/components.js',
+  './src/chat/ui.js',
   './src/utils/dom.js',
   './src/utils/format.js',
 ];
@@ -70,7 +86,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // --- Open-Meteo APIs: network-first, fall back to last good response ---
+  // --- Open-Meteo / geocoding APIs: network-first, fall back to last good response ---
   if (API_HOSTS.includes(url.hostname)) {
     event.respondWith(
       fetch(request)
