@@ -328,6 +328,16 @@ export function renderDashboard(root, snapshot, units, ctx) {
       toast(t('place_removed'));
     },
   });
+  if (ctx.openCompare || ctx.openJourney) {
+    root.appendChild(el('div.places-tools', { role: 'group', 'aria-label': 'Place tools' },
+      ctx.openCompare
+        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openCompare?.() }, t('cmp_open'))
+        : null,
+      ctx.openJourney
+        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openJourney?.() }, t('jny_open'))
+        : null,
+    ));
+  }
 
   /* ---------- alerts (stacked) ---------- */
   for (const alert of computeAlerts(s)) {

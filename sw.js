@@ -8,7 +8,7 @@
    the provider probe must reflect the real server.
 ================================================================ */
 
-const VERSION = 'v0.5.0';
+const VERSION = 'v0.6.0';
 const SHELL_CACHE = `mausam-shell-${VERSION}`;
 const DATA_CACHE = `mausam-data-${VERSION}`;
 const API_HOSTS = [
@@ -18,7 +18,6 @@ const API_HOSTS = [
   'flood-api.open-meteo.com',
   'marine-api.open-meteo.com',
   'archive-api.open-meteo.com',
-  'api.rainviewer.com',
   'api.bigdatacloud.net',
   'nominatim.openstreetmap.org',
   'generativelanguage.googleapis.com', // Gemini: network-only, no caching of auth'd calls
@@ -62,7 +61,8 @@ const SHELL_ASSETS = [
   './src/ui/settings.js',
   './src/ui/you.js',
   './src/ui/mitra.js',
-  './src/ui/radar.js',
+  './src/ui/crops.js',
+  './src/ui/explore.js',
   './src/ai/contract.js',
   './src/ai/render.js',
   './src/ai/prompt.js',

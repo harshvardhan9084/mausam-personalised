@@ -1,7 +1,7 @@
 {
   "name": "Mausam — Weather that works like it's yours",
   "short_name": "Mausam",
-  "description": "The generous Indian weather app: live rain radar, hourly to 10-day forecasts, CPCB air quality, farm, river and sea modules, and Mausam Mitra — an AI assistant that answers with real charts and cards. English + हिंदी. No account.",
+  "description": "The generous Indian weather app: hourly to 10-day forecasts, CPCB air quality, a crop calendar engine, farm, river and sea modules, and Mausam Mitra — an AI assistant that answers with real charts and cards. English + हिंदी. No account.",
   "id": "/mausam-personalised/",
   "start_url": "./index.html",
   "scope": "./",
@@ -17,7 +17,7 @@
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Rain radar", "url": "./index.html#radar", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Crop calendar", "url": "./index.html#crops", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Ask Mitra", "url": "./index.html#mitra", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "My profile", "url": "./index.html#you", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]

@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <title>Mausam — weather that works like it's yours</title>
-  <meta name="description" content="The generous Indian weather app: live rain radar, hourly to 10-day forecasts, CPCB air quality, farm & river & sea modules, and Mausam Mitra — an AI assistant that answers with real charts and cards. English + हिंदी. No account." />
+  <meta name="description" content="The generous Indian weather app: hourly to 10-day forecasts, CPCB air quality, a crop calendar engine, farm & river & sea modules, and Mausam Mitra — an AI assistant that answers with real charts and cards. English + हिंदी. No account." />
   <meta name="theme-color" content="#0f1117" />
   <meta name="color-scheme" content="dark light" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Mausam — weather that works like it's yours" />
-  <meta property="og:description" content="Live rain radar, CPCB air quality, farm/river/sea modules and an AI assistant with real charts. English + हिंदी. Zero sign-up." />
+  <meta property="og:description" content="CPCB air quality, a crop calendar engine, farm/river/sea modules and an AI assistant with real charts. English + हिंदी. Zero sign-up." />
   <meta property="og:image" content="icons/icon-512.png" />
 
   <!-- PWA -->
@@ -71,8 +71,8 @@
         </div>
       </section>
 
-      <!-- ============ PAGE · RADAR ============ -->
-      <section class="page" id="page-radar" aria-label="Live rain radar"></section>
+      <!-- ============ PAGE · CROPS (crop calendar engine) ============ -->
+      <section class="page" id="page-crops" aria-label="Crop calendar"></section>
 
       <!-- ============ PAGE · MITRA (AI chat) ============ -->
       <section class="page" id="page-mitra" aria-label="Mausam Mitra — AI weather assistant"></section>
@@ -93,8 +93,8 @@
       <button class="tab-btn active" id="tab-home" type="button" aria-current="page">
         <span class="tab-ico" aria-hidden="true">🏠</span><span class="tab-lbl" data-i18n="nav_home">Home</span>
       </button>
-      <button class="tab-btn" id="tab-radar" type="button" aria-current="false">
-        <span class="tab-ico" aria-hidden="true">🗺️</span><span class="tab-lbl" data-i18n="nav_radar">Radar</span>
+      <button class="tab-btn" id="tab-crops" type="button" aria-current="false">
+        <span class="tab-ico" aria-hidden="true">🌾</span><span class="tab-lbl" data-i18n="nav_crops">Crops</span>
       </button>
       <button class="tab-btn" id="tab-mitra" type="button" aria-current="false">
         <span class="tab-ico" aria-hidden="true">💬</span><span class="tab-lbl" data-i18n="nav_mitra">Mitra</span>
@@ -126,19 +126,10 @@
     </div>
   </div>
 
-  <footer class="footer-note">
-    Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC-BY 4.0) ·
-    AQI: CPCB breakpoints computed client-side ·
-    Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a> ·
-    Map: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> + Leaflet ·
-    IMD official data optional (<a href="https://api.imd.gov.in" target="_blank" rel="noopener">api.imd.gov.in</a>) ·
-    Mausam is an independent project, not affiliated with IMD.
-  </footer>
-
   <noscript>
     <div style="padding:40px; text-align:center; font-family:sans-serif;">
       <h1>Mausam needs JavaScript</h1>
-      <p>This app fetches live weather, radar and an AI assistant in your browser. Please enable JavaScript.</p>
+      <p>This app fetches live weather, crop calendars and an AI assistant in your browser. Please enable JavaScript.</p>
     </div>
   </noscript>
 
@@ -149,7 +140,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v0.5.0') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v0.6.0') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -159,15 +150,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v0.5.0') {
-            sessionStorage.setItem('mausam:swcheck', 'v0.5.0');
+          if (e && e.data && e.data.version === 'v0.6.0') {
+            sessionStorage.setItem('mausam:swcheck', 'v0.6.0');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v0.5.0');
+          sessionStorage.setItem('mausam:swcheck', 'v0.6.0');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {

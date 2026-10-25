@@ -151,6 +151,12 @@ export const store = {
     get: (name, fallback = null) => get(`flag:${name}`, fallback),
     set: (name, value) => set(`flag:${name}`, value),
   },
+  chats: {
+    // Mitra conversation history: {list: [{id, at, title, msgs:[{role,text}]}], currentId}
+    // Kept small: mitra.js caps the list at 30 conversations / 60 msgs each.
+    get: () => get('chats', { list: [], currentId: null }),
+    set: (v) => set('chats', v),
+  },
   exportAll: () => {
     const out = {};
     try {

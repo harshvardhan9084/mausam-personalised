@@ -100,6 +100,9 @@ function build() {
   /* ---------------- notifications ---------------- */
   buildNotifSection();
 
+  /* ---------------- install the app ---------------- */
+  buildInstallSection();
+
   /* ---------------- data saver ---------------- */
   mount.appendChild(section(t('set_data'),
     toggleRow(t('set_datasaver'), t('set_datasaver_t'), store.dataSaver.get(), (on) => {
@@ -126,6 +129,34 @@ function build() {
 
 function section(title, ...children) {
   return el('div.settings-block.page-block', el('div.settings-h', null, title), ...children);
+}
+
+function buildInstallSection() {
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (standalone) {
+    mount.appendChild(section(t('inst_row'), el('div.set-help', null, '✅ ' + t('inst_done'))));
+    return;
+  }
+  const kids = [el('div.set-help', null, t('inst_row_t'))];
+  const evt = window.__mausamInstallEvt;
+  if (evt?.prompt) {
+    kids.push(el('div.key-actions',
+      el('button.btn.btn-primary', {
+        type: 'button',
+        onclick: async (e2) => {
+          try {
+            evt.prompt();
+            const { outcome } = await evt.userChoice;
+            if (outcome === 'accepted') window.__mausamInstallEvt = null;
+            renderSettings();
+          } catch { /* ignore */ }
+        },
+      }, '📲 ' + t('inst_btn')),
+    ));
+  } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+    kids.push(el('div.set-help', null, '📱 ' + t('inst_ios_hint')));
+  }
+  mount.appendChild(section(t('inst_row'), ...kids));
 }
 
 function segBtn(active, label, onclick) {

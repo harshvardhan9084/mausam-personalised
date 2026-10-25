@@ -1,12 +1,12 @@
 /**
- * main.js — application bootstrap (v0.5: a five-page product).
+ * main.js — application bootstrap (v0.6: a five-page product).
  *
- * Pages: Home (generous feed) · Radar (live rain map) · Mitra (AI chat)
+ * Pages: Home (generous feed) · Crops (crop calendar engine) · Mitra (AI chat)
  *        You (volatile profile) · Settings (full controls)
  * Boot:  theme/accent/lang → router → header → cached paint → live load
  *        (Open-Meteo forecast+air, then optional flood/marine/climate in
  *        parallel — enhancements only, failures never block).
- * Data saver: no auto-refresh, optional APIs and radar only on demand.
+ * Data saver: no auto-refresh, optional APIs only on demand.
  */
 
 import { el, clear } from './utils/dom.js';
@@ -23,8 +23,9 @@ import { wireHeader } from './ui/header.js';
 import { wireSettingsPage, renderSettings } from './ui/settings.js';
 import { wireYouPage, renderYou } from './ui/you.js';
 import { wireMitraPage, showMitra } from './ui/mitra.js';
-import { wireRadarPage, showRadar, updateRadarLocation, onRadarThemeChange } from './ui/radar.js';
+import { wireCropsPage, showCrops } from './ui/crops.js';
 import { rememberPlace } from './ui/places.js';
+import { openCompare, openJourney } from './ui/explore.js';
 import { renderDashboard as renderDashboardUI, updateFreshness } from './ui/dash.js';
 import { skeleton, errorCard } from './ui/shared.js';
 
@@ -39,7 +40,6 @@ function applyTheme(pref) {
   const resolved = pref === 'auto' ? (mq.matches ? 'light' : 'dark') : pref;
   document.body.dataset.theme = resolved;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'light' ? '#f2f4f8' : '#0f1117');
-  onRadarThemeChange();
 }
 
 function applyAccent(id) {
@@ -73,7 +73,7 @@ const $ = (id) => document.getElementById(id);
 const homeScroll = $('home-scroll');
 
 /* ================= router ================= */
-const PAGES = ['home', 'radar', 'mitra', 'you', 'settings'];
+const PAGES = ['home', 'crops', 'mitra', 'you', 'settings'];
 let currentPage = 'home';
 
 function go(page) {
@@ -85,7 +85,10 @@ function go(page) {
     $(`tab-${p}`)?.setAttribute('aria-current', p === page ? 'page' : 'false');
   }
   window.scrollTo({ top: 0 });
-  if (page === 'radar') showRadar();
+  // keep the URL in sync so manifest shortcuts (#mitra, #crops…) and back
+  // buttons behave; replaceState avoids polluting history on every tab tap
+  try { history.replaceState(null, '', `#${page}`); } catch { /* file:// etc. */ }
+  if (page === 'crops') showCrops();
   if (page === 'mitra') showMitra();
   if (page === 'you') renderYou();
   if (page === 'settings') renderSettings();
@@ -94,6 +97,10 @@ function go(page) {
 for (const p of PAGES) {
   $(`tab-${p}`)?.addEventListener('click', () => go(p));
 }
+window.addEventListener('hashchange', () => {
+  const page = location.hash.slice(1);
+  if (PAGES.includes(page) && page !== currentPage) go(page);
+});
 export function navigate(page) { go(page); }
 
 /* ================= header ================= */
@@ -127,7 +134,6 @@ function applyLocation(loc) {
   rememberPlace(loc);
   header.setLocation(loc);
   store.flags.set('welcomeDismissed', true);
-  updateRadarLocation(loc);
   loadWeather(true);
 }
 
@@ -155,9 +161,13 @@ wireSettingsPage($('settings-mount'), {
   onDataSaverChange: () => { /* takes effect on next loads */ },
 });
 
-wireMitraPage($('page-mitra'), { openSettings: () => go('settings') });
+wireMitraPage($('page-mitra'), {
+  openSettings: () => go('settings'),
+  go: (p) => go(p),
+  currentPage: () => currentPage,
+});
 
-wireRadarPage($('page-radar'), { getLocation: () => currentLocation });
+wireCropsPage($('page-crops'));
 
 /* ================= chat state bridge ================= */
 function publishChatState() {
@@ -292,6 +302,8 @@ function renderDashboard() {
       rerender: renderDashboard,
       pickLocation: applyLocation,
       openSearch: () => header.openSearch(),
+      openCompare: () => openCompare({ location: currentLocation, units: currentUnits }),
+      openJourney: () => openJourney({ location: currentLocation, units: currentUnits }),
     });
   } catch (err) {
     console.error('Render failed:', err);
@@ -356,11 +368,20 @@ if ('serviceWorker' in navigator && isSecureHost) {
   navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW registration failed:', err));
 }
 
+/* ================= install prompt (PWA) ================= */
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__mausamInstallEvt = e; // settings.js renders the Install button from this
+});
+window.addEventListener('appinstalled', () => { window.__mausamInstallEvt = null; });
+
 /* ================= boot ================= */
 async function boot() {
   store.flags.set('bootedOnce', true);
 
-  go('home');
+  // deep link: manifest shortcuts and shared links use #crops / #mitra etc.
+  const hashPage = location.hash.slice(1);
+  go(PAGES.includes(hashPage) ? hashPage : 'home');
   renderDashboard(); // instant paint (skeleton or cache)
   loadWeather(false, { silent: false });
 

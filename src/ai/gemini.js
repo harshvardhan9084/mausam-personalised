@@ -50,6 +50,10 @@ export async function geminiChat(opts) {
   };
   if (toolDecls.length) body.tools = [{ functionDeclarations: toolDecls }];
 
+  // Pristine copy for the once-only "no tools" fallback (see below).
+  const pristineContents = () => contents.map((m) => ({ role: m.role, parts: m.parts.map((p) => ({ text: p.text })) }));
+  let noToolsFallback = false;
+
   let toolRounds = 0;
   let usedTools = [];
 
@@ -70,6 +74,18 @@ export async function geminiChat(opts) {
           detail = j?.error?.message ?? '';
           msg = detail || msg;
         } catch { /* body not JSON */ }
+
+        // Safety net: if the API still complains about thought signatures
+        // (model/version drift), retry ONCE as plain text without tools
+        // instead of failing the user's chat.
+        if (res.status === 400 && /thought_signature/i.test(msg) && !noToolsFallback) {
+          noToolsFallback = true;
+          delete body.tools;
+          body.contents = pristineContents();
+          modelParts = [];
+          continue;
+        }
+
         const err = new Error(msg);
         err.aiKind = classifyHttp(res.status, msg);
         throw err;
@@ -108,15 +124,22 @@ export async function geminiChat(opts) {
           const cand = chunk?.candidates?.[0];
           const parts = cand?.content?.parts ?? [];
           for (const part of parts) {
-            sawAnything = true;
-            if (typeof part.text === 'string' && part.text) {
-              onText(part.text);
-              // keep in transcript
-              const last = modelParts[modelParts.length - 1];
-              if (last && last.text != null) last.text += part.text;
-              else modelParts.push({ text: part.text });
-            } else if (part.functionCall) {
-              modelParts.push({ functionCall: part.functionCall });
+            if (part.functionCall) {
+              sawAnything = true;
+              // Preserve thoughtSignature — Gemini 3 thinking models REQUIRE
+              // it when the functionCall is replayed in the next tool round.
+              modelParts.push(
+                part.thoughtSignature
+                  ? { functionCall: part.functionCall, thoughtSignature: part.thoughtSignature }
+                  : { functionCall: part.functionCall }
+              );
+            } else if (typeof part.text === 'string' && part.text) {
+              sawAnything = true;
+              const p = { text: part.text };
+              if (part.thought) p.thought = true;          // thinking summary
+              if (part.thoughtSignature) p.thoughtSignature = part.thoughtSignature;
+              modelParts.push(p);
+              if (!part.thought) onText(part.text);        // never show thinking to the user
             }
           }
         }
