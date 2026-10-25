@@ -4,6 +4,7 @@
 
 import { el } from '../utils/dom.js';
 import { temp, wind, hourLabel, dayLabel, dateLabel } from '../utils/format.js';
+import { t } from '../core/i18n.js';
 
 /** Hero block — the persona's headline card. */
 export function hero(labelText, bigNode, ...subNodes) {
@@ -152,7 +153,7 @@ export function nowRow(snapshot, units) {
       null,
       el('div.hero-now-temp', null, temp(n.temp, units, true)),
       el('div.hero-now-meta', null,
-        `${n.wx.label} · feels ${temp(n.feels, units, true)} · 💧 ${Math.round(n.humidity ?? 0)}% · 🌬 ${wind(n.wind, units)}`
+        `${n.wx.label} · ${t('feels_like')} ${temp(n.feels, units, true)} · 💧 ${Math.round(n.humidity ?? 0)}% · 🌬 ${wind(n.wind, units)}`
       )
     )
   );
@@ -160,7 +161,7 @@ export function nowRow(snapshot, units) {
 
 /** CPCB AQI pill. */
 export function aqiPill(aqiInfo) {
-  if (aqiInfo?.aqi == null) return el('span.aqi-pill', { style: { borderColor: 'var(--border)', color: 'var(--muted)' } }, 'AQI unavailable');
+  if (aqiInfo?.aqi == null) return el('span.aqi-pill', { style: { borderColor: 'var(--border)', color: 'var(--muted)' } }, t('aqi_unavail'));
   return el(
     'span.aqi-pill',
     { style: { borderColor: aqiInfo.color, color: aqiInfo.color, background: 'transparent' } },

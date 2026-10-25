@@ -9,6 +9,7 @@
 
 import { geocodeSearch, fetchWeatherBundle } from '../api/open-meteo.js';
 import { buildSnapshot } from '../core/engine.js';
+import { dayScore, fieldScore } from '../core/scoring.js';
 
 const hh = (iso) => {
   const h = Number(iso?.slice(11, 13));
@@ -78,6 +79,31 @@ export const TOOL_DECLARATIONS = [
         },
       },
       required: ['days'],
+    },
+  },
+  {
+    name: 'get_city_air',
+    description: 'Get CPCB-style air quality (AQI, PM2.5, PM10) for ANY city — use when the user asks about air pollution elsewhere.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        city: { type: 'STRING', description: 'City name, e.g. "Delhi", "Kanpur"' },
+      },
+      required: ['city'],
+    },
+  },
+  {
+    name: 'find_best_days',
+    description: 'Find the best days in the next 10 for an outdoor activity (event, travel, sport, spray, laundry…) at the CURRENT location — scored hourly.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        activity: {
+          type: 'STRING',
+          description: 'One of: event, travel, sport, spray, laundry, drive',
+        },
+        count: { type: 'NUMBER', description: 'How many best days to return (default 3)' },
+      },
     },
   },
 ];
@@ -176,6 +202,53 @@ export async function runTool(name, args = {}, state) {
               windMaxKmh: d.wind_max != null ? Math.round(d.wind_max) : null,
             } : null;
           }).filter(Boolean),
+        };
+      }
+      case 'get_city_air': {
+        const city = String(args.city ?? '').trim();
+        if (!city) return { error: 'No city name provided.' };
+        const snap = await fetchCitySnapshot(city, signal);
+        if (!snap) return { error: `Couldn't find a place called "${city}".` };
+        const aqi = snap?.currentAqi ?? null;
+        return {
+          place: snap.locationLabel,
+          asOf: localTimeOf(snap),
+          aqi: aqi?.aqi != null ? { cpcbAqi: aqi.aqi, category: aqi.category, dominant: aqi.dominant, advice: aqi.advice } : null,
+        };
+      }
+      case 'find_best_days': {
+        const s = state?.snapshot;
+        if (!s) return { error: 'Weather data is still loading.' };
+        const activity = String(args.activity ?? 'event').toLowerCase();
+        const count = Math.min(5, Math.max(1, Math.round(args.count ?? 3)));
+        const scored = s.days.map((d) => {
+          const base = {
+            date: d.date, day: d.label, cond: d.wx?.label,
+            maxC: d.temp_max != null ? Math.round(d.temp_max) : null,
+            minC: d.temp_min != null ? Math.round(d.temp_min) : null,
+            rainPop: Math.round(d.precip_prob_max ?? 0),
+            rainMm: d.precipitation_sum != null ? Math.round(d.precipitation_sum * 10) / 10 : null,
+            windMaxKmh: d.wind_max != null ? Math.round(d.wind_max) : null,
+          };
+          let score = dayScore(d);
+          if (activity === 'spray' || activity === 'laundry') {
+            // calm + dry bias: reuse fieldScore on a pseudo-hour
+            score = fieldScore({
+              precipitation_probability: d.precip_prob_max,
+              precipitation: d.precipitation_sum,
+              feels: (d.temp_max + d.temp_min) / 2,
+            });
+            if (activity === 'laundry' && d.wind_max != null) score += Math.min(10, d.wind_max / 2); // breeze helps drying
+            score = Math.max(0, Math.min(100, Math.round(score)));
+          }
+          return { ...base, score };
+        }).sort((a, b) => b.score - a.score);
+        return {
+          place: state.location?.name,
+          asOf: localTimeOf(s),
+          activity,
+          bestDays: scored.slice(0, count),
+          worstDay: scored[scored.length - 1] ?? null,
         };
       }
       default:

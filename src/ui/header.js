@@ -1,17 +1,19 @@
 /**
- * header.js — app header: brand, location switcher (search + GPS),
- * offline pill, data-source pill, For You button, settings, refresh.
+ * header.js — slim app header (v0.5): brand, location switcher
+ * (search + GPS), offline pill, data-source pill, refresh.
+ * You / Mitra / Settings live in the bottom navigation now.
  */
 
 import { el, clear } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
+import { t } from '../core/i18n.js';
 
 const GEO_TIMEOUT_MS = 10000;
 
 /**
  * @param {Object} refs DOM refs from index.html
- * @param {Object} handlers { onLocationPick, onRefresh, onOpenYou, onOpenSettings }
+ * @param {Object} handlers { onLocationPick, onRefresh }
  */
 export function wireHeader(refs, handlers) {
   const {
@@ -25,7 +27,7 @@ export function wireHeader(refs, handlers) {
 
   /* ---------- location label ---------- */
   function setLocation(loc) {
-    cityLabel.textContent = loc?.name ?? 'Set location';
+    cityLabel.textContent = loc?.name ?? t('set_location');
     cityBtn.title = loc ? [loc.admin1, loc.country].filter(Boolean).join(', ') : '';
   }
 
@@ -57,15 +59,12 @@ export function wireHeader(refs, handlers) {
     }
   }
 
-  /* ---------- header buttons ---------- */
-  refs.youBtn.addEventListener('click', () => handlers.onOpenYou?.());
-  refs.settingsBtn.addEventListener('click', () => handlers.onOpenSettings?.());
-
   /* ---------- location search modal ---------- */
   const openSearch = () => {
     searchOverlay.classList.add('active');
     clear(searchResults);
     searchInput.value = '';
+    searchInput.placeholder = t('search_ph');
     searchInput.focus();
   };
   const closeSearch = () => {
@@ -82,41 +81,44 @@ export function wireHeader(refs, handlers) {
     if (e.key === 'Escape' && searchOverlay.classList.contains('active')) closeSearch();
   });
 
-  /* use-my-location: GPS → Nominatim reverse geocode */
+  /* use-my-location: GPS → reverse geocode (BigDataCloud → Nominatim) */
   useLocBtn.addEventListener('click', () => {
     if (!('geolocation' in navigator)) {
-      clear(searchResults).appendChild(el('div.search-empty', null, 'Geolocation not available in this browser.'));
+      clear(searchResults).appendChild(el('div.search-empty', null, t('geo_na')));
       return;
     }
-    clear(searchResults).appendChild(el('div.search-empty', null, '📡 Requesting your location…'));
+    clear(searchResults).appendChild(el('div.search-empty', null, t('geo_req')));
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+        let name = 'My location';
+        let admin1 = '';
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10`, {
-            headers: { Accept: 'application/json' },
+          // BigDataCloud client endpoint: keyless, CORS-open, village-level detail
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`, {
             signal: AbortSignal.timeout(8000),
           });
           const j = await res.json();
-          const addr = j?.address ?? {};
-          const name = addr.city || addr.town || addr.village || addr.county || addr.state_district || j?.name || 'My location';
-          closeSearch();
-          handlers.onLocationPick?.({
-            name,
-            admin1: addr.state,
-            country: addr.country,
-            lat: latitude,
-            lon: longitude,
-            isGeo: true,
-          });
+          name = j.city || j.locality || j.principalSubdivision || name;
+          admin1 = j.principalSubdivision || '';
         } catch {
-          closeSearch();
-          handlers.onLocationPick?.({ name: 'My location', admin1: '', country: '', lat: latitude, lon: longitude, isGeo: true });
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10`, {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(8000),
+            });
+            const j = await res.json();
+            const addr = j?.address ?? {};
+            name = addr.city || addr.town || addr.village || addr.county || addr.state_district || j?.name || name;
+            admin1 = addr.state || '';
+          } catch { /* keep default name */ }
         }
+        closeSearch();
+        handlers.onLocationPick?.({ name, admin1, country: '', lat: latitude, lon: longitude, isGeo: true });
       },
       (err) => {
         clear(searchResults).appendChild(el('div.search-empty', null,
-          err.code === 1 ? 'Permission denied — you can search for your city instead.' : 'Could not get your location — try searching.'));
+          err.code === 1 ? t('loc_denied') : t('loc_fail')));
       },
       { timeout: GEO_TIMEOUT_MS, maximumAge: 300000 }
     );
@@ -133,13 +135,13 @@ export function wireHeader(refs, handlers) {
     abortSearch = () => controller.abort();
 
     if (q.trim().length < 2) { clear(searchResults); return; }
-    clear(searchResults).appendChild(el('div.search-empty', null, 'Searching…'));
+    clear(searchResults).appendChild(el('div.search-empty', null, t('searching')));
     try {
       const results = await geocodeSearch(q, controller.signal);
       if (seq !== searchSeq) return; // stale
       clear(searchResults);
       if (!results.length) {
-        searchResults.appendChild(el('div.search-empty', null, `No places found for “${q}”`));
+        searchResults.appendChild(el('div.search-empty', null, t('no_results')));
         return;
       }
       for (const r of results) {
@@ -155,13 +157,13 @@ export function wireHeader(refs, handlers) {
             },
           },
             el('span.result-name', null, r.name),
-            el('span.result-sub', null, [r.admin1, r.country].filter(Boolean).join(', '))
-          )
+            el('span.result-sub', null, [r.admin1, r.country].filter(Boolean).join(', ')),
+          ),
         );
       }
     } catch (err) {
       if (err.name !== 'AbortError' && seq === searchSeq) {
-        clear(searchResults).appendChild(el('div.search-empty', null, 'Search failed — check connection'));
+        clear(searchResults).appendChild(el('div.search-empty', null, t('search_fail')));
       }
     }
   }

@@ -8,6 +8,8 @@
  */
 
 import { CONTRACT_VERSION } from './contract.js';
+import { profileForAI } from '../core/profile.js';
+import { store } from '../core/storage.js';
 
 const round = (v, d = 0) => (v == null || !Number.isFinite(v) ? null : Number(v.toFixed(d)));
 const hhmm = (iso) => (iso ? iso.slice(11, 16) : null);
@@ -50,6 +52,18 @@ export function compactSnapshot(state) {
       visibilityKm: s.now.visibility != null ? Math.round(s.now.visibility / 100) / 10 : null,
       cloudPct: round(s.now.cloud),
     },
+    soilNow: s.hours[0]?.soil_moisture_0_to_1cm != null
+      ? {
+          moistureTopM3m3: round(s.hours[0].soil_moisture_0_to_1cm, 2),
+          moistureRootM3m3: round(s.hours[0].soil_moisture_3_to_9cm, 2),
+          soilTempC: round(s.hours[0].soil_temperature_0_to_7cm, 1),
+          et0MmPerHour: round(s.hours[0].et0_fao_evapotranspiration, 2),
+        }
+      : null,
+    airNow: s.hours[0]?.air && (s.hours[0].air.dust != null || s.hours[0].air.aerosol_optical_depth != null)
+      ? { dustUgm3: round(s.hours[0].air.dust, 1), aerosolOpticalDepth: round(s.hours[0].air.aerosol_optical_depth, 2) }
+      : null,
+    extras: state.extras ?? null,
     aqi: s.currentAqi?.aqi != null
       ? { cpcbAqi: s.currentAqi.aqi, category: s.currentAqi.category, dominant: s.currentAqi.dominant }
       : null,
@@ -84,17 +98,28 @@ export function compactSnapshot(state) {
   };
 }
 
-/** Personalisation block — additive context only. */
-function personalBlock(you) {
-  if (!you) return '';
-  const bits = [];
-  if (you.name) bits.push(`Name: ${you.name}`);
-  if (you.commute?.am) bits.push(`Morning commute: ~${you.commute.am}`);
-  if (you.commute?.pm) bits.push(`Evening commute: ~${you.commute.pm}`);
-  if (Array.isArray(you.activities) && you.activities.length) bits.push(`Interests: ${you.activities.join(', ')}`);
-  const sens = Object.entries(you.sensitive ?? {}).filter(([, v]) => v).map(([k]) => k);
-  if (sens.length) bits.push(`Sensitive to: ${sens.join(', ')} — add one considerate, concrete tip when relevant`);
-  return `\n\n## User context (personalisation — ADDITIVE, optional to use)\n${bits.join('\n')}`;
+/** Personalisation block — the full volatile profile, additive only. */
+function personalBlock(profile) {
+  const lines = profileForAI(profile, store.aiLang.get() ?? 'auto');
+  if (!lines) return '';
+  return `\n\n## User context (personalisation — ADDITIVE, optional to use)\n${lines}`;
+}
+
+/**
+ * Language block — how Mitra picks the reply language.
+ * 'auto' mirrors the user's message; explicit settings override.
+ */
+function languageBlock(explicit) {
+  if (explicit === 'hi') {
+    return '\n\n## LANGUAGE\nReply in **हिंदी (Devanagari)**. Keep numbers and unit symbols in Latin script (29°C, km/h). Everyday words, no heavy Sanskritised Hindi.';
+  }
+  if (explicit === 'hinglish') {
+    return '\n\n## LANGUAGE\nReply in **natural Hinglish** — Roman-script Hindi mixed with English words, exactly the way Indian friends text each other ("Baarish ho sakti hai shaam ko, umbrella le lo").';
+  }
+  if (explicit === 'en') {
+    return '\n\n## LANGUAGE\nReply in English.';
+  }
+  return '\n\n## LANGUAGE\nReply in the SAME language the user writes in — English, Hindi (Devanagari) or Hinglish. If they type Roman-script Hindi, answer in Hinglish.';
 }
 
 /**
@@ -143,6 +168,7 @@ export function buildSystemPrompt(state) {
   const unitLine = state.units === 'imperial'
     ? 'The user prefers imperial units — convert °C→°F and km/h→mph in ALL text you write.'
     : 'The user prefers metric units (°C, km/h).';
+  const aiLang = store.aiLang.get() ?? 'auto';
 
   return `You are **Mausam Mitra**, the weather assistant inside the Mausam app — warm, sharp, a little playful, and completely honest about data. You talk like a knowledgeable Indian friend: short sentences, everyday words, Hinglish welcome if the user uses it.
 
@@ -191,12 +217,13 @@ Presentation guidance:
 - Air quality → \`aqi-card\` + one practical line
 - Another city → \`now-card\` for that city, or \`compare-table\` if comparing
 - Warnings (storm, heat, AQI severe) → \`alert\`
+- Farming questions → use the soilNow + next10days blocks: moisture bands (0.0–0.15 dry → irrigate, 0.15–0.35 good, >0.35 wet), spray when wind < 15 km/h and rain < 30%
 - End answers that invite follow-up with \`chips\` (max 3 short options)
 
 ## DATA (live snapshot — ground truth)
 ${snap ? JSON.stringify(snap) : '(weather data still loading — tell the user to try again in a moment; do NOT guess numbers)'}
 
-${timeBlock(state)}${personalBlock(state.you)}
+${timeBlock(state)}${personalBlock(state.profile)}${languageBlock(aiLang)}
 
 ## Opening style
 First message in a conversation: greet briefly (mention name only if provided), one line, no cards. Answer-first, always: verdict, then detail, then (only if useful) a card.`;

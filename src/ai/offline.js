@@ -563,15 +563,18 @@ export async function offlineChat(opts) {
   }
 
   if (!built) {
+    // v1-shape shim so buildGreet/buildCommute keep working with the v2 profile
+    const p = state.profile ?? state.you ?? null;
+    const youShim = p ? { name: p.name, commute: { am: p.schedule?.leaveAm ?? p.commute?.am, pm: p.schedule?.backPm ?? p.commute?.pm } } : null;
     switch (intent.id) {
-      case 'greet': built = buildGreet(state, state.you); break;
+      case 'greet': built = buildGreet(state, youShim); break;
       case 'help': built = buildHelp(); break;
       case 'thanks': built = buildThanks(state); break;
       case 'rain': built = buildRain(state); break;
       case 'temp': built = buildTemp(state); break;
       case 'wear': built = buildWear(state); break;
       case 'plan': built = buildPlan(state, q); break;
-      case 'commute': built = buildCommute(state, state.you); break;
+      case 'commute': built = buildCommute(state, youShim); break;
       case 'aqi': built = buildAqi(state); break;
       case 'sun': built = buildSun(state); break;
       case 'hours': built = buildHours(state); break;

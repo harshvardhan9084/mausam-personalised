@@ -1,120 +1,154 @@
 /**
- * you.js — "Make Mausam yours": the optional 30-second personalisation.
+ * you.js — "Make Mausam yours" — the volatile profile page (v2).
  *
- * NOT onboarding. The app never forces this, never blocks on it, and the
- * dashboard is 100% complete without it. Filling it simply adds the
- * "For You" rail (commute verdicts, activity windows, sensitivity tips)
- * on top of everything everyone sees. One screen, saved locally, fully
- * resettable.
+ * Full tab page (not a modal). Everything is optional, everything is
+ * editable any time, saving is instant and the app re-shapes itself.
+ * Starter packs pre-fill chips — starting points, never identities.
  */
 
 import { el, clear } from '../utils/dom.js';
 import { store } from '../core/storage.js';
+import { t } from '../core/i18n.js';
+import {
+  INTERESTS, SENSITIVITIES, PACKS,
+  emptyProfile, getProfile, saveProfile, clearProfile,
+} from '../core/profile.js';
 
-const ACTIVITIES = [
-  ['commute', '🚗 Commute'],
-  ['run', '🏃 Running'],
-  ['walk', '🚶 Walking'],
-  ['cycling', '🚴 Cycling'],
-  ['outdoor', '🧺 Outdoor plans'],
-  ['cricket', '🏏 Field sports'],
-  ['photography', '📷 Photography'],
-  ['laundry', '👕 Laundry'],
-];
-
-const SENSITIVITIES = [
-  ['heat', '🥵 Heat bothers me'],
-  ['cold', '🧣 Cold bothers me'],
-  ['rain', '☔ Rain ruins my plans'],
-  ['air', '😷 Air quality matters'],
-];
-
-const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
-
-let refs = null;
+let mount = null;
 let hooks = null;
 let draft = null;
+let built = false;
 
-export function wireYou(domRefs, hooksIn) {
-  refs = domRefs;
+export function wireYouPage(mountEl, hooksIn) {
+  mount = mountEl;
   hooks = hooksIn;
-  refs.closeBtn.addEventListener('click', close);
-  refs.overlay.addEventListener('click', (e) => { if (e.target === overlaySafe()) close(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && refs.overlay.classList.contains('active')) close();
-  });
-  refs.saveBtn.addEventListener('click', save);
-  refs.resetBtn.addEventListener('click', reset);
-  ensureDraft();
+}
+
+/** Re-render the page (called when the tab opens or profile changed). */
+export function renderYou() {
+  if (!mount) return;
+  draft = JSON.parse(JSON.stringify(getProfile() ?? emptyProfile()));
   build();
+  built = true;
 }
 
-function overlaySafe() { return refs.overlay; }
-
-function ensureDraft() {
-  if (draft) return;
-  draft = JSON.parse(JSON.stringify(store.you.get() ?? {
-    name: '',
-    activities: ['commute'],
-    commute: { am: '08:00', pm: '18:00' },
-    sensitive: { heat: false, cold: false, rain: false, air: false },
-  }));
-}
-
-export function openYou() {
-  draft = null;
-  ensureDraft();
-  build();
-  refs.overlay.classList.add('active');
-}
-
-export function close() {
-  refs.overlay.classList.remove('active');
-}
+export function isYouBuilt() { return built; }
 
 function build() {
-  clear(refs.body);
+  clear(mount);
 
-  /* name */
-  refs.body.appendChild(el('div.you-block',
-    el('div.you-label', null, 'What should I call you? (optional)'),
+  /* ---------- intro ---------- */
+  mount.appendChild(el('div.you-intro',
+    el('div.you-hello', null, draft.name ? `🙏 ${t('nav_you')} · ${draft.name}` : `🙏 ${t('you_title')}`),
+    el('div.you-intro-text', null, t('you_intro')),
+  ));
+
+  /* ---------- starter packs ---------- */
+  mount.appendChild(blockTitle(t('you_starters')));
+  mount.appendChild(el('div.pack-grid',
+    PACKS.map((p) => el('button.pack-chip', {
+      type: 'button',
+      onclick: () => { applyPack(p); },
+    }, t(p.label))),
+    el('button.pack-chip.pack-fresh', { type: 'button', onclick: () => { draft = emptyProfile(); build(); } }, t('pack_fresh')),
+  ));
+
+  /* ---------- name ---------- */
+  mount.appendChild(field(t('you_name'),
     el('input.set-input', {
-      type: 'text', placeholder: 'Your name', maxlength: '24', autocomplete: 'off',
-      value: draft.name ?? '',
+      type: 'text', placeholder: t('you_name').replace('?', ''), maxlength: '24',
+      autocomplete: 'off', value: draft.name ?? '',
       oninput: (e) => { draft.name = e.target.value.trim(); },
     })
   ));
 
-  /* commute */
-  refs.body.appendChild(el('div.you-block',
-    el('div.you-label', null, 'Commute times (for traffic-weather verdicts)'),
-    el('div.you-times',
-      el('label.you-time', null, 'Morning ', selectTime('am', draft.commute?.am ?? '08:00')),
-      el('label.you-time', null, 'Evening ', selectTime('pm', draft.commute?.pm ?? '18:00')),
+  /* ---------- gender + age ---------- */
+  const genderSel = el('select.set-select', { onchange: (e) => { draft.gender = e.target.value; } },
+    ['', 'female', 'male', 'other'].map((v) =>
+      el('option', { value: v, selected: (draft.gender ?? '') === v }, v ? t(`gender_${v}`) : '—')),
+  );
+  const ageSel = el('select.set-select', { onchange: (e) => { draft.age = e.target.value; } },
+    ['', 'teen', 'young', 'adult', 'senior'].map((v) =>
+      el('option', { value: v, selected: (draft.age ?? '') === v }, v ? t(`age_${v}`) : '—')),
+  );
+  mount.appendChild(el('div.you-2col',
+    field(t('you_gender'), genderSel),
+    field(t('you_age'), ageSel),
+  ));
+
+  /* ---------- schedule ---------- */
+  mount.appendChild(blockTitle(t('you_schedule')));
+  const schedOn = el('button.chip.you-chip', {
+    type: 'button', class: draft.scheduleOn ? 'on' : '',
+    onclick: (e) => {
+      draft.scheduleOn = !draft.scheduleOn;
+      e.currentTarget.classList.toggle('on');
+      e.currentTarget.closest('.you-block').querySelector('.you-times').style.display = draft.scheduleOn ? '' : 'none';
+    },
+  }, '⏰ ' + t('on') + ' / ' + t('off'));
+  mount.appendChild(el('div.you-block', schedOn,
+    el('div.you-times', { style: { display: draft.scheduleOn ? '' : 'none' } },
+      timeField(t('you_wake'), 'wake'),
+      timeField(t('you_leave'), 'leaveAm'),
+      timeField(t('you_back'), 'backPm'),
+      timeField(t('you_sleep'), 'sleep'),
     )
   ));
 
-  /* activities */
-  refs.body.appendChild(el('div.you-block',
-    el('div.you-label', null, 'I care about'),
-    el('div.chip-grid', ACTIVITIES.map(([id, label]) =>
+  /* ---------- interests ---------- */
+  mount.appendChild(blockTitle(t('you_interests')));
+  mount.appendChild(el('div.chip-grid',
+    INTERESTS.map(([id, labelKey]) =>
       el('button.chip.you-chip', {
         type: 'button',
-        class: (draft.activities ?? []).includes(id) ? 'on' : '',
-        onclick: (e) => {
-          const list = new Set(draft.activities ?? []);
-          list.has(id) ? list.delete(id) : list.add(id);
-          draft.activities = [...list];
-          e.currentTarget.classList.toggle('on');
-        },
-      }, label)
-    ))
+        class: draft.interests.includes(id) ? 'on' : '',
+        onclick: (e) => toggleInterest(id, e.currentTarget),
+      }, t(labelKey))),
+    el('button.chip.you-chip.you-add', {
+      type: 'button',
+      onclick: (e) => {
+        const grid = e.currentTarget.parentElement;
+        grid.querySelector('.you-own-row')?.remove();
+        const row = el('div.you-own-row',
+          el('input.set-input', {
+            type: 'text', placeholder: t('you_own_ph'), maxlength: '40',
+            autocomplete: 'off',
+            onkeydown: (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } },
+          }),
+          el('button.btn.btn-sm.btn-primary', { type: 'button', 'aria-label': 'Add', title: 'Add', onclick: () => commit() }, '✓'),
+        );
+        grid.appendChild(row);
+        row.querySelector('input').focus();
+        function commit() {
+          const inp = row.querySelector('input');
+          const val = inp.value.trim();
+          if (!val) return;
+          draft.customTags = [...new Set([...(draft.customTags ?? []), val])];
+          inp.value = '';
+          buildTags();
+        }
+      },
+    }, t('you_add_own')),
   ));
+  const tagsMount = el('div.custom-tags');
+  mount.appendChild(tagsMount);
+  function buildTags() {
+    clear(tagsMount);
+    if (!draft.customTags.length) return;
+    tagsMount.appendChild(el('div.chip-grid',
+      draft.customTags.map((tag, i) =>
+        el('button.chip.you-chip.on.tag-chip', {
+          type: 'button', title: t('place_removed'),
+          onclick: () => { draft.customTags.splice(i, 1); buildTags(); },
+        }, `${tag} ✕`)),
+    ));
+  }
+  buildTags();
 
-  /* sensitivities */
-  refs.body.appendChild(el('div.you-block',
-    el('div.you-label', null, 'Flag anything that hits you harder'),
-    el('div.chip-grid', SENSITIVITIES.map(([id, label]) =>
+  /* ---------- sensitivities ---------- */
+  mount.appendChild(blockTitle(t('you_sens')));
+  mount.appendChild(el('div.chip-grid',
+    SENSITIVITIES.map(([id, labelKey]) =>
       el('button.chip.you-chip', {
         type: 'button',
         class: draft.sensitive?.[id] ? 'on' : '',
@@ -123,29 +157,91 @@ function build() {
           draft.sensitive[id] = !draft.sensitive[id];
           e.currentTarget.classList.toggle('on');
         },
-      }, label)
-    ))
+      }, t(labelKey))),
   ));
 
-  refs.body.appendChild(el('div.you-note', null,
-    'No account, no cloud — this lives in your browser only and only ever ADDS tips on top of the full dashboard.'));
+  /* ---------- tone ---------- */
+  mount.appendChild(blockTitle(t('you_tone')));
+  mount.appendChild(el('div.seg-group.set-seg',
+    ['simple', 'detailed', 'fun'].map((tone) =>
+      el('button.seg-btn', {
+        type: 'button', class: draft.tone === tone ? 'active' : '',
+        onclick: (e) => {
+          draft.tone = tone;
+          e.currentTarget.parentElement.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+        },
+      }, t(`you_tone_${tone}`))),
+  ));
+
+  /* ---------- notes ---------- */
+  mount.appendChild(field(t('you_notes'),
+    el('textarea.set-input.you-notes', {
+      rows: '3', maxlength: '400', placeholder: t('you_notes_ph'),
+      oninput: (e) => { draft.notes = e.target.value; },
+    }, draft.notes ?? '')
+  ));
+
+  /* ---------- actions ---------- */
+  mount.appendChild(el('div.sheet-actions.you-actions',
+    el('button.btn.btn-primary.btn-lg', { type: 'button', onclick: save }, t('you_save')),
+    el('button.btn.btn-lg', { type: 'button', onclick: () => { clearProfile(); draft = emptyProfile(); build(); hooks?.onSaved?.(); } }, t('you_reset')),
+  ));
+  if (draft.savedAt) {
+    mount.appendChild(el('div.you-saved-at', null,
+      `${t('saved_since')}: ${new Date(draft.savedAt).toLocaleString()}`));
+  }
+  mount.appendChild(el('div.you-privacy', null, '🔒 ' + t('you_intro')));
+
+  function timeField(label, key) {
+    return el('label.you-time', null, label + ' ',
+      el('select.you-select', {
+        onchange: (e) => { draft.schedule = draft.schedule ?? {}; draft.schedule[key] = e.target.value; },
+      },
+        HOURS.map((h) => el('option', { value: h, selected: h === (draft.schedule?.[key] ?? '07:00') }, h))));
+  }
 }
 
-function selectTime(key, value) {
-  return el('select.you-select', {
-    onchange: (e) => { draft.commute = draft.commute ?? {}; draft.commute[key] = e.target.value; },
-  }, HOURS.map((h) => el('option', { value: h, selected: h === value }, h)));
+const HOURS = Array.from({ length: 24 * 2 }, (_, i) => {
+  const h = Math.floor(i / 2), m = i % 2 === 0 ? '00' : '30';
+  return `${String(h).padStart(2, '0')}:${m}`;
+});
+
+function blockTitle(text) {
+  return el('div.you-block-title', null, text);
+}
+function field(label, control) {
+  return el('div.you-block', el('div.you-label', null, label), control);
+}
+
+function toggleInterest(id, btn) {
+  const list = new Set(draft.interests ?? []);
+  list.has(id) ? list.delete(id) : list.add(id);
+  draft.interests = [...list];
+  btn.classList.toggle('on');
+}
+
+function applyPack(pack) {
+  draft.interests = [...pack.interests];
+  draft.customTags = draft.customTags ?? [];
+  draft.sensitive = { heat: false, cold: false, rain: false, air: false, dust: false, humidity: false };
+  for (const s of pack.sens ?? []) draft.sensitive[s] = true;
+  if (pack.schedule) { draft.schedule = { ...draft.schedule, ...pack.schedule }; draft.scheduleOn = true; }
+  build();
 }
 
 function save() {
-  draft.savedAt = Date.now();
-  store.you.set(draft);
-  close();
+  saveProfile(draft);
   hooks?.onSaved?.();
+  toast(t('you_stored'));
 }
 
-function reset() {
-  store.you.clear();
-  close();
-  hooks?.onSaved?.();
+function toast(msg) {
+  const tEl = el('div.mausam-toast', { role: 'status' }, msg);
+  document.body.appendChild(tEl);
+  requestAnimationFrame(() => tEl.classList.add('show'));
+  setTimeout(() => {
+    tEl.classList.remove('show');
+    setTimeout(() => tEl.remove(), 350);
+  }, 2400);
 }

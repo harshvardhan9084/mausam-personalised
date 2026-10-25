@@ -50,13 +50,17 @@
   --shadow-pop: 0 10px 32px rgba(20, 30, 60, 0.18);
 }
 
-/* Persona accent colors — set via body[data-persona] */
+/* Accent colors — user-picked in Settings, applied via body[data-accent] */
 body                { --accent: var(--blue); --accent-dim: color-mix(in srgb, var(--blue) 16%, transparent); }
-body[data-persona='fitness']     { --accent: var(--green);  --accent-dim: color-mix(in srgb, var(--green) 15%, transparent); }
-body[data-persona='commuter']    { --accent: var(--orange); --accent-dim: color-mix(in srgb, var(--orange) 15%, transparent); }
-body[data-persona='agriculture'] { --accent: #8bc34a;       --accent-dim: color-mix(in srgb, #8bc34a 15%, transparent); }
-body[data-persona='traveler']    { --accent: #9b59f7;       --accent-dim: color-mix(in srgb, #9b59f7 15%, transparent); }
-body[data-persona='event']       { --accent: var(--yellow); --accent-dim: color-mix(in srgb, var(--yellow) 15%, transparent); }
+body[data-accent='green']   { --accent: var(--green);  --accent-dim: color-mix(in srgb, var(--green) 15%, transparent); }
+body[data-accent='orange']  { --accent: var(--orange); --accent-dim: color-mix(in srgb, var(--orange) 15%, transparent); }
+body[data-accent='red']     { --accent: var(--red);    --accent-dim: color-mix(in srgb, var(--red) 15%, transparent); }
+body[data-accent='yellow']  { --accent: var(--yellow); --accent-dim: color-mix(in srgb, var(--yellow) 18%, transparent); }
+body[data-accent='blue']    { --accent: var(--blue);   --accent-dim: color-mix(in srgb, var(--blue) 16%, transparent); }
+body[data-accent='pink']    { --accent: #e0679a;       --accent-dim: color-mix(in srgb, #e0679a 15%, transparent); }
+body[data-accent='purple']  { --accent: #9b59f7;       --accent-dim: color-mix(in srgb, #9b59f7 15%, transparent); }
+body[data-accent='teal']    { --accent: #2fb8a8;       --accent-dim: color-mix(in srgb, #2fb8a8 15%, transparent); }
 
-[data-theme='light'] body[data-persona='agriculture'] { --accent: #5f8f1f; }
-[data-theme='light'] body[data-persona='traveler']    { --accent: #7d3fd8; }
+[data-theme='light'] body[data-accent='pink']    { --accent: #c2407a; }
+[data-theme='light'] body[data-accent='purple']  { --accent: #7d3fd8; }
+[data-theme='light'] body[data-accent='teal']    { --accent: #1d8a7d; }

@@ -97,13 +97,88 @@ export const store = {
     set: (cfg) => set('ai', { ...get('ai', {}), ...cfg }),
   },
   you: {
-    // lightweight personalisation — additive only, never blocks anything
-    get: () => get('you', null), // {name, activities[], commute:{am,pm}, sensitive:{heat,cold,rain,air}, savedAt}
+    // v1 personalisation (kept for migration; prefer store.profile)
+    get: () => get('you', null),
     set: (p) => set('you', p),
     clear: () => remove('you'),
+  },
+  profile: {
+    // v2 profile — deep, volatile, user-shaped (see core/profile.js)
+    get: () => get('profile', null),
+    set: (p) => set('profile', p),
+    clear: () => remove('profile'),
+  },
+  lang: {
+    // UI language: 'en' | 'hi'
+    get: () => get('lang', 'en'),
+    set: (l) => set('lang', l),
+  },
+  aiLang: {
+    // Mitra's reply language: 'auto' | 'en' | 'hi' | 'hinglish'
+    get: () => get('aiLang', 'auto'),
+    set: (l) => set('aiLang', l),
+  },
+  clock: {
+    // '12' | '24'
+    get: () => get('clock', '12'),
+    set: (c) => set('clock', c),
+  },
+  accent: {
+    // accent color id, see tokens.css [data-accent]
+    get: () => get('accent', ''),
+    set: (a) => set('accent', a),
+  },
+  dataSaver: {
+    // tier-2 friendly: fewer background calls, radar lazy & paused
+    get: () => get('dataSaver', false),
+    set: (v) => set('dataSaver', Boolean(v)),
+  },
+  notif: {
+    // { on: bool } — in-app alerts while Mausam is open
+    get: () => get('notif', { on: false }),
+    set: (v) => set('notif', v),
+  },
+  optionalCache: {
+    // small cache for optional API bundles (flood/marine/archive)
+    get: (key) => get(`opt:${key}`, null),
+    set: (key, val, ttlMin = 60) => set(`opt:${key}`, { at: Date.now(), ttl: ttlMin * 60000, val }),
+    fresh: (key) => {
+      const hit = get(`opt:${key}`, null);
+      return hit && Date.now() - hit.at < hit.ttl ? hit.val : null;
+    },
   },
   flags: {
     get: (name, fallback = null) => get(`flag:${name}`, fallback),
     set: (name, value) => set(`flag:${name}`, value),
+  },
+  exportAll: () => {
+    const out = {};
+    try {
+      for (let i = 0; i < (hasLS ? window.localStorage.length : 0); i++) {
+        const k = window.localStorage.key(i);
+        if (k?.startsWith(PREFIX)) out[k.slice(PREFIX.length)] = get(k.slice(PREFIX.length));
+      }
+    } catch { /* best effort */ }
+    return { app: 'mausam', version: '0.5', exportedAt: new Date().toISOString(), data: out };
+  },
+  importAll: (dump) => {
+    if (!dump || dump.app !== 'mausam' || typeof dump.data !== 'object') return false;
+    try {
+      for (const [k, v] of Object.entries(dump.data)) set(k, v);
+      return true;
+    } catch { return false; }
+  },
+  wipeAll: () => {
+    try {
+      if (hasLS) {
+        const keys = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i);
+          if (k?.startsWith(PREFIX)) keys.push(k);
+        }
+        keys.forEach((k) => window.localStorage.removeItem(k));
+      }
+      memory.clear();
+    } catch { /* ignore */ }
   },
 };

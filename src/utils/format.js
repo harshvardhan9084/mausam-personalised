@@ -4,6 +4,11 @@
  * so the raw bundle stays unit-neutral.
  */
 
+import { getLang, t } from '../core/i18n.js';
+
+/** Locale for date formatting, honouring the UI language. */
+const locale = () => (getLang() === 'hi' ? 'hi-IN' : undefined);
+
 export function cToF(c) {
   return c * 9 / 5 + 32;
 }
@@ -55,18 +60,18 @@ export function hourLabel(iso, style = 'h12') {
   return style === 'h12' ? p.h12 : p.h24;
 }
 
-/** Day label from a date ISO — "Today", "Tomorrow", "Sat". */
+/** Day label from a date ISO — "Today", "Tomorrow", "Sat" (locale-aware). */
 export function dayLabel(dateISO, index) {
-  if (index === 0) return 'Today';
-  if (index === 1) return 'Tomorrow';
+  if (index === 0) return t('today');
+  if (index === 1) return t('tomorrow');
   const d = new Date(`${dateISO}T12:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short' });
+  return d.toLocaleDateString(locale(), { weekday: 'short' });
 }
 
-/** Date label — "24 Oct". */
+/** Date label — "24 Oct" (locale-aware). */
 export function dateLabel(dateISO) {
   const d = new Date(`${dateISO}T12:00:00`);
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 /** "2 hours ago" style relative label. */

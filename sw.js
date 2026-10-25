@@ -8,13 +8,18 @@
    the provider probe must reflect the real server.
 ================================================================ */
 
-const VERSION = 'v4.0.0';
+const VERSION = 'v0.5.0';
 const SHELL_CACHE = `mausam-shell-${VERSION}`;
 const DATA_CACHE = `mausam-data-${VERSION}`;
 const API_HOSTS = [
   'api.open-meteo.com',
   'air-quality-api.open-meteo.com',
   'geocoding-api.open-meteo.com',
+  'flood-api.open-meteo.com',
+  'marine-api.open-meteo.com',
+  'archive-api.open-meteo.com',
+  'api.rainviewer.com',
+  'api.bigdatacloud.net',
   'nominatim.openstreetmap.org',
   'generativelanguage.googleapis.com', // Gemini: network-only, no caching of auth'd calls
 ];
@@ -38,12 +43,16 @@ const SHELL_ASSETS = [
   './src/styles/chat.css',
   './src/styles/rich.css',
   './src/styles/sheets.css',
+  './src/styles/app.css',
   './src/api/open-meteo.js',
+  './src/api/extras.js',
   './src/api/imd.js',
   './src/api/wmo.js',
   './src/core/aqi-cpcb.js',
   './src/core/engine.js',
+  './src/core/i18n.js',
   './src/core/insights.js',
+  './src/core/profile.js',
   './src/core/scoring.js',
   './src/core/storage.js',
   './src/ui/header.js',
@@ -52,6 +61,8 @@ const SHELL_ASSETS = [
   './src/ui/places.js',
   './src/ui/settings.js',
   './src/ui/you.js',
+  './src/ui/mitra.js',
+  './src/ui/radar.js',
   './src/ai/contract.js',
   './src/ai/render.js',
   './src/ai/prompt.js',
@@ -60,7 +71,6 @@ const SHELL_ASSETS = [
   './src/ai/zai.js',
   './src/ai/offline.js',
   './src/ai/client.js',
-  './src/chat/ui.js',
   './src/utils/dom.js',
   './src/utils/format.js',
 ];

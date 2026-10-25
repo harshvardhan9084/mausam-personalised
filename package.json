@@ -1,7 +1,7 @@
 {
   "name": "mausam-personalised",
-  "version": "4.0.0",
-  "description": "Generous real-time weather for India — hourly, 7-day, CPCB air quality, insights — plus Mausam Mitra: an AI assistant with a rich component contract (MausamUI) that answers with live charts and cards. Runs on Z.ai (preview), Gemini (your key) or the on-device Mausam Core engine. Optional 30-second personalisation. Zero build.",
+  "version": "0.5.0",
+  "description": "The generous Indian weather app — live rain radar, hourly to 10-day forecasts, CPCB air quality, farm/river/sea modules, a volatile deeply-custom profile, and Mausam Mitra: an AI assistant with a rich component contract (MausamUI). English + हिंदी. Runs on Z.ai (preview), Gemini (your key) or the on-device Mausam Core engine. Data-saver mode. Zero build.",
   "license": "MIT",
   "author": "harsh vardhan <203862698+harshvardhan9084@users.noreply.github.com>",
   "repository": {
@@ -21,7 +21,12 @@
     "gemini",
     "ai",
     "vanilla-js",
-    "sih"
+    "sih",
+    "radar",
+    "rainviewer",
+    "hindi",
+    "mobile-first",
+    "tier-2-india"
   ],
   "private": false,
   "type": "module",

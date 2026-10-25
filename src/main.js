@@ -1,46 +1,65 @@
 /**
- * main.js — application bootstrap (v3: "generous data, personal on top").
+ * main.js — application bootstrap (v0.5: a five-page product).
  *
- * Boot flow:
- *   1. theme + units, service worker
- *   2. location: saved one, else New Delhi as a sensible default — the
- *      dashboard ALWAYS fills immediately; a dismissible welcome card
- *      offers GPS / city search. Nothing is mandatory.
- *   3. loadWeather: Open-Meteo bundle → optional IMD official enrichment
- *      → buildSnapshot → universal dashboard + optional For You rail
- *   4. Mausam Mitra wired to the live snapshot (Z.ai preview / Gemini
- *      with the user's own key / Mausam Core offline engine)
- *   5. auto-refresh every 15 min
+ * Pages: Home (generous feed) · Radar (live rain map) · Mitra (AI chat)
+ *        You (volatile profile) · Settings (full controls)
+ * Boot:  theme/accent/lang → router → header → cached paint → live load
+ *        (Open-Meteo forecast+air, then optional flood/marine/climate in
+ *        parallel — enhancements only, failures never block).
+ * Data saver: no auto-refresh, optional APIs and radar only on demand.
  */
 
 import { el, clear } from './utils/dom.js';
 import { relativeTime } from './utils/format.js';
 import { fetchWeatherBundle } from './api/open-meteo.js';
 import { fetchImdBundle } from './api/imd.js';
+import { fetchFloodBundle, fetchMarineBundle, fetchClimateDelta } from './api/extras.js';
 import { buildSnapshot } from './core/engine.js';
 import { store } from './core/storage.js';
+import { setLang, t } from './core/i18n.js';
+import { getProfile } from './core/profile.js';
+import { computeAlerts } from './core/insights.js';
 import { wireHeader } from './ui/header.js';
-import { wireSettings, openSettings } from './ui/settings.js';
-import { wireYou, openYou } from './ui/you.js';
+import { wireSettingsPage, renderSettings } from './ui/settings.js';
+import { wireYouPage, renderYou } from './ui/you.js';
+import { wireMitraPage, showMitra } from './ui/mitra.js';
+import { wireRadarPage, showRadar, updateRadarLocation, onRadarThemeChange } from './ui/radar.js';
 import { rememberPlace } from './ui/places.js';
 import { renderDashboard as renderDashboardUI, updateFreshness } from './ui/dash.js';
 import { skeleton, errorCard } from './ui/shared.js';
-import { wireChat } from './chat/ui.js';
 
 const REFRESH_MS = 15 * 60 * 1000;
 const IMD_TIMEOUT_MS = 9000;
 const DEFAULT_LOCATION = { name: 'New Delhi', admin1: 'Delhi', country: 'India', lat: 28.6139, lon: 77.209, isGeo: false };
 
-/* ================= theme ================= */
+/* ================= theme + accent + lang ================= */
 const mq = window.matchMedia('(prefers-color-scheme: light)');
 
 function applyTheme(pref) {
   const resolved = pref === 'auto' ? (mq.matches ? 'light' : 'dark') : pref;
   document.body.dataset.theme = resolved;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'light' ? '#f2f4f8' : '#0f1117');
+  onRadarThemeChange();
 }
+
+function applyAccent(id) {
+  if (id) document.body.dataset.accent = id;
+  else delete document.body.dataset.accent;
+}
+
 mq.addEventListener('change', () => applyTheme(store.theme.get()));
+setLang(store.lang.get());
 applyTheme(store.theme.get());
+applyAccent(store.accent.get());
+document.documentElement.lang = store.lang.get() === 'hi' ? 'hi' : 'en';
+
+/** Swap text of static chrome nodes (nav labels, pills, modal titles). */
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+}
+applyStaticI18n();
 
 /* ================= state ================= */
 let currentSnapshot = null;
@@ -51,7 +70,31 @@ let inflight = null;
 
 /* ================= DOM refs ================= */
 const $ = (id) => document.getElementById(id);
-const dashContent = $('main');
+const homeScroll = $('home-scroll');
+
+/* ================= router ================= */
+const PAGES = ['home', 'radar', 'mitra', 'you', 'settings'];
+let currentPage = 'home';
+
+function go(page) {
+  if (!PAGES.includes(page)) page = 'home';
+  currentPage = page;
+  for (const p of PAGES) {
+    $(`page-${p}`)?.classList.toggle('active', p === page);
+    $(`tab-${p}`)?.classList.toggle('active', p === page);
+    $(`tab-${p}`)?.setAttribute('aria-current', p === page ? 'page' : 'false');
+  }
+  window.scrollTo({ top: 0 });
+  if (page === 'radar') showRadar();
+  if (page === 'mitra') showMitra();
+  if (page === 'you') renderYou();
+  if (page === 'settings') renderSettings();
+}
+
+for (const p of PAGES) {
+  $(`tab-${p}`)?.addEventListener('click', () => go(p));
+}
+export function navigate(page) { go(page); }
 
 /* ================= header ================= */
 const header = wireHeader(
@@ -64,8 +107,6 @@ const header = wireHeader(
     offlinePill: $('offline-pill'),
     srcPill: $('src-pill'),
     srcLabel: $('src-label'),
-    youBtn: $('you-btn'),
-    settingsBtn: $('settings-btn'),
     searchOverlay: $('search-modal'),
     searchInput: $('search-input'),
     searchResults: $('search-results'),
@@ -73,13 +114,9 @@ const header = wireHeader(
     useLocBtn: $('use-loc-btn'),
   },
   {
-    onLocationPick(loc) {
-      applyLocation(loc);
-    },
+    onLocationPick(loc) { applyLocation(loc); },
     onRefresh: () => loadWeather(true),
-    onOpenYou: () => openYou(),
-    onOpenSettings: () => openSettings(),
-  }
+  },
 );
 header.setLocation(currentLocation);
 
@@ -90,90 +127,64 @@ function applyLocation(loc) {
   rememberPlace(loc);
   header.setLocation(loc);
   store.flags.set('welcomeDismissed', true);
+  updateRadarLocation(loc);
   loadWeather(true);
 }
 
-/* ================= settings + you sheets ================= */
-wireSettings(
-  {
-    overlay: $('settings-modal'),
-    closeBtn: $('settings-close'),
-    aiSection: $('settings-ai'),
-    imdSection: $('settings-imd'),
+/* ================= pages wiring ================= */
+wireYouPage($('you-mount'), {
+  onSaved: () => {
+    renderDashboard();
+    publishChatState();
   },
-  {
-    onUnitsChange: (u) => { currentUnits = u; if (currentSnapshot) renderDashboard(); },
-    onThemeChange: applyTheme,
-    onImdChange: () => loadWeather(true, { silent: true }),
-  }
-);
+});
 
-wireUnitsTheme();
-function wireUnitsTheme() {
-  const apply = () => {
-    document.querySelectorAll('[data-units]').forEach((b) => b.classList.toggle('active', b.dataset.units === store.units.get()));
-    document.querySelectorAll('[data-theme-btn]').forEach((b) => b.classList.toggle('active', b.dataset.themeBtn === store.theme.get()));
+wireSettingsPage($('settings-mount'), {
+  onUnitsChange: (u) => { currentUnits = u; if (currentSnapshot) renderDashboard(); },
+  onThemeChange: (th) => { applyTheme(th); },
+  onAccentChange: (id) => applyAccent(id),
+  onClockChange: () => { if (currentSnapshot) renderDashboard(); },
+  onLangChange: () => {
+    document.documentElement.lang = store.lang.get() === 'hi' ? 'hi' : 'en';
+    applyStaticI18n();
+    if (currentSnapshot) renderDashboard();
+    header.setLocation(currentLocation);
+  },
+  onImdChange: () => loadWeather(true, { silent: true }),
+  onNotifChange: () => runNotifCheck(true),
+  onDataSaverChange: () => { /* takes effect on next loads */ },
+});
+
+wireMitraPage($('page-mitra'), { openSettings: () => go('settings') });
+
+wireRadarPage($('page-radar'), { getLocation: () => currentLocation });
+
+/* ================= chat state bridge ================= */
+function publishChatState() {
+  window.__mausamState = {
+    snapshot: currentSnapshot,
+    profile: getProfile(),
+    units: currentUnits,
+    location: currentLocation,
+    imd: currentSnapshot?.bundle?.imd ?? null,
+    loading: Boolean(inflight),
+    online: navigator.onLine,
   };
-  document.querySelectorAll('[data-units]').forEach((b) =>
-    b.addEventListener('click', () => { store.units.set(b.dataset.units); currentUnits = b.dataset.units; apply(); if (currentSnapshot) renderDashboard(); }));
-  document.querySelectorAll('[data-theme-btn]').forEach((b) =>
-    b.addEventListener('click', () => { store.theme.set(b.dataset.themeBtn); applyTheme(b.dataset.themeBtn); apply(); }));
-  apply();
 }
 
-wireYou(
-  {
-    overlay: $('you-modal'),
-    closeBtn: $('you-close'),
-    body: $('you-body'),
-    saveBtn: $('you-save'),
-    resetBtn: $('you-reset'),
-  },
-  { onSaved: () => { renderDashboard(); publishChatState(); } }
-);
+/* ================= optional extras (never block) ================= */
 
-/* ================= chat ================= */
-const chat = wireChat({ onOpenSettings: (section) => openSettings(section) });
-
-/* ================= welcome hint (dismissible, non-blocking) ================= */
-function maybeWelcomeHint() {
-  if (store.flags.get('welcomeDismissed')) return;
-  if (store.location.get()) return; // user already picked a place before
-  const hint = el('div.alert.alert-info.dash-alert.welcome-hint', { role: 'status' },
-    el('div.alert-title', null, '👋 You\'re looking at New Delhi'),
-    el('div.welcome-actions',
-      el('button.btn.btn-sm', {
-        onclick: () => {
-          if ('geolocation' in navigator) {
-            hint.querySelector('.welcome-actions').textContent = '📡 Requesting your location…';
-            navigator.geolocation.getCurrentPosition(
-              async (pos) => {
-                const { latitude, longitude } = pos.coords;
-                let name = 'My location';
-                try {
-                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10`, { signal: AbortSignal.timeout(8000) });
-                  const j = await res.json();
-                  const addr = j?.address ?? {};
-                  name = addr.city || addr.town || addr.village || addr.county || name;
-                } catch { /* keep default name */ }
-                applyLocation({ name, admin1: '', country: '', lat: latitude, lon: longitude, isGeo: true });
-              },
-              () => { header.openSearch(); },
-              { timeout: 10000 }
-            );
-          } else header.openSearch();
-        },
-      }, '📍 Use my location'),
-      el('button.btn.btn-sm', { onclick: () => header.openSearch() }, '🔍 Search city'),
-      el('button.btn.btn-sm', { onclick: () => { store.flags.set('welcomeDismissed', true); hint.remove(); } }, 'Keep Delhi')
-    )
-  );
-  dashContent.prepend(hint);
+async function loadExtras(lat, lon, signal) {
+  if (store.dataSaver.get()) return null;
+  const [flood, marine, climate] = await Promise.all([
+    fetchFloodBundle(lat, lon, signal),
+    fetchMarineBundle(lat, lon, signal),
+    fetchClimateDelta(lat, lon, signal),
+  ]);
+  return { flood, marine, climate };
 }
 
-/* ================= weather loading ================= */
-
-function setSourceBadge(imd) { header.setSource(imd); }
+/* ================= IMD enrichment (optional, never blocks) ================= */
 
 async function enrichWithImd(bundle, signal) {
   if (!store.imdKey.has()) {
@@ -191,12 +202,16 @@ async function enrichWithImd(bundle, signal) {
     return bundle;
   } catch {
     setSourceBadge(null);
-    return bundle; // IMD failure never blocks the app
+    return bundle;
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', onOuter);
   }
 }
+
+/* ================= weather loading ================= */
+
+function setSourceBadge(imd) { header.setSource(imd); }
 
 async function loadWeather(force = false, { silent = false } = {}) {
   header.setOffline(!navigator.onLine);
@@ -219,7 +234,7 @@ async function loadWeather(force = false, { silent = false } = {}) {
   }
 
   if (!silent) {
-    clear(dashContent).appendChild(skeleton());
+    clear(homeScroll).appendChild(skeleton());
     header.setRefreshing(true);
   }
 
@@ -234,6 +249,8 @@ async function loadWeather(force = false, { silent = false } = {}) {
   try {
     let bundle = await fetchWeatherBundle(currentLocation.lat, currentLocation.lon, controller.signal);
     if (controller.signal.aborted) return;
+    bundle.extras = await loadExtras(currentLocation.lat, currentLocation.lon, controller.signal);
+    if (controller.signal.aborted) return;
     bundle = await enrichWithImd(bundle, controller.signal);
     if (controller.signal.aborted) return;
     store.bundle.set(currentLocation.lat, currentLocation.lon, bundle);
@@ -241,6 +258,7 @@ async function loadWeather(force = false, { silent = false } = {}) {
     header.setOffline(false);
     renderDashboard();
     maybeWelcomeHint();
+    runNotifCheck();
   } catch (err) {
     if (controller.signal.aborted || err.name === 'AbortError') return;
     header.setOffline(true);
@@ -252,7 +270,7 @@ async function loadWeather(force = false, { silent = false } = {}) {
       } catch { currentSnapshot = null; }
     }
     if (!currentSnapshot) {
-      clear(dashContent).appendChild(errorCard(err.message, () => loadWeather(true)));
+      clear(homeScroll).appendChild(errorCard(err.message, () => loadWeather(true)));
     }
   } finally {
     if (inflight === controller) inflight = null;
@@ -268,39 +286,62 @@ async function loadWeather(force = false, { silent = false } = {}) {
 function renderDashboard() {
   if (!currentSnapshot) return;
   try {
-    renderDashboardInto();
+    renderDashboardUI(homeScroll, currentSnapshot, currentUnits, {
+      location: currentLocation,
+      openYou: () => go('you'),
+      rerender: renderDashboard,
+      pickLocation: applyLocation,
+      openSearch: () => header.openSearch(),
+    });
   } catch (err) {
     console.error('Render failed:', err);
-    clear(dashContent).appendChild(errorCard('The dashboard hit an unexpected error.', renderDashboard));
+    clear(homeScroll).appendChild(errorCard('The dashboard hit an unexpected error.', renderDashboard));
     return;
   }
   updateFreshness(currentSnapshot);
   publishChatState();
 }
 
-function renderDashboardInto() {
-  renderDashboardUI(dashContent, currentSnapshot, currentUnits, {
-    location: currentLocation,
-    openYou,
-    rerender: renderDashboard,
-    pickLocation: applyLocation,
-    openSearch: () => header.openSearch(),
-  });
+/* ================= welcome hint (first run, non-blocking) ================= */
+
+function maybeWelcomeHint() {
+  if (store.flags.get('welcomeDismissed')) return;
+  if (store.location.get()) return;
+  const hint = el('div.alert.alert-info.dash-alert.welcome-hint', { role: 'status' },
+    el('div.alert-title', null, `👋 ${t('welcome_hi', { city: currentLocation.name })}`),
+    el('div.welcome-actions',
+      el('button.btn.btn-sm', { onclick: () => header.openSearch() }, '🔍'),
+      el('button.btn.btn-sm', { onclick: () => { store.flags.set('welcomeDismissed', true); hint.remove(); } }, t('keep_city', { city: currentLocation.name })),
+    ),
+  );
+  homeScroll.prepend(hint);
 }
 
-/* ================= state bridge ================= */
+/* ================= notifications (while the app is open) ================= */
 
-function publishChatState() {
-  window.__mausamState = {
-    snapshot: currentSnapshot,
-    you: store.you.get(),
-    units: currentUnits,
-    location: currentLocation,
-    imd: currentSnapshot?.bundle?.imd ?? null,
-    loading: Boolean(inflight),
-    online: navigator.onLine,
-  };
+let lastNotifKey = null;
+
+function runNotifCheck(force = false) {
+  const cfg = store.notif.get() ?? { on: false };
+  if (!cfg.on || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!currentSnapshot) return;
+  const alerts = computeAlerts(currentSnapshot);
+  const top = alerts?.[0];
+  if (!top) return;
+  const key = `${top.title}`;
+  if (!force && key === lastNotifKey) return;
+  // only fire when the alert is fresh (≤1h old check is implicit via refresh cadence)
+  if (Date.now() - (store.flags.get('lastNotifAt') ?? 0) < 60 * 60 * 1000 && !force) return;
+  lastNotifKey = key;
+  store.flags.set('lastNotifAt', Date.now());
+  try {
+    new Notification(`Mausam — ${top.title}`, { body: top.text, icon: 'icons/icon-192.png', tag: 'mausam-alert' });
+  } catch { /* some browsers require SW registration */ }
 }
+
+setInterval(() => {
+  if (document.visibilityState === 'visible') runNotifCheck();
+}, 20 * 60 * 1000);
 
 /* ================= connectivity ================= */
 window.addEventListener('offline', () => header.setOffline(true));
@@ -319,15 +360,16 @@ if ('serviceWorker' in navigator && isSecureHost) {
 async function boot() {
   store.flags.set('bootedOnce', true);
 
+  go('home');
   renderDashboard(); // instant paint (skeleton or cache)
   loadWeather(false, { silent: false });
 
-  clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') {
-      loadWeather(true, { silent: true });
-    }
-  }, REFRESH_MS);
+  if (!store.dataSaver.get()) {
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') loadWeather(true, { silent: true });
+    }, REFRESH_MS);
+  }
 
   setInterval(() => {
     if (currentSnapshot) updateFreshness(currentSnapshot);

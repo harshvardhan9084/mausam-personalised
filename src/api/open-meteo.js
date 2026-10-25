@@ -25,12 +25,16 @@ const HOURLY_VARS = [
   'precipitation',
   'weather_code',
   'wind_speed_10m',
+  'wind_direction_10m',
   'wind_gusts_10m',
   'uv_index',
   'visibility',
   'dew_point_2m',
   'cloud_cover',
   'soil_moisture_0_to_1cm',
+  'soil_moisture_3_to_9cm',
+  'soil_temperature_0_to_7cm',
+  'et0_fao_evapotranspiration',
 ].join(',');
 
 const DAILY_VARS = [
@@ -69,6 +73,9 @@ const AIR_VARS = [
   'sulphur_dioxide',
   'ozone',
   'ammonia',
+  'dust',
+  'uv_index',
+  'aerosol_optical_depth',
   'us_aqi',
 ].join(',');
 
@@ -195,6 +202,9 @@ export async function fetchWeatherBundle(lat, lon, signal) {
     sulphur_dioxide: air.hourly.sulphur_dioxide?.[i],
     ozone: air.hourly.ozone?.[i],
     ammonia: air.hourly.ammonia?.[i],
+    dust: air.hourly.dust?.[i],
+    uv_index: air.hourly.uv_index?.[i],
+    aerosol_optical_depth: air.hourly.aerosol_optical_depth?.[i],
     us_aqi: air.hourly.us_aqi?.[i],
   }));
   const airIndexByKey = new Map(airTimes.map((t, i) => [t.slice(0, 13), i]));

@@ -1,30 +1,36 @@
 /**
- * dash.js — the one, generous dashboard.
+ * dash.js — the one, generous dashboard (v0.5).
  *
  * Every user sees every section: places rail, current conditions (with a
- * vs-yesterday pill + share), 15-minute rain nowcast, 48h strip, temp
- * curve, 10-day outlook, details grid, CPCB air quality, sun times and
- * "Mausam Says" insights. The personal "For You" rail renders ON TOP
- * only when the user has filled the optional 30-second profile —
- * personalisation adds, it never removes or gates.
+ * vs-yesterday pill + share + last-year delta), 15-minute rain nowcast,
+ * "Your day" timeline (if the profile has a schedule), For You rail
+ * (profile-driven, additive), 48h strip, temp curve, 10-day outlook,
+ * details grid, upgraded CPCB AQI card, sun & moon, farm weather,
+ * sea & coast, river watch and "Mausam Says". Personalisation adds on
+ * top — it never removes or gates.
  */
 
 import { el, clear } from '../utils/dom.js';
-import { temp, wind, hourLabel, relativeTime, visibility } from '../utils/format.js';
+import { temp, wind, hourLabel, relativeTime, visibility, dateLabel } from '../utils/format.js';
 import { compass } from '../api/wmo.js';
-import { computeAlerts, computeInsights, computeForYou } from '../core/insights.js';
+import {
+  computeAlerts, computeInsights, computeForYou,
+  computeDayTimeline, computeFarmCards, computeBestDays,
+} from '../core/insights.js';
 import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow } from './shared.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
+import { getProfile } from '../core/profile.js';
+import { t } from '../core/i18n.js';
 
 /** Transient toast (share copied, etc.). */
 function toast(msg) {
-  const t = el('div.mausam-toast', { role: 'status' }, msg);
-  document.body.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('show'));
+  const tEl = el('div.mausam-toast', { role: 'status' }, msg);
+  document.body.appendChild(tEl);
+  requestAnimationFrame(() => tEl.classList.add('show'));
   setTimeout(() => {
-    t.classList.remove('show');
-    setTimeout(() => t.remove(), 350);
+    tEl.classList.remove('show');
+    setTimeout(() => tEl.remove(), 350);
   }, 2200);
 }
 
@@ -40,6 +46,16 @@ function rich(text) {
 
 function toneClass(tone) {
   return { good: 'insight-good', info: 'insight-info', warn: 'insight-warn', danger: 'insight-danger' }[tone] ?? 'insight-info';
+}
+
+/** rain amount formatting (mm, with inch conversion under imperial) */
+function rainMm(mm, units) {
+  if (mm == null) return '—';
+  if (units === 'imperial') {
+    const inch = mm / 25.4;
+    return `${inch.toFixed(inch < 0.3 ? 2 : 1)} in`;
+  }
+  return `${Math.round(mm * 10) / 10} mm`;
 }
 
 /** 24h SVG temperature curve with rain bars underneath. */
@@ -114,13 +130,12 @@ function tempCurve(hours) {
   tx.textContent = temp(hours[0].temperature_2m);
   svg.appendChild(tx);
 
-  // 3 x-labels + rain bars row rendered as flex HTML below
   const wrap = el('div.dash-curve-wrap', svg);
   const labels = el('div.dash-curve-labels',
-    [0, Math.floor((n - 1) / 2), n - 1].map((i) => el('span', null, hourLabel(hours[i].time, 'h12')))
+    [0, Math.floor((n - 1) / 2), n - 1].map((i) => el('span', null, hourLabel(hours[i].time, store.clock.get() === '24' ? 'h24' : 'h12'))),
   );
   const rains = el('div.dash-curve-rains',
-    hours.filter((_, i) => i % 3 === 0).map((h) => el('span', { class: (h.precipitation_probability ?? 0) >= 50 ? 'wet' : '' }, `💧${Math.round(h.precipitation_probability ?? 0)}%`))
+    hours.filter((_, i) => i % 3 === 0).map((h) => el('span', { class: (h.precipitation_probability ?? 0) >= 50 ? 'wet' : '' }, `💧${Math.round(h.precipitation_probability ?? 0)}%`)),
   );
   wrap.appendChild(labels);
   wrap.appendChild(rains);
@@ -135,19 +150,20 @@ function shareWeather(s, units, loc) {
   const n = s.now;
   const today = s.days?.[0];
   const aqi = s.currentAqi;
+  const locale = dateLocale();
   const lines = [
     `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${n.wx?.label ?? ''}`,
-    today ? `High ${temp(today.temp_max, units)} / Low ${temp(today.temp_min, units)} · 💧 ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
-    aqi?.aqi != null ? `Air quality: AQI ${aqi.aqi} (${aqi.category})` : null,
-    '— via Mausam',
+    today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · 💧 ${Math.round(today.precip_prob_max ?? 0)}%` : null,
+    aqi?.aqi != null ? `AQI ${aqi.aqi} (${aqi.category})` : null,
+    '— Mausam',
   ].filter(Boolean);
   const text = lines.join('\n');
   if (navigator.share) {
     navigator.share({ title: 'Weather — Mausam', text }).catch(() => {});
   } else {
     navigator.clipboard?.writeText(text)
-      .then(() => toast('Copied to clipboard ✓'))
-      .catch(() => toast('Could not copy'));
+      .then(() => toast(t('copied')))
+      .catch(() => toast(t('copy_fail')));
   }
 }
 
@@ -161,18 +177,21 @@ function nowcastCard(s, units) {
   const steps = m.mm.slice(0, 8);
   const total = steps.reduce((a, b) => a + (b ?? 0), 0);
   const firstWet = steps.findIndex((v) => (v ?? 0) > 0.03);
-  const startLabel = new Date(m.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+  const fmtT = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: store.clock.get() !== '24' });
+  };
+  const startLabel = fmtT(m.start);
 
   const head = el('div.nowcast-head');
   let verdict;
   if (total < 0.1) {
-    verdict = el('div.nowcast-verdict', null, '🌙 No rain expected in the next 2 hours');
+    verdict = el('div.nowcast-verdict', null, t('nowcast_dry'));
   } else if (firstWet === 0) {
-    verdict = el('div.nowcast-verdict.wet', null, `🌧 Rain around ${startLabel} — carry cover if stepping out`);
+    verdict = el('div.nowcast-verdict.wet', null, t('nowcast_wet', { t: startLabel }));
   } else {
-    const at = new Date(new Date(m.start).getTime() + firstWet * 15 * 60000)
-      .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
-    verdict = el('div.nowcast-verdict', null, `⏳ Rain likely around ${at}`);
+    const at = fmtT(new Date(new Date(m.start).getTime() + firstWet * 15 * 60000));
+    verdict = el('div.nowcast-verdict', null, t('nowcast_soon', { t: at }));
   }
   head.appendChild(verdict);
 
@@ -185,14 +204,70 @@ function nowcastCard(s, units) {
     if ((v ?? 0) > 0.03) bar.classList.add('wet');
     col.appendChild(bar);
     if (i % 2 === 0) {
-      const lbl = new Date(new Date(m.start).getTime() + i * 15 * 60000)
-        .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
-      col.appendChild(el('span.nowcast-lbl', null, lbl));
+      col.appendChild(el('span.nowcast-lbl', null, fmtT(new Date(new Date(m.start).getTime() + i * 15 * 60000))));
     }
     bars.appendChild(col);
   });
   head.appendChild(bars);
   return card(head);
+}
+
+/* ================================================================
+   AQI CARD v2 — values, dust, 24h mini trend
+================================================================ */
+
+function aqiCardV2(s) {
+  const aqi = s.currentAqi;
+  const nowAir = s.hours[0]?.air ?? {};
+  const trend = s.hours.slice(0, 24).filter((h) => h.aqi != null);
+  const head = el('div.aqi-head', el('div.card-h', null, t('sec_aqi')), aqiPill(aqi));
+
+  const cardBody = card(head);
+  if (aqi?.advice) cardBody.appendChild(el('div.aqi-advice', null, aqi.advice));
+
+  /* pollutant chips */
+  const chips = [];
+  if (nowAir.pm2_5 != null) chips.push(['PM2.5', `${Math.round(nowAir.pm2_5)}`]);
+  if (nowAir.pm10 != null) chips.push(['PM10', `${Math.round(nowAir.pm10)}`]);
+  if (nowAir.dust != null && nowAir.dust >= 5) chips.push(['🌪 Dust', `${Math.round(nowAir.dust)}`]);
+  if (nowAir.ozone != null) chips.push(['O₃', `${Math.round(nowAir.ozone)}`]);
+  if (chips.length) {
+    cardBody.appendChild(el('div.aqi-chips',
+      chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))));
+  }
+
+  /* 24h mini trend */
+  if (trend.length >= 6) {
+    const maxA = Math.max(...trend.map((h) => h.aqi), 1);
+    const bars = el('div.aqi-trend');
+    trend.filter((_, i) => i % 2 === 0).forEach((h) => {
+      const bar = el('div.aqi-trend-bar', { title: `${hourLabel(h.time)} · AQI ${h.aqi}` });
+      bar.style.height = `${Math.max(8, (h.aqi / maxA) * 100)}%`;
+      bar.style.background = h.aqiFull?.color ?? 'var(--muted)';
+      bars.appendChild(bar);
+    });
+    cardBody.appendChild(el('div.aqi-trend-wrap',
+      el('div.aqi-trend-h', null, '24h'), bars));
+  }
+  if (aqi?.dominant) cardBody.appendChild(el('div.aqi-dominant', null, `${t('aqi_dominant')}: ${aqi.dominant}`));
+  return cardBody;
+}
+
+/* ================================================================
+   DAY TIMELINE
+================================================================ */
+
+function dayTimelineCard(rows) {
+  return card(el('div.day-tl',
+    rows.map((r) => el('div.day-tl-row', { class: r.cls },
+      el('span.day-tl-icon', null, r.icon),
+      el('span.day-tl-label', null, r.label),
+      el('span.day-tl-time', null, r.time),
+      el('span.day-tl-wx', null, r.icon2),
+      el('span.day-tl-temp', null, r.temp),
+      el('span.day-tl-pop', null, `💧${r.pop}%`),
+    )),
+  ));
 }
 
 /* ================================================================
@@ -202,7 +277,7 @@ function nowcastCard(s, units) {
 export function renderDashboard(root, snapshot, units, ctx) {
   const s = snapshot;
   const loc = ctx.location;
-  const you = store.you.get();
+  const profile = getProfile();
 
   clear(root);
 
@@ -212,19 +287,28 @@ export function renderDashboard(root, snapshot, units, ctx) {
     ? el('button.delta-pill', {
         type: 'button',
         title: `Yesterday's high was ${temp(s.yesterday.tempMax, units)}`,
-        onclick: () => toast(`Today's high is ${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? 'warmer' : 'cooler'} than yesterday`)
+        onclick: () => toast(`${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? t('warmer_than_yesterday') : t('cooler_than_yesterday')}`),
       },
         el('span', { class: 'delta-arrow', 'aria-hidden': 'true' }, yd >= 0 ? '▲' : '▼'),
-        `${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? 'warmer' : 'cooler'} than yesterday`)
+        `${Math.abs(Math.round(yd * 10) / 10)}° ${yd >= 0 ? t('warmer_than_yesterday') : t('cooler_than_yesterday')}`)
+    : null;
+  const climate = s.extras?.climate;
+  const climatePill = climate?.lastYearAvgMaxC != null && s.days?.[0]?.temp_max != null
+    ? el('button.delta-pill.climate-pill', {
+        type: 'button',
+        onclick: () => toast(`Last year this week averaged ${Math.round(climate.lastYearAvgMaxC)}° — ${t('vs_last_year')}`),
+      },
+        '📆',
+        `${t('vs_last_year')}: ${s.days[0].temp_max >= climate.lastYearAvgMaxC ? '+' : '−'}${Math.abs(Math.round((s.days[0].temp_max - climate.lastYearAvgMaxC) * 10) / 10)}°`)
     : null;
   const shareBtn = el('button.hero-share', {
-    type: 'button', 'aria-label': 'Share this weather', title: 'Share this weather',
+    type: 'button', 'aria-label': t('share'), title: t('share'),
     onclick: () => shareWeather(s, units, loc),
   }, '↗');
   const heroCard = card(
     el('div.hero-now-top',
       el('div.hero-place', null, `📍 ${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
-      el('div.hero-top-actions', deltaPill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `Updated ${relativeTime(s.fetchedAt)}`), shareBtn)
+      el('div.hero-top-actions', deltaPill, climatePill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `${t('updated')} ${relativeTime(s.fetchedAt)}`), shareBtn),
     ),
     nowRow(s, units)
   );
@@ -241,70 +325,107 @@ export function renderDashboard(root, snapshot, units, ctx) {
     onForget: (i) => {
       store.destinations.removeAt(i);
       ctx.rerender?.();
-      toast('Place removed');
+      toast(t('place_removed'));
     },
   });
 
-  /* ---------- alert ---------- */
-  const alert = computeAlerts(s);
-  if (alert) {
+  /* ---------- alerts (stacked) ---------- */
+  for (const alert of computeAlerts(s)) {
     root.appendChild(el(`div.alert.alert-${alert.kind}.dash-alert`, { role: 'alert' },
       el('div.alert-title', null, `${alert.icon} ${alert.title}`),
-      el('div', null, alert.text)
+      el('div', null, alert.text),
     ));
   }
 
-  /* ---------- rain nowcast (next 2h, 15-min steps) ---------- */
+  /* ---------- rain nowcast ---------- */
   const nowcast = nowcastCard(s, units);
   if (nowcast) {
-    root.appendChild(sectionTitle('Rain nowcast · next 2 hours'));
+    root.appendChild(sectionTitle(t('sec_nowcast')));
     root.appendChild(nowcast);
   }
 
-  /* ---------- For You (additive, only if personalised) ---------- */
-  const forYou = computeForYou(s, you);
+  /* ---------- day timeline (profile-driven, additive) ---------- */
+  const timeline = computeDayTimeline(s, profile);
+  if (timeline) {
+    root.appendChild(sectionTitle(t('sec_yourday')));
+    root.appendChild(dayTimelineCard(timeline));
+  }
+
+  /* ---------- For You ---------- */
+  const forYou = computeForYou(s, profile);
   if (forYou && forYou.cards.length) {
-    root.appendChild(sectionTitle(`✨ For you${forYou.greeting ? `, ${forYou.greeting}` : ''}`));
+    root.appendChild(sectionTitle(`✨ ${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`));
     const rail = el('div.foryou-rail');
     for (const c of forYou.cards) {
       rail.appendChild(el(`div.card.foryou-card.${toneClass(c.tone)}`,
         el('div.foryou-head', el('span.foryou-icon', null, c.icon), el('span', null, c.title)),
-        el('div.foryou-text', null, rich(c.text))
+        el('div.foryou-text', null, rich(c.text)),
       ));
     }
     root.appendChild(rail);
   }
 
   /* ---------- hourly strip ---------- */
-  root.appendChild(sectionTitle('Next 48 hours'));
+  root.appendChild(sectionTitle(t('sec_48h')));
   const h48 = s.hours.slice(0, 48);
   root.appendChild(hourlyStrip(h48, (h) => el('div.hour-card',
-    el('div.h-time', null, hourLabel(h.time)),
+    el('div.h-time', null, hourLabel(h.time, store.clock.get() === '24' ? 'h24' : 'h12')),
     el('div.h-icon', null, h.wx?.icon ?? '·'),
     el('div.h-val', null, temp(h.temperature_2m)),
-    el('div.h-sub', null, `${Math.round(h.precipitation_probability ?? 0)}%`)
+    el('div.h-sub', null, `${Math.round(h.precipitation_probability ?? 0)}%`),
   )));
 
   /* ---------- temp curve ---------- */
   const curve = tempCurve(h48.slice(0, 24));
   if (curve) {
-    root.appendChild(sectionTitle('Temperature trend'));
+    root.appendChild(sectionTitle(t('sec_curve')));
     root.appendChild(card(curve));
   }
 
   /* ---------- 10-day ---------- */
-  root.appendChild(sectionTitle('10-day outlook'));
-  root.appendChild(weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units)));
+  root.appendChild(sectionTitle(t('sec_10day')));
+  const bd = computeBestDays(s);
+  root.appendChild(weekGrid(s.days, (d, i) => {
+    const cell = simpleWeekCell(d, i, units);
+    if (bd && bd.best && d.date === bd.best.date) {
+      cell.appendChild(el('span.week-star', { title: t('sec_bestday'), 'aria-label': t('sec_bestday') }, '⭐'));
+    }
+    return cell;
+  }));
 
-  /* ---------- Mausam Says ---------- */
+  /* ---------- farm weather (interest-gated, additive) ---------- */
+  if (profile?.interests?.includes('farming')) {
+    const farmCards = computeFarmCards(s);
+    if (farmCards.length) {
+      root.appendChild(sectionTitle(`🌾 ${t('sec_farm')}`));
+      const grid = el('div.insight-grid');
+      for (const c of farmCards) {
+        grid.appendChild(el(`div.card.insight-card.${toneClass(c.tone)}`,
+          el('div.insight-head', el('span.insight-icon', null, c.icon), el('span', null, c.title)),
+          el('div.insight-text', null, rich(c.text)),
+        ));
+      }
+      root.appendChild(grid);
+      /* extra stat tiles: soil + ET0 */
+      const h0 = s.hours[0] ?? {};
+      root.appendChild(statTiles([
+        [h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—', 'Soil 0–1 cm'],
+        [h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—', 'Soil 3–9 cm'],
+        [h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—', 'Soil temp'],
+        [h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—', 'Evapo‑transpiration'],
+      ]));
+    }
+  }
+
+  /* ---------- Mausam says ---------- */
   const insights = computeInsights(s);
   if (insights.length) {
-    root.appendChild(sectionTitle('Mausam says'));
+    root.appendChild(sectionTitle(t('sec_says')));
     const grid = el('div.insight-grid');
     for (const ins of insights) {
       grid.appendChild(el(`div.card.insight-card.${toneClass(ins.tone)}`,
         el('div.insight-head', el('span.insight-icon', null, ins.icon), el('span', null, ins.title)),
-        el('div.insight-text', null, rich(ins.text))
+        el('div.insight-text', null, rich(ins.text)),
       ));
     }
     root.appendChild(grid);
@@ -312,73 +433,95 @@ export function renderDashboard(root, snapshot, units, ctx) {
 
   /* ---------- details grid ---------- */
   const n = s.now;
-  root.appendChild(sectionTitle('Right now in detail'));
+  root.appendChild(sectionTitle(t('sec_detail')));
   root.appendChild(statTiles([
-    [`${Math.round(n.humidity ?? 0)}%`, 'Humidity'],
-    [wind(n.wind, units), `Wind ${n.wind_dir != null ? compass(n.wind_dir) : ''}`],
-    [n.gusts != null ? wind(n.gusts, units) : '—', 'Gusts'],
-    [`${n.uv != null ? Math.round(n.uv * 10) / 10 : '—'}`, `UV · ${n.uvLabel ?? ''}`],
-    [visibility(n.visibility), 'Visibility'],
-    [n.pressure != null ? `${Math.round(n.pressure)} hPa` : '—', 'Pressure'],
-    [n.dew != null ? temp(n.dew) : '—', 'Dew point'],
-    [`${n.cloud != null ? Math.round(n.cloud) : '—'}%`, 'Cloud cover'],
+    [`${Math.round(n.humidity ?? 0)}%`, t('humidity')],
+    [wind(n.wind, units), `${t('wind')} ${n.wind_dir != null ? compass(n.wind_dir) : ''}`],
+    [n.gusts != null ? wind(n.gusts, units) : '—', t('gusts')],
+    [`${n.uv != null ? Math.round(n.uv * 10) / 10 : '—'}`, `${t('uv')} · ${n.uvLabel ?? ''}`],
+    [visibility(n.visibility), t('visibility')],
+    [n.pressure != null ? `${Math.round(n.pressure)} hPa` : '—', t('pressure')],
+    [n.dew != null ? temp(n.dew) : '—', t('dew_point')],
+    [`${n.cloud != null ? Math.round(n.cloud) : '—'}%`, t('cloud_cover')],
   ]));
 
   /* ---------- AQI + sun row ---------- */
-  const aqi = s.currentAqi;
   const sun = s.sun;
   const row = el('div.row-2');
-
-  const aqiCard = card(
-    el('div.aqi-head', el('div.card-h', null, 'Air quality (CPCB)'), aqiPill(aqi)),
-    aqi?.advice ? el('div.aqi-advice', null, aqi.advice) : null,
-    aqi?.dominant ? el('div.aqi-dominant', null, `Dominant pollutant: ${aqi.dominant}`) : null
-  );
-  row.appendChild(aqiCard);
+  row.appendChild(aqiCardV2(s));
 
   const fmt = (iso) => (iso ? iso.slice(11, 16) : '—');
   const imd = s.bundle?.imd;
   const sunCard = card(
-    el('div.card-h', null, 'Sun & moon' + (imd?.ok ? ' · IMD' : '')),
+    el('div.card-h', null, `${t('sec_sun')}${imd?.ok ? ' · IMD' : ''}`),
     kvList([
-      ['🌅 Sunrise', fmt(sun?.sunrise)],
-      ['🌇 Sunset', fmt(sun?.sunset)],
-      ['⏳ Daylight', sun?.dayLength ?? '—'],
-      ...(imd?.ok && imd.obs?.moonrise ? [['🌙 Moonrise', imd.obs.moonrise]] : []),
-      ...(imd?.ok && imd.obs?.moonset ? [['🌙 Moonset', imd.obs.moonset]] : []),
-    ])
+      [`🌅 ${t('sunrise')}`, fmt(sun?.sunrise)],
+      [`🌇 ${t('sunset')}`, fmt(sun?.sunset)],
+      [`⏳ ${t('day_length')}`, sun?.dayLength ?? '—'],
+      ...(imd?.ok && imd.obs?.moonrise ? [['🌙 ' + t('moonrise'), imd.obs.moonrise]] : []),
+      ...(imd?.ok && imd.obs?.moonset ? [['🌙 ' + t('moonset'), imd.obs.moonset]] : []),
+    ]),
   );
   row.appendChild(sunCard);
   root.appendChild(row);
 
-  /* ---------- IMD enrichment (only when a key is set) ---------- */
-  if (imd?.ok) {
-    root.appendChild(sectionTitle('IMD official forecast'));
+  /* ---------- sea & coast (only where marine data exists) ---------- */
+  const marine = s.extras?.marine;
+  if (marine?.now?.waveHeightM != null) {
+    root.appendChild(sectionTitle(`🌊 ${t('sec_coast')}`));
+    const wave = marine.now.waveHeightM;
     root.appendChild(card(
-      el('div.imd-note', null,
-        `Station ${imd.station?.name ?? '—'} (${imd.station?.distanceKm ?? '—'} km away) · past 24h rain ${imd.obs?.rain24 ?? '—'} mm · RH ${imd.obs?.rh0830 ?? '—'}% / ${imd.obs?.rh1730 ?? '—'}%`
+      el('div.kv-list',
+        el('div.kv-row', el('span.kv-label', null, '🌊 Waves now'), el('span.kv-value', null, `${Math.round(wave * 10) / 10} m · ${Math.round(marine.now.wavePeriodS ?? 0)} s`)),
+        ...marine.days.slice(0, 3).map((d) =>
+          el('div.kv-row',
+            el('span.kv-label', null, dateLabel(d.date)),
+            el('span.kv-value', null, d.waveMaxM != null ? `max ${Math.round(d.waveMaxM * 10) / 10} m` : '—'))),
       ),
+    ));
+  }
+
+  /* ---------- river watch (only when abnormal) ---------- */
+  const flood = s.extras?.flood;
+  if (flood?.peak && flood.peak.ratio >= 1.5) {
+    root.appendChild(sectionTitle(`🏞️ ${t('sec_flood')}`));
+    const ratio = Math.round(flood.peak.ratio * 10) / 10;
+    root.appendChild(el(`div.alert.alert-${flood.peak.ratio >= 3 ? 'danger' : 'warn'}.dash-alert`,
+      { role: 'alert' },
+      el('div.alert-title', null, `🏞️ River flow ${ratio}× normal`),
+      el('div', null, `Peak around ${dateLabel(flood.peak.date)} — ${Math.round(flood.peak.discharge)} m³/s vs usual ${Math.round(flood.peak.mean)} m³/s. People near the river: stay alert, follow local administration.`),
+    ));
+  }
+
+  /* ---------- IMD enrichment ---------- */
+  if (imd?.ok) {
+    root.appendChild(sectionTitle(t('sec_imd')));
+    root.appendChild(card(
+      el('div.imd-note', null, t('imd_note', {
+        s: imd.station?.name ?? '—', d: imd.station?.distanceKm ?? '—',
+        r: imd.obs?.rain24 ?? '—', h1: imd.obs?.rh0830 ?? '—', h2: imd.obs?.rh1730 ?? '—',
+      })),
       el('div.imd-days', (imd.days ?? []).slice(0, 7).map((d) =>
         el('div.imd-day',
           el('div.imd-day-date', null, d.date?.slice(5) ?? '—'),
           el('div.imd-day-text', null, d.text || '—'),
-          el('div.imd-day-temp', null, d.max != null ? `${Math.round(d.max)}° / ${d.min != null ? Math.round(d.min) + '°' : '—'}` : '—')
-        )
-      ))
+          el('div.imd-day-temp', null, d.max != null ? `${Math.round(d.max)}° / ${d.min != null ? Math.round(d.min) + '°' : '—'}` : '—'),
+        )),
+      ),
     ));
   }
 
-  /* ---------- personalisation nudge (dismissible, non-blocking) ---------- */
-  if (!you && !store.flags.get('nudgeDismissed')) {
+  /* ---------- personalisation nudge ---------- */
+  if (!profile && !store.flags.get('nudgeDismissed')) {
     root.appendChild(el('div.card.nudge-card',
       el('div.nudge-text',
-        el('div.nudge-title', null, '✨ Make Mausam yours — 30 seconds'),
-        el('div.nudge-sub', null, 'Add your name, commute times and favourite activities. Everything on this page stays; you just get personal tips on top. Stored on this device only — no account.')
+        el('div.nudge-title', null, `✨ ${t('nudge_title')}`),
+        el('div.nudge-sub', null, t('nudge_sub')),
       ),
       el('div.nudge-actions',
-        el('button.btn.btn-primary', { onclick: () => ctx.openYou?.() }, 'Personalise'),
-        el('button.btn', { onclick: () => { store.flags.set('nudgeDismissed', true); ctx.rerender?.(); } }, 'Not now')
-      )
+        el('button.btn.btn-primary', { onclick: () => ctx.openYou?.() }, t('nudge_cta')),
+        el('button.btn', { onclick: () => { store.flags.set('nudgeDismissed', true); ctx.rerender?.(); } }, t('nudge_skip')),
+      ),
     ));
   }
 }
@@ -386,5 +529,5 @@ export function renderDashboard(root, snapshot, units, ctx) {
 /** Tiny helper used by main.js to refresh the "Updated…" pill. */
 export function updateFreshness(snapshot) {
   const pill = document.getElementById('updated-pill');
-  if (pill && snapshot) pill.textContent = `Updated ${relativeTime(snapshot.fetchedAt)}`;
+  if (pill && snapshot) pill.textContent = `${t('updated')} ${relativeTime(snapshot.fetchedAt)}`;
 }

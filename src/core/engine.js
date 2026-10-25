@@ -85,6 +85,7 @@ export function buildSnapshot(bundle) {
     bundle,
     fetchedAt: bundle.fetchedAt,
     timezone: bundle.timezone,
+    extras: bundle.extras ?? null, // {flood, marine, climate} — optional enhancements
     now: {
       ...bundle.current,
       hi: heatIndex(bundle.current.feels, bundle.current.humidity),

@@ -12,6 +12,7 @@ import { el, clear } from '../utils/dom.js';
 import { temp as fmtTemp } from '../utils/format.js';
 import { describeWeather } from '../api/wmo.js';
 import { store } from '../core/storage.js';
+import { t } from '../core/i18n.js';
 
 /* ---------------- live mini-temps (lazy + cached) ---------------- */
 
@@ -138,7 +139,7 @@ export function renderPlaces(mount, ctx) {
   rail.appendChild(el('button.place-chip.place-add', {
     type: 'button', role: 'listitem', 'aria-label': 'Add a place',
     onclick: () => ctx.onAdd?.(),
-  }, '＋ Add place'));
+  }, t('add_place')));
 
   mount.appendChild(rail);
 }

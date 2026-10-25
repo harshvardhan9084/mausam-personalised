@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <title>Mausam — weather that works like it's yours</title>
-  <meta name="description" content="Generous, real-time weather for India: hourly, 7-day, CPCB air quality, smart insights — plus Mausam Mitra, an AI assistant that answers with live charts and cards. Personalise on top in 30 seconds. No account." />
+  <meta name="description" content="The generous Indian weather app: live rain radar, hourly to 10-day forecasts, CPCB air quality, farm & river & sea modules, and Mausam Mitra — an AI assistant that answers with real charts and cards. English + हिंदी. No account." />
   <meta name="theme-color" content="#0f1117" />
   <meta name="color-scheme" content="dark light" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Mausam — weather that works like it's yours" />
-  <meta property="og:description" content="Live weather, air quality and an AI assistant that answers with real charts and cards. Zero sign-up." />
+  <meta property="og:description" content="Live rain radar, CPCB air quality, farm/river/sea modules and an AI assistant with real charts. English + हिंदी. Zero sign-up." />
   <meta property="og:image" content="icons/icon-512.png" />
 
   <!-- PWA -->
@@ -34,135 +34,111 @@
   <link rel="stylesheet" href="src/styles/chat.css" />
   <link rel="stylesheet" href="src/styles/rich.css" />
   <link rel="stylesheet" href="src/styles/sheets.css" />
+  <link rel="stylesheet" href="src/styles/app.css" />
 </head>
 <body data-theme="dark">
 
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#home-scroll">Skip to content</a>
 
   <div id="app">
-    <section class="screen active" id="dashboard-screen" aria-label="Weather dashboard">
+    <header class="app-header">
+      <div class="header-left">
+        <span class="app-name" id="brand"></span>
+        <button class="city-btn" id="city-btn" type="button" aria-haspopup="dialog" title="Change location">
+          <span aria-hidden="true">📍</span>
+          <span class="city-name" id="city-label">…</span>
+          <span aria-hidden="true" style="font-size:0.7rem;">▾</span>
+        </button>
+      </div>
 
-      <header class="app-header">
-        <div class="header-left">
-          <span class="app-name" id="brand"></span>
-          <button class="city-btn" id="city-btn" type="button" aria-haspopup="dialog" title="Change location">
-            <span aria-hidden="true">📍</span>
-            <span class="city-name" id="city-label">…</span>
-            <span aria-hidden="true" style="font-size:0.7rem;">▾</span>
-          </button>
+      <div class="header-right">
+        <span class="offline-pill" id="offline-pill" role="status">📴 <span data-i18n="offline">Offline</span></span>
+        <span class="src-pill" id="src-pill" role="status" title="Active data source"><span class="src-dot"></span><span id="src-label">Open-Meteo</span></span>
+        <button class="btn btn-icon" id="refresh-btn" type="button" title="Refresh" aria-label="Refresh weather">
+          <span id="refresh-icon" aria-hidden="true">⟳</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="pages" class="pages">
+
+      <!-- ============ PAGE · HOME ============ -->
+      <section class="page active" id="page-home" aria-label="Weather dashboard">
+        <div class="page-scroll" id="home-scroll">
+          <div class="skeleton hero-skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
         </div>
+      </section>
 
-        <div class="header-right">
-          <span class="offline-pill" id="offline-pill" role="status">📴 Offline</span>
-          <span class="src-pill" id="src-pill" role="status" title="Active data source"><span class="src-dot"></span><span id="src-label">Open-Meteo</span></span>
+      <!-- ============ PAGE · RADAR ============ -->
+      <section class="page" id="page-radar" aria-label="Live rain radar"></section>
 
-          <button class="btn btn-icon" id="refresh-btn" type="button" title="Refresh" aria-label="Refresh weather">
-            <span id="refresh-icon" aria-hidden="true">⟳</span>
-          </button>
+      <!-- ============ PAGE · MITRA (AI chat) ============ -->
+      <section class="page" id="page-mitra" aria-label="Mausam Mitra — AI weather assistant"></section>
 
-          <button class="you-btn" id="you-btn" type="button" title="Make Mausam yours" aria-haspopup="dialog">✨ <span class="you-btn-label">For you</span></button>
+      <!-- ============ PAGE · YOU (profile) ============ -->
+      <section class="page" id="page-you" aria-label="Make Mausam yours">
+        <div class="page-scroll" id="you-mount"></div>
+      </section>
 
-          <button class="btn btn-icon" id="settings-btn" type="button" aria-haspopup="dialog" title="Settings" aria-label="Settings">⚙️</button>
-        </div>
-      </header>
+      <!-- ============ PAGE · SETTINGS ============ -->
+      <section class="page" id="page-settings" aria-label="Settings">
+        <div class="page-scroll" id="settings-mount"></div>
+      </section>
+    </main>
 
-      <main class="dash-content" id="main" aria-live="polite">
-        <!-- dashboard injected here -->
-        <div class="skeleton hero-skeleton"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-      </main>
-
-      <div class="updated-stamp" id="updated-stamp" style="text-align:center;"></div>
-    </section>
+    <!-- ============ BOTTOM NAV ============ -->
+    <nav class="tab-nav" aria-label="Main navigation">
+      <button class="tab-btn active" id="tab-home" type="button" aria-current="page">
+        <span class="tab-ico" aria-hidden="true">🏠</span><span class="tab-lbl" data-i18n="nav_home">Home</span>
+      </button>
+      <button class="tab-btn" id="tab-radar" type="button" aria-current="false">
+        <span class="tab-ico" aria-hidden="true">🗺️</span><span class="tab-lbl" data-i18n="nav_radar">Radar</span>
+      </button>
+      <button class="tab-btn" id="tab-mitra" type="button" aria-current="false">
+        <span class="tab-ico" aria-hidden="true">💬</span><span class="tab-lbl" data-i18n="nav_mitra">Mitra</span>
+      </button>
+      <button class="tab-btn" id="tab-you" type="button" aria-current="false">
+        <span class="tab-ico" aria-hidden="true">✨</span><span class="tab-lbl" data-i18n="nav_you">You</span>
+      </button>
+      <button class="tab-btn" id="tab-settings" type="button" aria-current="false">
+        <span class="tab-ico" aria-hidden="true">⚙️</span><span class="tab-lbl" data-i18n="nav_settings">Settings</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ============ MODAL · LOCATION SEARCH ============ -->
   <div class="modal-overlay" id="search-modal" role="dialog" aria-modal="true" aria-label="Change location">
     <div class="modal-box">
       <div class="modal-header">
-        <span class="modal-title">Change location</span>
+        <span class="modal-title" data-i18n="search_title">Change location</span>
         <button class="modal-close" id="search-close" type="button" aria-label="Close">✕</button>
       </div>
       <div class="search-wrap">
         <span class="search-icon" aria-hidden="true">🔍</span>
         <input class="search-input" id="search-input" type="search"
-               placeholder="Search any city — e.g. Ghaziabad, Shimla, Pune…"
+               placeholder="Search any city, town or village…"
                autocomplete="off" spellcheck="false" aria-label="Search for a city" />
       </div>
-      <button class="btn use-loc-btn" id="use-loc-btn" type="button">📡 Use my location</button>
+      <button class="btn use-loc-btn" id="use-loc-btn" type="button">📡 <span data-i18n="use_my_loc">Use my location</span></button>
       <div class="search-results" id="search-results" style="position:static; box-shadow:none; border:none; background:transparent;"></div>
-    </div>
-  </div>
-
-  <!-- ============ SHEET · SETTINGS ============ -->
-  <div class="modal-overlay sheet-overlay" id="settings-modal" role="dialog" aria-modal="true" aria-label="Settings">
-    <div class="modal-box sheet-box">
-      <div class="modal-header">
-        <span class="modal-title">⚙️ Settings</span>
-        <button class="modal-close" id="settings-close" type="button" aria-label="Close">✕</button>
-      </div>
-
-      <div class="sheet-scroll">
-        <div class="settings-block">
-          <div class="settings-h">Temperature units</div>
-          <div class="seg-group set-seg" role="group" aria-label="Units">
-            <button class="seg-btn" data-units="metric" type="button">°C · km/h</button>
-            <button class="seg-btn" data-units="imperial" type="button">°F · mph</button>
-          </div>
-        </div>
-        <div class="settings-block">
-          <div class="settings-h">Theme</div>
-          <div class="seg-group set-seg" role="group" aria-label="Theme">
-            <button class="seg-btn" data-theme-btn="auto" type="button">Auto</button>
-            <button class="seg-btn" data-theme-btn="dark" type="button">Dark</button>
-            <button class="seg-btn" data-theme-btn="light" type="button">Light</button>
-          </div>
-        </div>
-        <div id="settings-ai"><!-- AI assistant section (settings.js) --></div>
-        <div id="settings-imd"><!-- IMD section (settings.js) --></div>
-        <div class="settings-block">
-          <div class="settings-h">About</div>
-          <div class="set-help">
-            Mausam v4 — independent, open-source, no accounts, no tracking.
-            Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment.
-            Air quality: CPCB breakpoints computed on-device.
-            Assistant: your choice of Gemini (your key), the built-in Z.ai preview model, or Mausam Core (on-device).
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ SHEET · FOR YOU ============ -->
-  <div class="modal-overlay sheet-overlay" id="you-modal" role="dialog" aria-modal="true" aria-label="Make Mausam yours">
-    <div class="modal-box sheet-box">
-      <div class="modal-header">
-        <span class="modal-title">✨ Make Mausam yours</span>
-        <button class="modal-close" id="you-close" type="button" aria-label="Close">✕</button>
-      </div>
-      <div class="sheet-scroll">
-        <div id="you-body"><!-- built by you.js --></div>
-        <div class="sheet-actions">
-          <button class="btn btn-primary" id="you-save" type="button">Save</button>
-          <button class="btn" id="you-reset" type="button">Reset to default</button>
-        </div>
-      </div>
     </div>
   </div>
 
   <footer class="footer-note">
     Data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC-BY 4.0) ·
     AQI: CPCB breakpoints computed client-side ·
+    Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a> ·
+    Map: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> + Leaflet ·
     IMD official data optional (<a href="https://api.imd.gov.in" target="_blank" rel="noopener">api.imd.gov.in</a>) ·
-    Geocoding by Open-Meteo / OpenStreetMap ·
     Mausam is an independent project, not affiliated with IMD.
   </footer>
 
   <noscript>
     <div style="padding:40px; text-align:center; font-family:sans-serif;">
       <h1>Mausam needs JavaScript</h1>
-      <p>This app fetches live weather from Open-Meteo / IMD and renders charts, cards and an AI assistant in your browser. Please enable JavaScript.</p>
+      <p>This app fetches live weather, radar and an AI assistant in your browser. Please enable JavaScript.</p>
     </div>
   </noscript>
 
@@ -173,7 +149,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v4.0.0') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v0.5.0') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -183,15 +159,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v4.0.0') {
-            sessionStorage.setItem('mausam:swcheck', 'v4.0.0');
+          if (e && e.data && e.data.version === 'v0.5.0') {
+            sessionStorage.setItem('mausam:swcheck', 'v0.5.0');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v4.0.0');
+          sessionStorage.setItem('mausam:swcheck', 'v0.5.0');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {

@@ -1,14 +1,16 @@
 /**
- * settings.js — the settings sheet.
+ * settings.js — the Settings page (v0.5).
  *
- * Sections: AI assistant (provider / Gemini key / model, with test),
- * IMD official data (optional key, with test), Units, Theme, About.
- * The Gemini key is stored ONLY in this browser (localStorage) and is
- * sent exclusively to Google's Gemini endpoint.
+ * Full tab page. Sections: app language, units, clock, theme, accent
+ * colour, AI assistant (provider / reply language / Gemini key+model+test),
+ * IMD optional key, rain & heat notifications, data saver, data & privacy
+ * (export / import / wipe), about.
+ * The Gemini key lives only in this browser and is sent only to Google.
  */
 
 import { el, clear } from '../utils/dom.js';
 import { store } from '../core/storage.js';
+import { t, setLang } from '../core/i18n.js';
 import { aiSettings } from '../ai/client.js';
 import { geminiChat } from '../ai/gemini.js';
 
@@ -19,70 +21,166 @@ const MODEL_OPTIONS = [
   'gemini-2.5-flash',
 ];
 
-let refs = null;      // injected DOM refs from index.html
-let hooks = null;     // { onUnitsChange, onThemeChange, onImdChange }
+const ACCENTS = [
+  ['', '🟦', 'Default blue'],
+  ['blue', '🔵', 'Blue'], ['green', '🟢', 'Green'], ['orange', '🟠', 'Orange'],
+  ['pink', '🩷', 'Pink'], ['purple', '🟣', 'Purple'], ['teal', '🩵', 'Teal'],
+  ['red', '🔴', 'Red'], ['yellow', '🟡', 'Yellow'],
+];
 
-export function wireSettings(domRefs, hooksIn) {
-  refs = domRefs;
+let mount = null;
+let hooks = null;
+
+export function wireSettingsPage(mountEl, hooksIn) {
+  mount = mountEl;
   hooks = hooksIn;
-  const { overlay, closeBtn, aiSection, imdSection } = refs;
-
-  closeBtn.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('active')) close();
-  });
-
-  buildAiSection(aiSection);
-  buildImdSection(imdSection);
 }
 
-export function openSettings(focusSection = null) {
-  refs.overlay.classList.add('active');
-  refreshAiSection();
-  if (focusSection === 'ai') {
-    setTimeout(() => refs.aiSection.querySelector('input')?.focus({ preventScroll: true }), 80);
-  }
+export function renderSettings() {
+  if (!mount) return;
+  clear(mount);
+  build();
 }
-export function closeSettings() { refs.overlay.classList.remove('active'); }
-export function close() { closeSettings(); }
 
-/* ================================================================
-   AI SECTION
-================================================================ */
+function build() {
+  clear(mount);
+  mount.appendChild(el('div.page-h', null, '⚙️ ' + t('set_title')));
 
-let aiEls = null;
+  /* ---------------- language ---------------- */
+  mount.appendChild(section(t('set_lang'),
+    el('div.seg-group.set-seg',
+      segBtn(store.lang.get() === 'en', 'English', () => switchLang('en')),
+      segBtn(store.lang.get() === 'hi', 'हिंदी', () => switchLang('hi')),
+    )
+  ));
 
-function buildAiSection(root) {
-  clear(root);
+  /* ---------------- units ---------------- */
+  mount.appendChild(section(t('set_units'),
+    el('div.seg-group.set-seg',
+      segBtn(store.units.get() !== 'imperial', '°C · km/h', () => setUnits('metric')),
+      segBtn(store.units.get() === 'imperial', '°F · mph', () => setUnits('imperial')),
+    )
+  ));
+
+  /* ---------------- clock ---------------- */
+  mount.appendChild(section(t('set_clock'),
+    el('div.seg-group.set-seg',
+      segBtn(store.clock.get() !== '24', t('set_misc_12'), () => setClock('12')),
+      segBtn(store.clock.get() === '24', t('set_misc_24'), () => setClock('24')),
+    )
+  ));
+
+  /* ---------------- theme ---------------- */
+  mount.appendChild(section(t('set_theme'),
+    el('div.seg-group.set-seg',
+      segBtn(store.theme.get() === 'auto', 'Auto', () => setTheme('auto')),
+      segBtn(store.theme.get() === 'dark', '🌙 Dark', () => setTheme('dark')),
+      segBtn(store.theme.get() === 'light', '☀️ Light', () => setTheme('light')),
+    )
+  ));
+
+  /* ---------------- accent ---------------- */
+  mount.appendChild(section(t('set_accent'),
+    el('div.accent-row',
+      ACCENTS.map(([id, dot, name]) =>
+        el('button.accent-swatch', {
+          type: 'button', title: name, 'aria-label': name,
+          class: (store.accent.get() ?? '') === id ? 'on' : '',
+          onclick: () => { store.accent.set(id); hooks?.onAccentChange?.(id); renderSettings(); },
+        }, el('span.accent-dot', { 'data-accent-id': id }, dot))),
+    )
+  ));
+
+  /* ---------------- AI ---------------- */
+  buildAiSection();
+
+  /* ---------------- IMD ---------------- */
+  buildImdSection();
+
+  /* ---------------- notifications ---------------- */
+  buildNotifSection();
+
+  /* ---------------- data saver ---------------- */
+  mount.appendChild(section(t('set_data'),
+    toggleRow(t('set_datasaver'), t('set_datasaver_t'), store.dataSaver.get(), (on) => {
+      store.dataSaver.set(on);
+      hooks?.onDataSaverChange?.(on);
+    })
+  ));
+
+  /* ---------------- data & privacy ---------------- */
+  mount.appendChild(section(t('set_data'),
+    el('div.key-actions',
+      el('button.btn', { type: 'button', onclick: exportData }, '⬇️ ' + t('set_export')),
+      el('button.btn', { type: 'button', onclick: importData }, '⬆️ ' + t('set_import')),
+      el('button.btn.btn-danger', { type: 'button', onclick: wipeData }, '🗑️ ' + t('set_wipe')),
+    ),
+    el('div.privacy-note', null, '🔒 ' + t('you_intro')),
+  ));
+
+  /* ---------------- about ---------------- */
+  mount.appendChild(section(t('set_about'), el('div.set-help', null, t('set_about_t'))));
+}
+
+/* ================= builders ================= */
+
+function section(title, ...children) {
+  return el('div.settings-block.page-block', el('div.settings-h', null, title), ...children);
+}
+
+function segBtn(active, label, onclick) {
+  return el('button.seg-btn', { type: 'button', class: active ? 'active' : '', onclick }, label);
+}
+
+function toggleRow(title, help, on, onChange) {
+  const knob = el('span.toggle-knob');
+  const btn = el('button.toggle', {
+    type: 'button', role: 'switch', 'aria-checked': String(on), class: on ? 'on' : '',
+    onclick: () => {
+      const next = !btn.classList.contains('on');
+      btn.classList.toggle('on', next);
+      btn.setAttribute('aria-checked', String(next));
+      onChange(next);
+    },
+  }, knob);
+  return el('div.toggle-row', el('div', el('div.toggle-title', null, title), el('div.set-help', null, help)), btn);
+}
+
+/* ---------------- AI section ---------------- */
+
+function buildAiSection() {
   const cfg = aiSettings();
+  const status = el('div.set-status', { role: 'status' });
 
   const providerBtns = ['auto', 'zai', 'gemini', 'offline'].map((p) =>
     el('button.seg-btn', {
       type: 'button', 'data-provider': p,
+      class: (cfg.provider ?? 'auto') === p ? 'active' : '',
       onclick: () => {
         store.ai.set({ provider: p });
-        refreshAiSection();
+        refreshGeminiZone();
+        [...zone.parentElement.querySelectorAll('[data-provider]')].forEach((b) =>
+          b.classList.toggle('active', b.dataset.provider === p));
       },
-    }, p === 'auto' ? 'Auto' : p === 'zai' ? 'Z.ai preview' : p === 'gemini' ? 'Gemini' : 'Mausam Core')
-  );
+    }, p === 'auto' ? 'Auto' : p === 'zai' ? 'Z.ai preview' : p === 'gemini' ? 'Gemini' : t('nav_mitra') + ' Core'));
+
+  const aiLangSel = el('select.set-select', {
+    onchange: (e) => store.aiLang.set(e.target.value),
+  }, ['auto', 'en', 'hi', 'hinglish'].map((v) =>
+    el('option', { value: v, selected: (store.aiLang.get() ?? 'auto') === v }, t(`ai_lang_${v}`))));
 
   const keyInput = el('input.set-input', {
-    type: 'password', placeholder: 'Paste your Gemini API key (AIza…)',
-    autocomplete: 'off', spellcheck: 'false', value: cfg.geminiKey ?? '',
-    oninput: (e) => {
-      store.ai.set({ geminiKey: e.target.value.trim() });
-      setStatus('', '');
-    },
+    type: 'password', placeholder: 'AIza…', autocomplete: 'off', spellcheck: 'false',
+    value: cfg.geminiKey ?? '',
+    oninput: (e) => { store.ai.set({ geminiKey: e.target.value.trim() }); setStatus('', ''); },
   });
-
   const showBtn = el('button.btn.btn-xs', {
     type: 'button',
     onclick: () => {
       keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-      showBtn.textContent = keyInput.type === 'password' ? '👁 Show' : '🙈 Hide';
+      showBtn.textContent = keyInput.type === 'password' ? '👁' : '🙈';
     },
-  }, '👁 Show');
+  }, '👁');
 
   const modelInput = el('input.set-input', {
     type: 'text', value: cfg.model ?? 'gemini-3.5-flash-lite',
@@ -90,138 +188,182 @@ function buildAiSection(root) {
     onchange: (e) => {
       const v = e.target.value.trim() || 'gemini-3.5-flash-lite';
       store.ai.set({ model: v });
-      setStatus('Model set to ' + v, 'ok');
+      setStatus(`${t('set_model')}: ${v}`, 'ok');
     },
   });
 
-  const datalist = el('datalist', { id: 'model-options' },
-    MODEL_OPTIONS.map((m) => el('option', { value: m })));
-
-  const testBtn = el('button.btn', { type: 'button', onclick: testGemini }, 'Test connection');
-  const status = el('div.set-status', { role: 'status' });
-
-  aiEls = { keyInput, modelInput, status, providerBtns };
-
-  root.append(
-    el('div.settings-block',
-      el('div.settings-h', null, '🤖 AI assistant'),
-      el('div.seg-group.set-seg', null, providerBtns),
-      el('div.set-help', null,
-        'Auto: uses the built-in Z.ai model in the web preview; your Gemini key elsewhere; Mausam Core (offline engine) as the always-available fallback.'),
-      el('div#ai-gemini-zone',
-        el('div.set-label', null, 'Gemini API key'),
-        el('div.key-row', keyInput, showBtn),
-        el('div.set-help', null,
-          'Your own key — free at ', el('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'aistudio.google.com/apikey'),
-          '. Stored only in this browser, sent only to Google.'),
-        el('div.set-label', null, 'Model'),
-        modelInput,
-        datalist,
-        el('div.key-actions', testBtn),
-      ),
-      status
-    )
+  const zone = el('div#ai-gemini-zone',
+    el('div.set-label', null, t('set_gemini_key')),
+    el('div.key-row', keyInput, showBtn),
+    el('div.set-help', null, t('set_gemini_help'), ' ',
+      el('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'aistudio.google.com/apikey')),
+    el('div.set-label', null, t('set_model')),
+    modelInput,
+    el('datalist', { id: 'model-options' }, MODEL_OPTIONS.map((m) => el('option', { value: m }))),
+    el('div.key-actions', el('button.btn', { type: 'button', onclick: () => testGemini(status) }, t('set_test'))),
   );
-}
 
-function refreshAiSection() {
-  const cfg = aiSettings();
-  aiEls?.providerBtns.forEach((b) => b.classList.toggle('active', b.dataset.provider === (cfg.provider ?? 'auto')));
-  if (aiEls) {
-    aiEls.keyInput.value = cfg.geminiKey ?? '';
-    aiEls.modelInput.value = cfg.model ?? 'gemini-3.5-flash-lite';
+  mount.appendChild(section(t('set_ai'),
+    el('div.seg-group.set-seg', providerBtns),
+    el('div.set-help', null, t('set_ai_help')),
+    el('div.set-label', null, t('set_ai_lang')),
+    aiLangSel,
+    zone,
+    status,
+  ));
+
+  function refreshGeminiZone() {
+    const p = aiSettings().provider ?? 'auto';
+    zone.style.display = (p === 'auto' || p === 'gemini') ? '' : 'none';
   }
-  const zone = refs.aiSection.querySelector('#ai-gemini-zone');
-  const cfgNow = aiSettings();
-  const showGemini = cfgNow.provider === 'auto' || cfgNow.provider === 'gemini';
-  if (zone) zone.style.display = showGemini ? '' : 'none';
+  refreshGeminiZone();
 }
 
-function setStatus(text, cls) {
-  if (!aiEls) return;
-  aiEls.status.textContent = text;
-  aiEls.status.className = `set-status ${cls}`;
+function setStatus(node, text, cls) {
+  if (!node) return;
+  node.textContent = text;
+  node.className = `set-status ${cls}`;
 }
 
-async function testGemini() {
+async function testGemini(status) {
   const cfg = aiSettings();
-  if (!cfg.geminiKey) {
-    setStatus('Enter a key first.', 'bad');
-    return;
-  }
-  setStatus('Pinging the model…', 'busy');
+  if (!cfg.geminiKey) { setStatus(status, 'Enter a key first.', 'bad'); return; }
+  setStatus(status, '…', 'busy');
   const deltas = [];
   try {
     await geminiChat({
       system: 'Reply with exactly: OK',
-      history: [],
-      userText: 'ping',
-      apiKey: cfg.geminiKey,
-      model: cfg.model || 'gemini-3.5-flash-lite',
-      toolDecls: [],
-      runTool: null,
-      onText: (d) => deltas.push(d),
-      signal: undefined,
+      history: [], userText: 'ping',
+      apiKey: cfg.geminiKey, model: cfg.model || 'gemini-3.5-flash-lite',
+      toolDecls: [], runTool: null,
+      onText: (d) => deltas.push(d), signal: undefined,
     });
-    const out = deltas.join('').trim();
-    setStatus(`✓ Model responded: “${out.slice(0, 40) || 'OK'}”`, 'ok');
+    setStatus(status, `✓ ${deltas.join('').trim().slice(0, 40) || 'OK'}`, 'ok');
   } catch (err) {
-    setStatus(`✗ ${err.message?.slice(0, 160) ?? 'Request failed'}`, 'bad');
+    setStatus(status, `✗ ${err.message?.slice(0, 160) ?? 'failed'}`, 'bad');
   }
 }
 
-/* ================================================================
-   IMD SECTION
-================================================================ */
+/* ---------------- IMD section ---------------- */
 
-function buildImdSection(root) {
-  clear(root);
-  const input = el('input.set-input.mono', {
-    type: 'password', placeholder: 'Paste your IMD API key (optional)',
-    autocomplete: 'off', spellcheck: 'false', value: store.imdKey.get() ?? '',
-    oninput: (e) => setStatusImd('', ''),
-  });
+function buildImdSection() {
   const status = el('div.set-status', { role: 'status' });
-  let typed = null;
+  const input = el('input.set-input.mono', {
+    type: 'password', placeholder: 'api.imd.gov.in key (optional)',
+    autocomplete: 'off', spellcheck: 'false', value: store.imdKey.get() ?? '',
+    oninput: () => setStatus(status, '', ''),
+  });
+  mount.appendChild(section(t('set_imd'),
+    el('div.set-help', null, t('set_imd_help')),
+    input,
+    el('div.key-actions',
+      el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(input.value); testImd(input.value.trim(), status); } }, t('set_test')),
+      el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(''); input.value = ''; setStatus(status, 'Open-Meteo only', 'ok'); hooks?.onImdChange?.(); } }, t('you_reset')),
+    ),
+    status,
+  ));
 
-  root.append(
-    el('div.settings-block',
-      el('div.settings-h', null, '🌧️ IMD official data (optional)'),
-      el('div.set-help', null,
-        'Mausam runs fully on Open-Meteo by default. Add a free key from ', el('a', { href: 'https://api.imd.gov.in', target: '_blank', rel: 'noopener' }, 'api.imd.gov.in'),
-        ' to enrich the dashboard with the India Meteorological Department’s official 7-day city forecast, observations & moon times.'),
-      input,
-      el('div.key-actions',
-        el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(input.value); testImd(input.value); } }, 'Save & test'),
-        el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(''); input.value = ''; setStatusImd('Key cleared — Open-Meteo only.', 'busy'); hooks?.onImdChange?.(); } }, 'Remove')
-      ),
-      status
-    )
-  );
-
-  async function testImd(key) {
-    if (!key) { setStatusImd('Enter a key first.', 'bad'); return; }
-    setStatusImd('Contacting the IMD gateway…', 'busy');
+  async function testImd(key, statusNode) {
+    if (!key) { setStatus(statusNode, 'Enter a key first.', 'bad'); return; }
+    setStatus(statusNode, '…', 'busy');
     const { testImdKey } = await import('../api/imd.js');
     try {
-      const res = await testImdKey(key.trim());
+      const res = await testImdKey(key);
       if (res.ok) {
-        setStatusImd(`✓ ${res.message}${res.sample?.max != null ? ` Today: ${res.sample.max}°/${res.sample.min}°.` : ''}`, 'ok');
+        setStatus(statusNode, `✓ ${res.message}${res.sample?.max != null ? ` ${res.sample.max}°/${res.sample.min}°` : ''}`, 'ok');
         hooks?.onImdChange?.();
       } else {
-        setStatusImd(`✗ ${res.message}${res.hint ? ` ${res.hint}` : ''}`, 'bad');
+        setStatus(statusNode, `✗ ${res.message}${res.hint ? ` ${res.hint}` : ''}`, 'bad');
       }
     } catch {
-      setStatusImd('✗ Test failed unexpectedly — check the console.', 'bad');
+      setStatus(statusNode, '✗ failed', 'bad');
     }
-    clearTimeout(typed);
   }
 }
 
-function setStatusImd(text, cls) {
-  const elStatus = refs.imdSection.querySelector('.set-status');
-  if (elStatus) {
-    elStatus.textContent = text;
-    elStatus.className = `set-status ${cls}`;
-  }
+/* ---------------- notifications ---------------- */
+
+function buildNotifSection() {
+  const notif = store.notif.get() ?? { on: false };
+  const statusNote = el('div.set-status');
+  const row = toggleRow('', t('set_notif_t'), notif.on && Notification?.permission === 'granted', async (on) => {
+    if (on) {
+      if (!('Notification' in window)) { statusNote.textContent = t('set_notif_denied'); store.notif.set({ on: false }); renderSettings(); return; }
+      let perm = Notification.permission;
+      if (perm === 'default') perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        store.notif.set({ on: false });
+        statusNote.textContent = t('set_notif_denied');
+        renderSettings();
+        return;
+      }
+      store.notif.set({ on: true });
+      statusNote.textContent = '✓ ' + t('set_notif_on');
+      hooks?.onNotifChange?.();
+    } else {
+      store.notif.set({ on: false });
+      hooks?.onNotifChange?.();
+    }
+  });
+  mount.appendChild(section(t('set_notif'), row, statusNote));
+}
+
+/* ---------------- data ops ---------------- */
+
+function switchLang(l) {
+  setLang(l);
+  hooks?.onLangChange?.();
+  renderSettings();
+}
+function setUnits(u) { store.units.set(u); hooks?.onUnitsChange?.(u); renderSettings(); }
+function setClock(c) { store.clock.set(c); hooks?.onClockChange?.(c); renderSettings(); }
+function setTheme(th) { store.theme.set(th); hooks?.onThemeChange?.(th); renderSettings(); }
+
+function exportData() {
+  const dump = store.exportAll();
+  const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'mausam-backup.json' });
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(t('set_exported'));
+}
+
+function importData() {
+  const inp = el('input', { type: 'file', accept: 'application/json,.json', style: { display: 'none' } });
+  inp.addEventListener('change', () => {
+    const file = inp.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const ok = store.importAll(JSON.parse(String(reader.result)));
+        toast(ok ? t('set_imported') : t('set_import_bad'));
+        if (ok) location.reload();
+      } catch {
+        toast(t('set_import_bad'));
+      }
+    };
+    reader.readAsText(file);
+  });
+  document.body.appendChild(inp);
+  inp.click();
+  setTimeout(() => inp.remove(), 5000);
+}
+
+function wipeData() {
+  if (!confirm(t('set_wipe_confirm'))) return;
+  store.wipeAll();
+  toast(t('set_wiped'));
+  setTimeout(() => location.reload(), 600);
+}
+
+function toast(msg) {
+  const tEl = el('div.mausam-toast', { role: 'status' }, msg);
+  document.body.appendChild(tEl);
+  requestAnimationFrame(() => tEl.classList.add('show'));
+  setTimeout(() => {
+    tEl.classList.remove('show');
+    setTimeout(() => tEl.remove(), 350);
+  }, 2400);
 }
