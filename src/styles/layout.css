@@ -1,64 +1,10 @@
 /* ================================================================
-   layout.css — screens, header, content grid, responsive rules
+   layout.css — app header + content rhythm (v0.7)
 ================================================================ */
 
 #app { min-height: 100vh; display: flex; flex-direction: column; }
 
-.screen { display: none; flex: 1; }
-.screen.active { display: block; }
-.screen:not(.active) { display: none !important; }
-
-/* ---------- Persona selection screen ---------- */
-#persona-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 32px 16px;
-  text-align: center;
-}
-.screen.active#persona-screen { display: flex; }
-
-.logo-block { text-align: center; margin-bottom: 32px; }
-.logo-title {
-  font-size: 2.3rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.logo-title img { width: 40px; height: 40px; border-radius: 10px; }
-.logo-sub { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
-.logo-tag {
-  display: inline-block;
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 20px;
-  padding: 3px 14px;
-  font-size: 0.74rem;
-  margin-top: 10px;
-}
-
-.select-label {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-  margin-bottom: 18px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.persona-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 14px;
-  width: 100%;
-  max-width: 600px;
-}
-
-/* ---------- Dashboard screen ---------- */
+/* ---------- App header ---------- */
 .app-header {
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(10px);
@@ -84,35 +30,36 @@
   white-space: nowrap;
 }
 .app-name img { width: 22px; height: 22px; border-radius: 6px; }
-.persona-badge {
-  background: var(--accent-dim);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 20px;
-  padding: 3px 12px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
+
 .city-btn {
   background: none;
-  border: 1px dashed transparent;
+  border: 1px solid transparent;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
   display: flex; align-items: center; gap: 5px;
   min-width: 0;
+  min-height: 36px;
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
 }
-.city-btn .city-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
-.city-btn:hover { border-color: var(--border); color: var(--text); }
+.city-btn .city-pin { width: 15px; height: 15px; flex-shrink: 0; color: var(--accent); }
+.city-btn .city-chev { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.7; }
+.city-btn .city-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; color: var(--text); }
+.city-btn:hover { background: var(--surface-2); border-color: var(--border); }
+.city-btn:active { transform: scale(0.98); }
 
 .header-right { display: flex; align-items: center; gap: 8px; }
 
+/* SVG icon sizing inside chrome buttons */
+.icon-svg { width: 18px; height: 18px; display: block; }
+.btn .icon-svg { flex-shrink: 0; }
+
 /* Refresh spinner */
-.spin { animation: spin 0.9s linear infinite; display: inline-block; }
+.spin { animation: spin 0.9s linear infinite; }
+svg.spin { transform-origin: 50% 50%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Content ---------- */
@@ -125,7 +72,6 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
-  .persona-grid { grid-template-columns: repeat(2, 1fr); }
   .city-btn .city-name { max-width: 84px; }
   .dash-content { padding: 14px 12px 6px; }
 }

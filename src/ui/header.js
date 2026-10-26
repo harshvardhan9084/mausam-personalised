@@ -4,7 +4,7 @@
  * You / Mitra / Settings live in the bottom navigation now.
  */
 
-import { el, clear } from '../utils/dom.js';
+import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
@@ -34,8 +34,7 @@ export function wireHeader(refs, handlers) {
   /* ---------- refresh ---------- */
   refreshBtn.addEventListener('click', () => handlers.onRefresh?.());
   function setRefreshing(on) {
-    refreshIcon.textContent = on ? '◌' : '⟳';
-    refreshIcon.classList.toggle('spin', on);
+    refreshIcon?.classList.toggle('spin', on);
     refreshBtn.disabled = on;
     refreshBtn.setAttribute('aria-busy', String(on));
   }
@@ -60,15 +59,20 @@ export function wireHeader(refs, handlers) {
   }
 
   /* ---------- location search modal ---------- */
+  let searchFocus = null;
   const openSearch = () => {
     searchOverlay.classList.add('active');
     clear(searchResults);
     searchInput.value = '';
     searchInput.placeholder = t('search_ph');
+    searchFocus = trapFocus(searchOverlay);
     searchInput.focus();
   };
   const closeSearch = () => {
+    if (!searchOverlay.classList.contains('active')) return;
     searchOverlay.classList.remove('active');
+    searchFocus?.closeFocus();
+    searchFocus = null;
     abortSearch?.();
   };
 

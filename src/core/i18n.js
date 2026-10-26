@@ -360,7 +360,7 @@ const dict = {
   mitra_voice:   ['Speak', 'बोलें'],
   mitra_voice_listening: ['Listening…', 'सुन रहे हैं…'],
   mitra_voice_no: ['Voice input isn\'t available in this browser.', 'इस ब्राउज़र में आवाज़ से बोलना उपलब्ध नहीं है।'],
-  mitra_shortcut_hint: ['Tip: press / to jump to the chat box', 'टिप: / दबाएँ — सीधे चैट बॉक्स में'],
+  mitra_shortcut_hint: ['Tip: press / to reach this box', 'टिप: / दबाएँ — सीधे इस बॉक्स में'],
 
   /* ---------------- Install app ---------------- */
   inst_row:      ['Install Mausam', 'मौसम इंस्टॉल करें'],
@@ -406,7 +406,6 @@ const dict = {
   set_imd:       ['IMD official data (optional)', 'IMD सरकारी डेटा (मर्ज़ी से)'],
   set_imd_help:  ['Mausam runs fully on Open-Meteo by default. Add a free key from api.imd.gov.in to enrich the dashboard with the India Meteorological Department\'s official 7-day city forecast, observations & moon times.', 'मौसम पहले से पूरी तरह Open-Meteo पर चलता है। api.imd.gov.in की मुफ़्त कुंजी डालें तो IMD का सरकारी 7-दिन पूर्वानुमान, अवलोकन और चंद्र समय भी जुड़ जाएँगे।'],
   set_about:     ['About', 'ऐप के बारे में'],
-  set_about_t:   ['Mausam v0.6 — independent, open-source, no accounts, no tracking. Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment. Air quality: CPCB breakpoints computed on-device. Crop calendar: on-device engine over live Open-Meteo data.', 'मौसम v0.6 — स्वतंत्र, ओपन-सोर्स, न खाता न ट्रैकिंग। मौसम: Open-Meteo (CC-BY 4.0), चाहें तो IMD सरकारी डेटा। हवा: CPCB फ़ॉर्मूला फ़ोन पर ही। फ़सल कैलेंडर: लाइव Open-Meteo डेटा पर फ़ोन में ही बना इंजन।'],
   set_misc_12:   ['12-hour', '12 घंटे'],
   set_misc_24:   ['24-hour', '24 घंटे'],
   on:            ['On', 'चालू'],
@@ -427,6 +426,15 @@ const dict = {
   best_run_days: ['Good', 'अच्छा'],
   fair_run_days: ['Fair', 'ठीक'],
   poor_run_days: ['Poor', 'ख़राब'],
+
+  /* ---------------- v0.7 production polish ---------------- */
+  upd_ready:     ['New version ready', 'नया वर्ज़न तैयार'],
+  copy_answer:   ['Copy reply', 'जवाब कॉपी करें'],
+  alert_dismiss: ['Dismiss this alert', 'यह चेतावनी हटाएँ'],
+  crop_filter:   ['Filter crops…', 'फ़सल खोजें…'],
+  crop_none:     ['No crops match — clear the filter to see all.', 'कोई फ़सल नहीं मिली — फ़िल्टर हटाकर सभी देखें।'],
+  set_version:   ['Version', 'वर्ज़न'],
+  set_about_t:   ['Mausam v0.7 — independent, open-source, no accounts, no tracking. Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment. Air quality: CPCB breakpoints computed on-device. Crop calendar: on-device engine over live Open-Meteo data.', 'मौसम v0.7 — स्वतंत्र, ओपन-सोर्स, न खाता न ट्रैकिंग। मौसम: Open-Meteo (CC-BY 4.0), चाहें तो IMD सरकारी डेटा। हवा: CPCB फ़ॉर्मूला फ़ोन पर ही। फ़सल कैलेंडर: लाइव Open-Meteo डेटा पर फ़ोन में ही बना इंजन।'],
 };
 
 let currentLang = null;

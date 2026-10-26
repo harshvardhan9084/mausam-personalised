@@ -1,11 +1,15 @@
 /**
- * crops.js — the Crops tab: a rich crop-calendar engine (v0.6).
+ * crops.js — the Crops tab: a rich crop-calendar engine (v0.7).
  *
  * Replaces the old rain-radar tab. Pan-India crop calendar (sowing →
  * stages → harvest) crossed with the LIVE weather snapshot the app
  * already holds: soil moisture, 7-day rain, day/night temps, wind.
  * Zero extra API calls, works offline, bilingual, and every user can
  * pin the crops they actually grow (volatile selection, saved locally).
+ *
+ * v0.7: a filter field (also the tab's "/" target) narrows chips and
+ * cards live; chips and cards re-render without stealing the field's
+ * focus.
  */
 
 import { el, clear } from '../utils/dom.js';
@@ -15,6 +19,9 @@ import { t, getLang } from '../core/i18n.js';
 import { CROPS, cropCalendar, farmAdvisories, seasonStarterIds } from '../core/crops.js';
 
 let mount = null;
+let filterQ = '';
+let chipsGrid = null;
+let cardsZone = null;
 
 const getState = () => window.__mausamState ?? {};
 
@@ -47,16 +54,23 @@ function toggleCrop(id) {
     ids = [...ids, id];
   }
   store.flags.set('cropsSel', ids);
-  render();
+  renderDynamic();
+}
+
+const langIdx = () => (getLang() === 'hi' ? 1 : 0);
+
+function matchesFilter(crop) {
+  if (!filterQ) return true;
+  const q = filterQ.toLowerCase();
+  return crop.name.some((n) => String(n).toLowerCase().includes(q)) || crop.id.includes(q);
 }
 
 function render() {
-  const snapshot = getState().snapshot ?? null;
-  const { season, rows } = cropCalendar(snapshot, selectedIds());
-  const advisories = farmAdvisories(rows, 4);
-
   clear(mount);
   mount.appendChild(el('div.page-h', null, `🌾 ${t('crop_title')}`));
+
+  const snapshot = getState().snapshot ?? null;
+  const { season } = cropCalendar(snapshot, selectedIds());
 
   /* season banner */
   mount.appendChild(el('div.crop-season',
@@ -68,22 +82,65 @@ function render() {
     mount.appendChild(el('div.card.pad-sm.crop-note', null, t('crop_wait_data')));
   }
 
-  /* crop selector */
+  /* crop filter — the tab's main text field ("/" reaches it) */
   mount.appendChild(sectionTitle(t('crop_pick')));
-  const chips = el('div.chip-grid.crop-chips');
-  for (const c of CROPS) {
-    chips.appendChild(el(`button.chip.you-chip${selectedIds().includes(c.id) ? '.on' : ''}`, {
+  const filterWrap = el('div.search-wrap.crop-filter-wrap',
+    el('span.search-icon', { 'aria-hidden': 'true' },
+      el('span', { class: 'crop-filter-glyph' }, '⌕')),
+    el('input.crop-filter', {
+      id: 'crop-filter',
+      type: 'search',
+      placeholder: t('crop_filter'),
+      autocomplete: 'off', spellcheck: 'false',
+      'aria-label': t('crop_filter'),
+      value: filterQ,
+      oninput: (e) => {
+        filterQ = e.target.value.trim();
+        renderDynamic();
+      },
+    }),
+  );
+  mount.appendChild(filterWrap);
+
+  chipsGrid = el('div.chip-grid.crop-chips');
+  mount.appendChild(chipsGrid);
+  mount.appendChild(el('div.crop-tiny', null, t('crop_pick_hint')));
+
+  cardsZone = el('div.crop-cards-zone');
+  mount.appendChild(cardsZone);
+
+  mount.appendChild(el('div.crop-tiny.crop-disclaimer', null, t('crop_disclaimer')));
+
+  renderDynamic();
+}
+
+/** Rebuild only the chips + cards (keeps the filter field and its focus). */
+function renderDynamic() {
+  if (!chipsGrid || !cardsZone) return;
+  const snapshot = getState().snapshot ?? null;
+  const sel = selectedIds();
+  const visible = CROPS.filter(matchesFilter);
+  // when filtering, the calendar searches the WHOLE catalogue, not just pins
+  const { rows } = cropCalendar(snapshot, filterQ ? visible.map((c) => c.id) : sel);
+  const advisories = farmAdvisories(rows, 4);
+
+  /* chips */
+  clear(chipsGrid);
+  for (const c of visible) {
+    chipsGrid.appendChild(el(`button.chip.you-chip${sel.includes(c.id) ? '.on' : ''}`, {
       type: 'button',
-      'aria-pressed': String(selectedIds().includes(c.id)),
+      'aria-pressed': String(sel.includes(c.id)),
       onclick: () => toggleCrop(c.id),
     }, `${c.emoji} ${c.name[langIdx()]}`));
   }
-  mount.appendChild(chips);
-  mount.appendChild(el('div.crop-tiny', null, t('crop_pick_hint')));
+  if (!visible.length) {
+    chipsGrid.appendChild(el('span.crop-tiny', null, t('crop_none')));
+  }
 
-  /* this week on the farm */
-  if (advisories.length) {
-    mount.appendChild(sectionTitle(t('crop_week')));
+  /* this week on the farm (only when not filtering) */
+  clear(cardsZone);
+  if (advisories.length && !filterQ) {
+    cardsZone.appendChild(sectionTitle(t('crop_week')));
     const wrap = el('div.crop-advisories');
     for (const a of advisories) {
       wrap.appendChild(el(`div.crop-advice.insight-${a.tone === 'bad' ? 'danger' : a.tone}`,
@@ -94,17 +151,17 @@ function render() {
         ),
       ));
     }
-    mount.appendChild(wrap);
+    cardsZone.appendChild(wrap);
   }
 
   /* per-crop cards */
-  mount.appendChild(sectionTitle(t('crop_calendar')));
-  for (const row of rows) mount.appendChild(cropCard(row, Boolean(snapshot)));
-
-  mount.appendChild(el('div.crop-tiny.crop-disclaimer', null, t('crop_disclaimer')));
+  cardsZone.appendChild(sectionTitle(t('crop_calendar')));
+  const rowsShown = rows.filter((row) => matchesFilter(row.crop));
+  if (!rowsShown.length && filterQ) {
+    cardsZone.appendChild(el('div.card.pad-sm.crop-note', null, t('crop_none')));
+  }
+  for (const row of rowsShown) cardsZone.appendChild(cropCard(row, Boolean(snapshot)));
 }
-
-const langIdx = () => (getLang() === 'hi' ? 1 : 0);
 
 const STATUS = {
   sowing: { cls: 'good', en: 'SOWING NOW', hi: 'बुवाई का समय' },

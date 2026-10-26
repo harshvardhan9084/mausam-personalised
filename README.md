@@ -22,7 +22,41 @@ Settings  language, units, clock, theme, 9 accent colours, AI
           provider, IMD key, alerts, data saver, install, export / import
 ```
 
-## What v0.6 adds
+## What v0.7 adds — the production pass
+
+Every flow was rebuilt to a release standard: same features, sharper
+product.
+
+- **Chrome is real SVG now** — bottom-nav, header and action icons are
+  stroke SVGs that theme with the accent (emoji stay in content cards,
+  where warmth belongs). Nav taps pop; pages fade-rise; the document
+  title follows the tab.
+- **`/` is now a standard shortcut** — it focuses the main text field of
+  whatever is on screen (the Mitra composer on Mitra, the new crop
+  filter on Crops, the field of an open dialog) and never navigates
+  across tabs. `Esc` releases. It was never meant to be an AI hotkey.
+- **Mitra composer, properly** — auto-growing textarea (Enter sends,
+  Shift+Enter adds a line), typing indicator until the first token,
+  copy button on every finished reply, character counter near the cap,
+  and an SVG send/stop morph.
+- **10-day outlook rebuilt** — a clean range-bar list (day · icon ·
+  rain % · min–max bar over the period span · values) instead of a
+  cramped grid; today and the best day are highlighted.
+- **Home refinements** — hero shows H/L, alerts are dismissible, the
+  48 h strip scroll-snaps, pull-to-refresh on touch (with an armed
+  indicator), and an "app updated → Refresh" snackbar when a new
+  service worker takes over.
+- **Dialogs behave** — focus is trapped and restored, `Esc` closes
+  everywhere, and on phones every dialog (location search, compare,
+  journey, history) presents as a bottom sheet.
+- **Crops tab got a filter** (also its `/` target) — chips and cards
+  narrow live without losing focus.
+- **You page** — sticky save bar that follows the scroll.
+- **Settings** — version badge, cleaner about.
+- Accessibility: focus rings, restore-focus modals, ≥44 px touch
+  targets on primary controls, `prefers-reduced-motion` honoured.
+
+## What v0.6 added (still here)
 
 - **Crop calendar engine** (Crops tab) — replaces the radar: pan-India
   sowing → stage → harvest calendars for 14 major crops (rice, wheat,
@@ -35,9 +69,8 @@ Settings  language, units, clock, theme, 9 accent colours, AI
   Zero extra API calls — it reasons over data Mausam already fetched.
 - **Mitra upgrades** — persistent chat history (reopen old conversations,
   cards re-render; delete one or clear all), a "scroll to latest" button
-  whenever you're not at the bottom, `/` jumps to the chat box from any
-  tab and `Esc` releases it, and voice input (Web Speech API, hi-IN /
-  en-IN) with a graceful no-mic fallback.
+  whenever you're not at the bottom, and voice input (Web Speech API,
+  hi-IN / en-IN) with a graceful no-mic fallback.
 - **Compare places** — every saved place lined up side by side: current
   temp/feels, next-24 h rain chance and CPCB AQI, with quick verdicts
   (coolest / driest / cleanest). One tap from the places rail.
@@ -134,7 +167,7 @@ src/ai/               prompt · contract · render (stream parser)
                       tools · gemini · zai · offline (Mausam Core) · client
 src/styles/           tokens · base · layout · components · app (nav,
                       pages, crops, chat, explore)
-sw.js                 precache shell v0.6.0 + network-first API cache
+sw.js                 precache shell v0.7.0 + network-first API cache
 ```
 
 ## Privacy

@@ -11,13 +11,14 @@
  */
 
 import { el, clear } from '../utils/dom.js';
-import { temp, wind, hourLabel, relativeTime, visibility, dateLabel } from '../utils/format.js';
+import { temp, wind, hourLabel, relativeTime, visibility, dateLabel, dayLabel } from '../utils/format.js';
 import { compass } from '../api/wmo.js';
 import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
 import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow } from './shared.js';
+import { icon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
@@ -270,6 +271,44 @@ function dayTimelineCard(rows) {
   ));
 }
 
+/** 10-day list: day | icon | pop | range bar positioned over the period's
+ *  min–max span | values. The production pattern for a 10-day outlook —
+ *  a 7-column grid cannot show 10 days without cramping. */
+function tenDayList(s, units, bd) {
+  const days = (s.days ?? []).slice(0, 10);
+  if (!days.length) return null;
+  const mins = days.map((d) => d.temp_min).filter((v) => v != null);
+  const maxs = days.map((d) => d.temp_max).filter((v) => v != null);
+  const gMin = Math.min(...mins, ...maxs);
+  const gMax = Math.max(...mins, ...maxs);
+  const span = Math.max(gMax - gMin, 1);
+  const list = el('div.ten-list', { role: 'list', 'aria-label': t('sec_10day') });
+  days.forEach((d, i) => {
+    const lo = d.temp_min ?? gMin;
+    const hi = d.temp_max ?? gMax;
+    const left = ((lo - gMin) / span) * 100;
+    const width = Math.max(((hi - lo) / span) * 100, 6);
+    const bar = el('div.ten-track', { 'aria-hidden': 'true' },
+      el('div.ten-fill', {
+        style: { marginLeft: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` },
+      }));
+    const row = el('div.ten-row', { role: 'listitem', class: i === 0 ? 'today' : '' },
+      el('span.ten-day', null, i === 0 ? t('today') : dayLabel(d.date, i)),
+      el('span.ten-icon', null, d.wx?.icon ?? '·'),
+      el('span.ten-pop', { class: (d.precip_prob_max ?? 0) >= 50 ? 'wet' : '' }, `${Math.round(d.precip_prob_max ?? 0)}%`),
+      bar,
+      el('span.ten-vals', null,
+        el('b', null, temp(hi, units)),
+        el('span', null, temp(lo, units))),
+    );
+    if (bd && bd.best && d.date === bd.best.date) {
+      row.appendChild(el('span.ten-star', { title: t('sec_bestday'), 'aria-label': t('sec_bestday') }, '⭐'));
+    }
+    list.appendChild(row);
+  });
+  return list;
+}
+
 /* ================================================================
    MAIN RENDER
 ================================================================ */
@@ -304,13 +343,18 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const shareBtn = el('button.hero-share', {
     type: 'button', 'aria-label': t('share'), title: t('share'),
     onclick: () => shareWeather(s, units, loc),
-  }, '↗');
+  }, icon('share'));
   const heroCard = card(
     el('div.hero-now-top',
-      el('div.hero-place', null, `📍 ${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
+      el('div.hero-place', null, `${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
       el('div.hero-top-actions', deltaPill, climatePill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `${t('updated')} ${relativeTime(s.fetchedAt)}`), shareBtn),
     ),
-    nowRow(s, units)
+    nowRow(s, units),
+    (s.days?.[0]?.temp_max != null || s.days?.[0]?.temp_min != null)
+      ? el('div.hero-hl', null,
+          el('span', null, `H: ${s.days[0].temp_max != null ? temp(s.days[0].temp_max, units) : '—'}`),
+          el('span', null, `L: ${s.days[0].temp_min != null ? temp(s.days[0].temp_min, units) : '—'}`))
+      : null,
   );
   root.appendChild(el('div', { class: 'dash-hero' }, heroCard));
 
@@ -339,12 +383,17 @@ export function renderDashboard(root, snapshot, units, ctx) {
     ));
   }
 
-  /* ---------- alerts (stacked) ---------- */
+  /* ---------- alerts (stacked, dismissible) ---------- */
   for (const alert of computeAlerts(s)) {
-    root.appendChild(el(`div.alert.alert-${alert.kind}.dash-alert`, { role: 'alert' },
+    const alertEl = el(`div.alert.alert-${alert.kind}.dash-alert`, { role: 'alert' },
+      el('button.alert-close', {
+        type: 'button', 'aria-label': t('alert_dismiss'), title: t('alert_dismiss'),
+        onclick: () => alertEl.remove(),
+      }, icon('close', 'alert-close-ico')),
       el('div.alert-title', null, `${alert.icon} ${alert.title}`),
       el('div', null, alert.text),
-    ));
+    );
+    root.appendChild(alertEl);
   }
 
   /* ---------- rain nowcast ---------- */
@@ -395,13 +444,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- 10-day ---------- */
   root.appendChild(sectionTitle(t('sec_10day')));
   const bd = computeBestDays(s);
-  root.appendChild(weekGrid(s.days, (d, i) => {
-    const cell = simpleWeekCell(d, i, units);
-    if (bd && bd.best && d.date === bd.best.date) {
-      cell.appendChild(el('span.week-star', { title: t('sec_bestday'), 'aria-label': t('sec_bestday') }, '⭐'));
-    }
-    return cell;
-  }));
+  const tenList = tenDayList(s, units, bd);
+  if (tenList) {
+    root.appendChild(tenList);
+  } else {
+    root.appendChild(weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units)));
+  }
 
   /* ---------- farm weather (interest-gated, additive) ---------- */
   if (profile?.interests?.includes('farming')) {

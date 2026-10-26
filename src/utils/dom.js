@@ -76,3 +76,37 @@ export function esc(str) {
   d.textContent = String(str);
   return d.innerHTML;
 }
+
+/**
+ * Production modal behaviour: trap Tab inside `overlay`, and return a
+ * cleanup that restores focus to whatever had it before the overlay opened.
+ * Call closeFocus() when the overlay closes.
+ * @param {HTMLElement} overlay
+ * @returns {{ closeFocus: () => void }}
+ */
+export function trapFocus(overlay) {
+  const prev = document.activeElement;
+  const SEL = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  const onKey = (e) => {
+    if (e.key !== 'Tab') return;
+    const items = [...overlay.querySelectorAll(SEL)]
+      .filter((n) => !n.disabled && n.getClientRects().length);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !overlay.contains(document.activeElement))) {
+      last.focus();
+      e.preventDefault();
+    } else if (!e.shiftKey && (document.activeElement === last || !overlay.contains(document.activeElement))) {
+      first.focus();
+      e.preventDefault();
+    }
+  };
+  overlay.addEventListener('keydown', onKey);
+  return {
+    closeFocus() {
+      overlay.removeEventListener('keydown', onKey);
+      if (prev && document.contains(prev)) prev.focus?.();
+    },
+  };
+}

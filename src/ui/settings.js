@@ -122,7 +122,13 @@ function build() {
   ));
 
   /* ---------------- about ---------------- */
-  mount.appendChild(section(t('set_about'), el('div.set-help', null, t('set_about_t'))));
+  mount.appendChild(section(t('set_about'),
+    el('div.ver-row', null,
+      el('span.ver-badge', null, 'v0.7.0'),
+      el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
+    ),
+    el('div.set-help', null, t('set_about_t')),
+  ));
 }
 
 /* ================= builders ================= */

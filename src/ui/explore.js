@@ -13,7 +13,7 @@
  * shown as "—" instead of errors.
  */
 
-import { el, clear } from '../utils/dom.js';
+import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { describeWeather } from '../api/wmo.js';
 import { computeCPCBAqi } from '../core/aqi-cpcb.js';
@@ -86,7 +86,15 @@ function haversineKm(a, b) {
 
 function buildModal(title, onclose) {
   const overlay = el('div.modal-overlay.active', { role: 'dialog', 'aria-modal': 'true' });
-  const close = () => { try { onclose?.(); } catch { /* ignore */ } overlay.remove(); };
+  const focusCtl = trapFocus(overlay);
+  const onEsc = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => {
+    document.removeEventListener('keydown', onEsc);
+    focusCtl.closeFocus();
+    try { onclose?.(); } catch { /* ignore */ }
+    overlay.remove();
+  };
+  document.addEventListener('keydown', onEsc);
   const box = el('div.modal-box.explore-box',
     el('div.modal-header',
       el('span.modal-title', null, title),
@@ -96,6 +104,10 @@ function buildModal(title, onclose) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  // production nicety: land focus on the modal's own text field when it has one
+  requestAnimationFrame(() => {
+    box.querySelector('input[type="search"], input[type="text"]')?.focus();
+  });
   return { overlay, box, close };
 }
 
@@ -248,6 +260,7 @@ export function openCompare(ctx) {
 
   if (!currentList().length) {
     clear(listWrap).appendChild(el('div.explore-searching', null, t('cmp_empty')));
+    box.querySelector('input')?.focus();
   } else {
     refresh();
   }

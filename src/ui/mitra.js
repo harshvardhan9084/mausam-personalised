@@ -1,21 +1,26 @@
 /**
- * mitra.js — Mausam Mitra as a full tab page (v0.6).
+ * mitra.js — Mausam Mitra as a full tab page (v0.7).
  *
  * Streaming pipeline unchanged (runChatTurn → stream parser → prose +
- * MausamUI cards). v0.6 adds:
+ * MausamUI cards). Production pass:
  *  • persistent chat history (localStorage, restored with cards re-rendered)
  *  • a history sheet (🕘): reopen, delete one, clear all
  *  • "scroll to latest" floating button whenever you're not at the bottom
- *  • keyboard: `/` jumps to the chat box from anywhere, Esc releases it
+ *  • keyboard: `/` focuses this tab's composer (main.js dispatches it —
+ *    there is no cross-tab AI shortcut), Esc releases it
+ *  • auto-growing composer: Enter sends, Shift+Enter adds a line
+ *  • typing indicator until the first token arrives
+ *  • copy button on every finished reply
  *  • voice input (Web Speech API, hi-IN / en-IN) with graceful fallback
  */
 
-import { el, clear } from '../utils/dom.js';
+import { el, clear, trapFocus } from '../utils/dom.js';
 import { runChatTurn } from '../ai/client.js';
 import { renderPayload, renderFallback, proseNode, createStreamParser } from '../ai/render.js';
 import { t, getLang } from '../core/i18n.js';
 import { getProfile } from '../core/profile.js';
 import { store } from '../core/storage.js';
+import { icon, setIcon } from './icons.js';
 
 const MAX_LEN = 500;
 const MAX_HISTORY = 16;      // messages kept in the LLM context
@@ -42,7 +47,7 @@ let recog = null;
 let recogBase = '';
 
 /* ---------------- dom ---------------- */
-let msgs, input, sendBtn, statusText, providerLabel, statusDot, micBtn, scrollBtn;
+let msgs, input, sendBtn, statusText, providerLabel, statusDot, micBtn, scrollBtn, countEl;
 
 const getState = () => window.__mausamState ?? {};
 
@@ -89,13 +94,16 @@ function init() {
     el('form.chat-inputbar.chat-inputbar-page', {
       onsubmit: (e) => { e.preventDefault(); submit(); },
     },
-      el('input.chat-input', {
-        id: 'chat-input', type: 'text', placeholder: t('mitra_ph'),
+      el('textarea.chat-input', {
+        id: 'chat-input', rows: '1', placeholder: t('mitra_ph'),
         maxlength: String(MAX_LEN), autocomplete: 'off', spellcheck: 'false',
         'aria-label': t('mitra_ph'),
       }),
+      el('span.chat-count', { id: 'chat-count', 'aria-hidden': 'true' }),
       micBtn || buildMic(),
-      el('button.chat-send', { id: 'chat-send', type: 'submit', 'aria-label': t('mitra_send') }, '➤'),
+      el('button.chat-send', { id: 'chat-send', type: 'submit', 'aria-label': t('mitra_send') },
+        el('span.chat-send-ico', null, icon('send')),
+      ),
     ),
   );
 
@@ -103,6 +111,7 @@ function init() {
   input = mount.querySelector('#chat-input');
   sendBtn = mount.querySelector('#chat-send');
   scrollBtn = mount.querySelector('#chat-scroll-down');
+  countEl = mount.querySelector('#chat-count');
 
   sendBtn.addEventListener('click', (e) => {
     if (busy && controller) {
@@ -111,15 +120,25 @@ function init() {
     }
   });
 
+  input.addEventListener('input', () => {
+    autogrow();
+    if (countEl) countEl.textContent = input.value.length > MAX_LEN - 60 ? String(MAX_LEN - input.value.length) : '';
+  });
+
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp' && inputHistory.length && !input.value) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    } else if (e.key === 'ArrowUp' && inputHistory.length && !input.value) {
       historyIdx = historyIdx < 0 ? inputHistory.length - 1 : Math.max(0, historyIdx - 1);
       input.value = inputHistory[historyIdx] ?? '';
+      autogrow();
       e.preventDefault();
     } else if (e.key === 'ArrowDown' && historyIdx >= 0) {
       historyIdx += 1;
       if (historyIdx >= inputHistory.length) { historyIdx = -1; input.value = ''; }
       else input.value = inputHistory[historyIdx];
+      autogrow();
       e.preventDefault();
     } else if (e.key === 'Escape') {
       input.blur(); // release the text box
@@ -132,26 +151,20 @@ function init() {
   window.addEventListener('resize', updateScrollBtn);
   new ResizeObserver(updateScrollBtn).observe(msgs);
 
-  /* global shortcuts: "/" focuses the box from anywhere, Esc releases */
-  document.addEventListener('keydown', globalKeys);
-
   welcomeOrRestore();
 }
 
-/* ---------------- global keyboard shortcuts ---------------- */
+/** Composer focus — used by main.js's per-screen "/" dispatcher. */
+export function focusMitraInput() {
+  if (!input) return;
+  input.focus();
+  try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* textarea ok */ }
+}
 
-function globalKeys(e) {
-  const tag = e.target?.tagName;
-  const editable = e.target?.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  if (e.key === '/' && !editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    e.preventDefault();
-    if (hooks?.go && hooks.currentPage?.() !== 'mitra') hooks.go('mitra');
-    if (!inited) { init(); inited = true; }
-    input?.focus();
-  } else if (e.key === 'Escape' && document.activeElement === input) {
-    input.blur();
-    e.preventDefault();
-  }
+function autogrow() {
+  if (!input) return;
+  input.style.height = 'auto';
+  input.style.height = `${Math.min(input.scrollHeight, 132)}px`;
 }
 
 /* ---------------- voice input (Web Speech API) ---------------- */
@@ -291,10 +304,18 @@ function newChat() {
 function openHistorySheet() {
   const state = loadChats();
   const overlay = el('div.modal-overlay.active', { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mitra_history') });
+  const { closeFocus } = trapFocus(overlay);
+  const close = () => {
+    document.removeEventListener('keydown', onEsc);
+    closeFocus();
+    overlay.remove();
+  };
+  const onEsc = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onEsc);
   const box = el('div.modal-box.chat-hist-box',
     el('div.modal-header',
       el('span.modal-title', null, t('mitra_history')),
-      el('button.modal-close', { type: 'button', 'aria-label': 'Close', onclick: () => overlay.remove() }, '✕'),
+      el('button.modal-close', { type: 'button', 'aria-label': 'Close', onclick: close }, '✕'),
     ),
   );
 
@@ -307,26 +328,26 @@ function openHistorySheet() {
       list.appendChild(el('div.chat-hist-item',
         el('button.chat-hist-open', {
           type: 'button',
-          onclick: () => { overlay.remove(); openChat(c.id); },
+          onclick: () => { close(); openChat(c.id); },
         },
           el('span.chat-hist-title', null, c.title || t('mitra_title')),
           el('span.chat-hist-meta', null, `${when} · ${c.msgs?.length ?? 0}`),
         ),
         el('button.chat-hist-del', {
           type: 'button', 'aria-label': t('mitra_hist_del'), title: t('mitra_hist_del'),
-          onclick: (e) => { e.stopPropagation(); deleteChat(c.id); overlay.remove(); openHistorySheet(); },
+          onclick: (e) => { e.stopPropagation(); deleteChat(c.id); close(); openHistorySheet(); },
         }, '🗑'),
       ));
     }
     box.appendChild(list);
     box.appendChild(el('div.chat-hist-clear',
-      el('button.btn.btn-sm', { type: 'button', onclick: () => { clearAllChats(); overlay.remove(); } }, t('mitra_hist_clear')),
+      el('button.btn.btn-sm', { type: 'button', onclick: () => { clearAllChats(); close(); } }, t('mitra_hist_clear')),
     ));
   }
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 }
 
 function openChat(id) {
@@ -419,7 +440,8 @@ function renderBotText(text) {
 
 function setBusy(on) {
   busy = on;
-  sendBtn.textContent = on ? '■' : '➤';
+  const ico = sendBtn?.querySelector('.chat-send-ico');
+  if (ico) setIcon(ico, on ? 'stop' : 'send');
   sendBtn.setAttribute('aria-label', on ? t('mitra_stop') : t('mitra_send'));
   sendBtn.setAttribute('aria-busy', String(on));
 }
@@ -428,21 +450,51 @@ function setProviderLabel(badge) {
   providerLabel.textContent = badge ? ` · ${badge}` : '';
 }
 
-function botTurn() {
+function botTurn({ withTyping = false } = {}) {
   const streamBox = el('div.chat-stream.chat-text', { 'aria-live': 'polite' });
   const cards = el('div.chat-cards');
-  const meta = el('div.chat-meta');
+  const metaBadge = el('span');
+  const metaActions = el('span.chat-meta-actions');
+  const meta = el('div.chat-meta', null, metaBadge, metaActions);
   const wrap = el('div', null, streamBox, cards, meta);
   const b = bubble('bot', wrap);
+  let typing = null;
+  if (withTyping) {
+    typing = el('div.typing', null, el('span'), el('span'), el('span'));
+    streamBox.appendChild(typing);
+  }
+  const dropTyping = () => {
+    typing?.remove();
+    typing = null;
+  };
   return {
-    streamBox, cards, meta, bubble: b,
+    streamBox, cards, meta, metaActions, bubble: b, dropTyping,
     async type(node, delay = 80) {
+      dropTyping();
       cards.appendChild(node);
       await new Promise((r) => setTimeout(r, delay));
       stickToBottom();
     },
-    setMeta(text) { if (text) meta.textContent = text; },
+    setMeta(text) { if (text) metaBadge.textContent = text; },
   };
+}
+
+/** Copy-to-clipboard chip appended to a finished reply. */
+function addCopyAction(turn, getText) {
+  if (!turn || !getText) return;
+  const btn = el('button.chat-copy', {
+    type: 'button', title: t('copy_answer'), 'aria-label': t('copy_answer'),
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(getText());
+        btn.classList.add('done');
+        btn.textContent = '✓';
+        setTimeout(() => { btn.classList.remove('done'); setIcon(btn, 'copy'); }, 1400);
+      } catch { /* clipboard unavailable */ }
+    },
+  });
+  setIcon(btn, 'copy');
+  turn.metaActions.appendChild(btn);
 }
 
 function suggestions() {
@@ -472,13 +524,21 @@ async function send(raw, { isRetry = false } = {}) {
 
   renderUserText(text);
   input.value = '';
+  input.style.height = '';
+  if (countEl) countEl.textContent = '';
   setBusy(true);
   controller = new AbortController();
-  const turn = botTurn();
+  const turn = botTurn({ withTyping: true });
   setProviderLabel('');
 
   let streamed = '';
   let rafPending = false;
+  let firstContent = false;
+  const markContent = () => {
+    if (firstContent) return;
+    firstContent = true;
+    turn.dropTyping();
+  };
   const flushStream = () => {
     if (rafPending) return;
     rafPending = true;
@@ -495,7 +555,7 @@ async function send(raw, { isRetry = false } = {}) {
     getState,
     signal: controller.signal,
     onOpen: (info) => setProviderLabel(info.note ? `${info.badge} · ${info.note}` : info.badge),
-    onText: (delta) => { streamed += delta; flushStream(); },
+    onText: (delta) => { markContent(); streamed += delta; flushStream(); },
     onCode: async (codeText) => {
       const pre = el('pre.chat-code', null, String(codeText).replace(/\s+$/, ''));
       await turn.type(pre, 0);
@@ -508,11 +568,13 @@ async function send(raw, { isRetry = false } = {}) {
       await turn.type(renderFallback(rawJson, reason));
     },
     onDone: (info) => {
+      turn.dropTyping();
       clear(turn.streamBox).appendChild(proseNode(streamed));
       if (!streamed.trim() && !turn.cards.childElementCount) {
         clear(turn.streamBox).appendChild(el('span', null, '(no content — try again)'));
       }
       turn.setMeta(info?.aborted ? `${info.badge ?? ''} · stopped` : info?.badge ?? '');
+      if (streamed.trim() && !info?.aborted) addCopyAction(turn, () => streamed.trim());
       llmHistory.push({ role: 'user', text });
       llmHistory.push({ role: 'model', text: streamed || '(card-only answer)' });
       if (llmHistory.length > MAX_HISTORY * 2) llmHistory.splice(0, llmHistory.length - MAX_HISTORY * 2);
@@ -522,6 +584,7 @@ async function send(raw, { isRetry = false } = {}) {
       controller = null;
     },
     onError: async (err) => {
+      turn.dropTyping();
       clear(turn.streamBox);
       if (!streamed.trim()) turn.streamBox.remove();
       const card = el('div.chat-error',

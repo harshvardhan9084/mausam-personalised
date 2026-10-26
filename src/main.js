@@ -22,7 +22,7 @@ import { computeAlerts } from './core/insights.js';
 import { wireHeader } from './ui/header.js';
 import { wireSettingsPage, renderSettings } from './ui/settings.js';
 import { wireYouPage, renderYou } from './ui/you.js';
-import { wireMitraPage, showMitra } from './ui/mitra.js';
+import { wireMitraPage, showMitra, focusMitraInput } from './ui/mitra.js';
 import { wireCropsPage, showCrops } from './ui/crops.js';
 import { rememberPlace } from './ui/places.js';
 import { openCompare, openJourney } from './ui/explore.js';
@@ -74,6 +74,13 @@ const homeScroll = $('home-scroll');
 
 /* ================= router ================= */
 const PAGES = ['home', 'crops', 'mitra', 'you', 'settings'];
+const PAGE_TITLE = {
+  home: 'Mausam',
+  crops: 'Crops · Mausam',
+  mitra: 'Mitra · Mausam',
+  you: 'You · Mausam',
+  settings: 'Settings · Mausam',
+};
 let currentPage = 'home';
 
 function go(page) {
@@ -84,6 +91,7 @@ function go(page) {
     $(`tab-${p}`)?.classList.toggle('active', p === page);
     $(`tab-${p}`)?.setAttribute('aria-current', p === page ? 'page' : 'false');
   }
+  document.title = PAGE_TITLE[page] ?? 'Mausam';
   window.scrollTo({ top: 0 });
   // keep the URL in sync so manifest shortcuts (#mitra, #crops…) and back
   // buttons behave; replaceState avoids polluting history on every tab tap
@@ -102,6 +110,30 @@ window.addEventListener('hashchange', () => {
   if (PAGES.includes(page) && page !== currentPage) go(page);
 });
 export function navigate(page) { go(page); }
+
+/* ================= "/" — focus the screen's main text field =================
+ * Standard convention: / reaches the primary search/text input of whatever
+ * is on screen. It is NOT an AI shortcut — it never navigates. So it focuses
+ * the Mitra composer on the Mitra tab, the crop filter on Crops, the field
+ * of an open dialog (location search / compare / journey / history), and
+ * does nothing on screens without a main field.
+ */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tgt = e.target;
+  if (tgt?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tgt?.tagName)) return;
+  const openModal = document.querySelector('.modal-overlay.active');
+  if (openModal) {
+    const field = openModal.querySelector('input[type="search"], input[type="text"], textarea');
+    if (field) { e.preventDefault(); field.focus(); }
+    return; // modal open but no field → leave focus alone
+  }
+  if (currentPage === 'mitra') { e.preventDefault(); focusMitraInput(); }
+  else if (currentPage === 'crops') {
+    const filter = document.getElementById('crop-filter');
+    if (filter) { e.preventDefault(); filter.focus(); }
+  }
+});
 
 /* ================= header ================= */
 const header = wireHeader(
@@ -364,8 +396,45 @@ window.addEventListener('online', () => {
 
 /* ================= service worker ================= */
 const isSecureHost = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+let swReg = null;
 if ('serviceWorker' in navigator && isSecureHost) {
-  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW registration failed:', err));
+  navigator.serviceWorker.register('sw.js')
+    .then((reg) => { swReg = reg; })
+    .catch((err) => console.warn('SW registration failed:', err));
+}
+
+/* ================= "app updated" snackbar =================
+ * skipWaiting+claim means a freshly installed SW takes over while this
+ * page still runs the old bundle. controllerchange after the first load
+ * → offer a one-tap refresh instead of a silent half-updated state. */
+let firstController = !navigator.serviceWorker?.controller;
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  if (firstController) { firstController = false; return; }
+  showSnackbar(t('upd_ready'), '⟳', () => location.reload());
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && swReg) swReg.update().catch(() => {});
+});
+
+let snackbarTimer = null;
+function showSnackbar(text, btnLabel, onBtn) {
+  const bar = $('snackbar');
+  const txt = $('snackbar-text');
+  const btn = $('snackbar-btn');
+  if (!bar || !txt || !btn) return;
+  txt.textContent = text;
+  btn.textContent = btnLabel;
+  btn.onclick = () => { hideSnackbar(); onBtn?.(); };
+  bar.hidden = false;
+  requestAnimationFrame(() => bar.classList.add('show'));
+  clearTimeout(snackbarTimer);
+  snackbarTimer = setTimeout(hideSnackbar, 12000);
+}
+function hideSnackbar() {
+  const bar = $('snackbar');
+  if (!bar) return;
+  bar.classList.remove('show');
+  setTimeout(() => { bar.hidden = true; }, 300);
 }
 
 /* ================= install prompt (PWA) ================= */
@@ -374,6 +443,46 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.__mausamInstallEvt = e; // settings.js renders the Install button from this
 });
 window.addEventListener('appinstalled', () => { window.__mausamInstallEvt = null; });
+
+/* ================= pull-to-refresh (home, touch) ================= */
+const PTR_TRIGGER = 72;   // px of pull before refresh fires
+const ptrEl = $('ptr-indicator');
+let ptrStartY = 0;
+let ptrPulling = false;
+let ptrFired = false;
+
+$('page-home').addEventListener('touchstart', (e) => {
+  if (window.scrollY > 4 || document.querySelector('.modal-overlay.active')) return;
+  ptrStartY = e.touches[0].clientY;
+  ptrPulling = true;
+  ptrFired = false;
+}, { passive: true });
+
+$('page-home').addEventListener('touchmove', (e) => {
+  if (!ptrPulling || ptrFired || !ptrEl) return;
+  const dist = e.touches[0].clientY - ptrStartY;
+  if (dist <= 0 || window.scrollY > 4) { ptrEl.classList.remove('show', 'armed'); return; }
+  const eased = Math.min(dist * 0.45, 96); // rubber-band
+  ptrEl.style.transform = `translateY(${Math.max(0, eased - 52)}px)`;
+  ptrEl.classList.add('show');
+  ptrEl.classList.toggle('armed', dist >= PTR_TRIGGER);
+  if (dist >= PTR_TRIGGER + 8 && !inflight) {
+    ptrFired = true;
+    ptrEl.classList.remove('armed');
+    ptrEl.classList.add('spin');
+    loadWeather(true);
+    setTimeout(() => {
+      ptrEl.classList.remove('show', 'spin');
+      ptrEl.style.transform = '';
+    }, 900);
+  }
+}, { passive: true });
+
+$('page-home').addEventListener('touchend', () => {
+  ptrPulling = false;
+  ptrEl?.classList.remove('show', 'armed');
+  ptrEl.style.transform = '';
+}, { passive: true });
 
 /* ================= boot ================= */
 async function boot() {
