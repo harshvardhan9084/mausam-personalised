@@ -434,7 +434,14 @@ const dict = {
   crop_filter:   ['Filter crops…', 'फ़सल खोजें…'],
   crop_none:     ['No crops match — clear the filter to see all.', 'कोई फ़सल नहीं मिली — फ़िल्टर हटाकर सभी देखें।'],
   set_version:   ['Version', 'वर्ज़न'],
-  set_about_t:   ['Mausam v0.7 — independent, open-source, no accounts, no tracking. Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment. Air quality: CPCB breakpoints computed on-device. Crop calendar: on-device engine over live Open-Meteo data.', 'मौसम v0.7 — स्वतंत्र, ओपन-सोर्स, न खाता न ट्रैकिंग। मौसम: Open-Meteo (CC-BY 4.0), चाहें तो IMD सरकारी डेटा। हवा: CPCB फ़ॉर्मूला फ़ोन पर ही। फ़सल कैलेंडर: लाइव Open-Meteo डेटा पर फ़ोन में ही बना इंजन।'],
+  set_about_t:   ['Mausam v0.8 — independent, open-source, no accounts, no tracking. Weather: Open-Meteo (CC-BY 4.0) with optional official IMD enrichment. Air quality: CPCB breakpoints computed on-device. Crop calendar: on-device engine over live Open-Meteo data.', 'मौसम v0.8 — स्वतंत्र, ओपन-सोर्स, न खाता न ट्रैकिंग। मौसम: Open-Meteo (CC-BY 4.0), चाहें तो IMD सरकारी डेटा। हवा: CPCB फ़ॉर्मूला फ़ोन पर ही। फ़सल कैलेंडर: लाइव Open-Meteo डेटा पर फ़ोन में ही बना इंजन।'],
+
+  /* ---------------- v0.8 — day detail, listen, polish ---------------- */
+  mitra_listen:      ['Listen to this reply', 'यह जवाब सुनें'],
+  mitra_listen_stop: ['Stop reading', 'पढ़ना बंद करें'],
+  ten_hint:          ['Tap a day for details', 'विवरण के लिए किसी दिन पर टैप करें'],
+  rain_simple:       ['Rain', 'बारिश'],
+  day_feels:         ['Feels', 'महसूस'],
 };
 
 let currentLang = null;

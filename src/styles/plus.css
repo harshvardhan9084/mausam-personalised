@@ -127,16 +127,20 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
 .persona-badge { cursor: pointer; }
 .persona-badge:hover { border-color: var(--accent); }
 
-/* ---------------- mobile header: two tidy rows ---------------- */
+/* ---------------- mobile header: one tight row ----------------
+ * v0.8: the old two-row layout burned ~36px of every screen. The brand
+ * goes icon-only and everything shares a single row; --header-h is
+ * measured live by main.js so no other rule needs to know the height. */
 
 @media (max-width: 520px) {
-  .app-header { flex-wrap: wrap; row-gap: 7px; padding: 8px 12px; }
-  .header-left { flex: 1 1 100%; }
-  .header-right { flex: 1 1 100%; justify-content: flex-end; }
-  .app-name span { display: none; } /* icon-only brand frees space for badge + city */
-  .persona-badge { font-size: 0.72rem; padding: 3px 10px; }
-  .city-btn .city-name { max-width: 120px; }
-  .src-pill span:last-child { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+  .app-header { padding: 6px 10px; gap: 6px; }
+  .app-name { gap: 0; }
+  .app-name img { width: 21px; height: 21px; }
+  .app-name span { display: none; } /* icon-only brand frees space for city + pills */
+  .city-btn { padding: 6px 8px; }
+  .city-btn .city-name { max-width: 110px; }
+  .src-pill { padding: 4px 8px; }
+  .src-pill span:last-child { max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* ---------------- reduced motion ---------------- */

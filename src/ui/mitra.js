@@ -240,11 +240,18 @@ function ensureChat() {
   msgsTurn.length = 0;
 }
 
-/** Append a message to the current conversation and persist. */
-function persistMsg(role, text) {
+/** Append a message to the current conversation and persist.
+ *  `cards` carries MausamUI payloads that came from tool calls — they are
+ *  not part of the streamed text, so without them restored chats would
+ *  silently lose every tool-driven chart. */
+function persistMsg(role, text, cards = null) {
   if (!text || !String(text).trim()) return;
   ensureChat();
-  msgsTurn.push({ role, text: String(text).slice(0, 8000) });
+  const entry = { role, text: String(text).slice(0, 8000) };
+  if (role === 'model' && Array.isArray(cards) && cards.length) {
+    entry.cards = cards.slice(0, 6);
+  }
+  msgsTurn.push(entry);
   if (role === 'user' && !chatTitle) chatTitle = String(text).slice(0, 64);
 
   const state = loadChats();
@@ -272,7 +279,7 @@ function welcomeOrRestore() {
     llmHistory.length = 0;
     for (const m of chat.msgs) {
       if (m.role === 'user') renderUserText(m.text);
-      else renderBotText(m.text);
+      else renderBotText(m.text, m.cards);
       msgsTurn.push({ role: m.role, text: m.text });
       llmHistory.push({ role: m.role === 'user' ? 'user' : 'model', text: m.text });
     }
@@ -286,6 +293,7 @@ function welcomeOrRestore() {
 /** 🧹 — archive what's on screen and start fresh. */
 function newChat() {
   if (controller) controller.abort(new DOMException('Reset', 'AbortError'));
+  stopSpeaking();
   if (listening) recog?.stop();
   chatId = null;
   chatTitle = '';
@@ -355,6 +363,7 @@ function openChat(id) {
   const chat = state.list.find((c) => c.id === id);
   if (!chat) return;
   if (controller) controller.abort(new DOMException('Switched chat', 'AbortError'));
+  stopSpeaking();
   chatId = chat.id;
   chatTitle = chat.title;
   msgsTurn.length = 0;
@@ -362,7 +371,7 @@ function openChat(id) {
   clear(msgs);
   for (const m of chat.msgs) {
     if (m.role === 'user') renderUserText(m.text);
-    else renderBotText(m.text);
+    else renderBotText(m.text, m.cards);
     msgsTurn.push({ role: m.role, text: m.text });
     llmHistory.push({ role: m.role === 'user' ? 'user' : 'model', text: m.text });
   }
@@ -413,29 +422,45 @@ function renderUserText(text) {
   bubble('user', el('div.chat-user-text', null, text));
 }
 
-/** Re-render stored bot text (prose + MausamUI fences → real cards). */
-function renderBotText(text) {
+/** Re-render stored bot text (prose + MausamUI fences + tool cards →
+ *  real components). Restored replies get the same copy + listen actions. */
+function renderBotText(text, cards = []) {
   const streamBox = el('div.chat-stream.chat-text', { 'aria-live': 'off' });
-  const cards = el('div.chat-cards');
-  const wrap = el('div', null, streamBox, cards);
+  const cardsBox = el('div.chat-cards');
+  const metaActions = el('span.chat-meta-actions');
+  const meta = el('div.chat-meta', null, el('span'), metaActions);
+  const wrap = el('div', null, streamBox, cardsBox, meta);
   bubble('bot', wrap);
   const parser = createStreamParser();
   let acc = '';
   const pump = (delta) => {
     for (const e of parser.push(delta)) {
       if (e.type === 'text') { acc += e.text; }
-      else if (e.type === 'component') cards.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
-      else if (e.type === 'fallback') cards.appendChild(renderFallback(e.raw, e.reason));
-      else if (e.type === 'code') cards.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
+      else if (e.type === 'component') cardsBox.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
+      else if (e.type === 'fallback') cardsBox.appendChild(renderFallback(e.raw, e.reason));
+      else if (e.type === 'code') cardsBox.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
     }
   };
   pump(String(text ?? ''));
   for (const e of parser.end()) {
-    if (e.type === 'component') cards.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
-    else if (e.type === 'fallback') cards.appendChild(renderFallback(e.raw, e.reason));
-    else if (e.type === 'code') cards.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
+    if (e.type === 'component') cardsBox.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
+    else if (e.type === 'fallback') cardsBox.appendChild(renderFallback(e.raw, e.reason));
+    else if (e.type === 'code') cardsBox.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
   }
-  if (acc.trim()) streamBox.appendChild(proseNode(acc));
+  /* tool-call payloads that rode along with this reply */
+  if (Array.isArray(cards)) {
+    for (const p of cards) {
+      try {
+        const node = renderPayload(p, { onSend: (m) => send(m) });
+        if (node) cardsBox.appendChild(node);
+      } catch { /* skip a broken stored payload */ }
+    }
+  }
+  if (acc.trim() || cardsBox.childElementCount) {
+    if (acc.trim()) streamBox.appendChild(proseNode(acc));
+    addCopyAction({ metaActions }, () => acc.trim());
+    addListenAction({ metaActions }, () => acc.trim());
+  }
 }
 
 function setBusy(on) {
@@ -497,6 +522,65 @@ function addCopyAction(turn, getText) {
   turn.metaActions.appendChild(btn);
 }
 
+/* ---------------- text-to-speech (on-device, free) ----------------
+ * 🔊 Listen reads the reply's prose aloud — helpful for low-literacy
+ * users and hands-free checks. Web Speech Synthesis, no network calls.
+ */
+let speakBtn = null;
+
+function ttsText(raw) {
+  return String(raw ?? '')
+    .replace(/```[a-z-]*[\s\S]*?```/gi, ' ') // fences render as cards; speak prose only
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/[`>#_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 900);
+}
+
+function stopSpeaking() {
+  try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+  if (speakBtn) {
+    speakBtn.classList.remove('speaking');
+    setIcon(speakBtn, 'listen');
+    speakBtn.setAttribute('aria-label', t('mitra_listen'));
+    speakBtn.setAttribute('title', t('mitra_listen'));
+    speakBtn = null;
+  }
+}
+
+/** 🔊 chip on a finished reply. */
+function addListenAction(turn, getText) {
+  if (!turn || !getText || !('speechSynthesis' in window)) return;
+  const btn = el('button.chat-copy', {
+    type: 'button', title: t('mitra_listen'), 'aria-label': t('mitra_listen'),
+    onclick: () => {
+      if (speakBtn === btn) { stopSpeaking(); return; }
+      stopSpeaking();
+      const text = ttsText(getText());
+      if (!text) return;
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        const hi = getLang() === 'hi' || (store.aiLang.get() ?? 'auto') === 'hi';
+        u.lang = hi ? 'hi-IN' : 'en-IN';
+        const voice = window.speechSynthesis.getVoices()?.find((v) => (v.lang ?? '').replace('_', '-').toLowerCase().startsWith(hi ? 'hi' : 'en'));
+        if (voice) u.voice = voice;
+        u.rate = 1;
+        u.onend = () => stopSpeaking();
+        u.onerror = () => stopSpeaking();
+        speakBtn = btn;
+        btn.classList.add('speaking');
+        setIcon(btn, 'stop');
+        btn.setAttribute('aria-label', t('mitra_listen_stop'));
+        btn.setAttribute('title', t('mitra_listen_stop'));
+        window.speechSynthesis.speak(u);
+      } catch { stopSpeaking(); }
+    },
+  });
+  setIcon(btn, 'listen');
+  turn.metaActions.appendChild(btn);
+}
+
 function suggestions() {
   const p = getProfile();
   const ints = p?.interests ?? [];
@@ -514,6 +598,7 @@ function suggestions() {
 async function send(raw, { isRetry = false } = {}) {
   const text = String(raw ?? '').trim().slice(0, MAX_LEN);
   if (!text || busy) return;
+  stopSpeaking(); // a new turn silences the reader
   if (!isRetry && !/^use mausam core$/i.test(text)) {
     prevQuestion = lastQuestion;
     lastQuestion = text;
@@ -534,6 +619,7 @@ async function send(raw, { isRetry = false } = {}) {
   let streamed = '';
   let rafPending = false;
   let firstContent = false;
+  const turnCards = []; // tool-call payloads rendered this turn (persisted with the reply)
   const markContent = () => {
     if (firstContent) return;
     firstContent = true;
@@ -561,6 +647,7 @@ async function send(raw, { isRetry = false } = {}) {
       await turn.type(pre, 0);
     },
     onComponent: async (payload) => {
+      turnCards.push(payload);
       const node = renderPayload(payload, { onSend: (m) => send(m) });
       if (node) await turn.type(node);
     },
@@ -574,12 +661,15 @@ async function send(raw, { isRetry = false } = {}) {
         clear(turn.streamBox).appendChild(el('span', null, '(no content — try again)'));
       }
       turn.setMeta(info?.aborted ? `${info.badge ?? ''} · stopped` : info?.badge ?? '');
-      if (streamed.trim() && !info?.aborted) addCopyAction(turn, () => streamed.trim());
+      if (streamed.trim() && !info?.aborted) {
+        addCopyAction(turn, () => streamed.trim());
+        addListenAction(turn, () => streamed.trim());
+      }
       llmHistory.push({ role: 'user', text });
       llmHistory.push({ role: 'model', text: streamed || '(card-only answer)' });
       if (llmHistory.length > MAX_HISTORY * 2) llmHistory.splice(0, llmHistory.length - MAX_HISTORY * 2);
       persistMsg('user', text);
-      persistMsg('model', streamed);
+      persistMsg('model', streamed, turnCards);
       setBusy(false);
       controller = null;
     },

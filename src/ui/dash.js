@@ -196,6 +196,16 @@ function nowcastCard(s, units) {
   }
   head.appendChild(verdict);
 
+  /* all-dry: render an intentional flat state instead of near-zero bars
+     that read as a broken empty chart (v0.8) */
+  if (total < 0.1) {
+    head.appendChild(el('div.nowcast-dry', null,
+      el('span.nowcast-dash', { 'aria-hidden': 'true' }),
+      el('span', null, `0 mm · 2 h`),
+    ));
+    return card(head);
+  }
+
   const bars = el('div.nowcast-bars');
   const max = Math.max(...steps, 0.5);
   steps.forEach((v, i) => {
@@ -272,8 +282,9 @@ function dayTimelineCard(rows) {
 }
 
 /** 10-day list: day | icon | pop | range bar positioned over the period's
- *  min–max span | values. The production pattern for a 10-day outlook —
- *  a 7-column grid cannot show 10 days without cramping. */
+ *  min–max span | values. Rows expand on tap into a per-day detail panel
+ *  (feels, rain, wind, UV, sun) — data is already in the bundle, zero
+ *  extra API calls (v0.8). */
 function tenDayList(s, units, bd) {
   const days = (s.days ?? []).slice(0, 10);
   if (!days.length) return null;
@@ -283,6 +294,9 @@ function tenDayList(s, units, bd) {
   const gMax = Math.max(...mins, ...maxs);
   const span = Math.max(gMax - gMin, 1);
   const list = el('div.ten-list', { role: 'list', 'aria-label': t('sec_10day') });
+
+  const fmtT = (iso) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: store.clock.get() !== '24' }) : '—');
+
   days.forEach((d, i) => {
     const lo = d.temp_min ?? gMin;
     const hi = d.temp_max ?? gMax;
@@ -292,19 +306,39 @@ function tenDayList(s, units, bd) {
       el('div.ten-fill', {
         style: { marginLeft: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` },
       }));
-    const row = el('div.ten-row', { role: 'listitem', class: i === 0 ? 'today' : '' },
-      el('span.ten-day', null, i === 0 ? t('today') : dayLabel(d.date, i)),
+    const detailId = `ten-detail-${i}`;
+    const star = bd && bd.best && d.date === bd.best.date;
+    const detail = el('div.ten-detail', { id: detailId, role: 'region', 'aria-label': `${d.label ?? ''} ${d.date}` },
+      el('div.ten-detail-grid', [
+        [`🌡 ${t('day_feels')}`, d.feels_max != null ? temp(d.feels_max, units) : '—'],
+        [`💧 ${t('rain_simple')}`, `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
+        [`${t('wind')}`, `${d.wind_max != null ? wind(d.wind_max, units) : '—'}${d.gusts_max != null ? ` · ${t('gusts')} ${wind(d.gusts_max, units)}` : ''}`],
+        [`${t('uv')}`, d.uv_max != null ? `${Math.round(d.uv_max * 10) / 10}` : '—'],
+        [`🌅 ${t('sunrise')}`, fmtT(d.sunrise)],
+        [`🌇 ${t('sunset')}`, fmtT(d.sunset)],
+      ].map(([k, v]) => el('span', null, el('b', null, k), v))),
+    );
+    const row = el('button.ten-row', {
+      type: 'button',
+      'aria-expanded': 'false',
+      'aria-controls': detailId,
+      onclick: () => {
+        const open = wrap.classList.toggle('expanded');
+        row.setAttribute('aria-expanded', String(open));
+      },
+    },
+      el('span.ten-day', null, `${star ? '⭐' : ''}${i === 0 ? t('today') : dayLabel(d.date, i)}`),
       el('span.ten-icon', null, d.wx?.icon ?? '·'),
-      el('span.ten-pop', { class: (d.precip_prob_max ?? 0) >= 50 ? 'wet' : '' }, `${Math.round(d.precip_prob_max ?? 0)}%`),
+      el('span.ten-pop', { class: (d.precip_prob_max ?? 0) >= 50 ? 'wet' : '', title: t('rain_simple') }, `${Math.round(d.precip_prob_max ?? 0)}%`),
       bar,
       el('span.ten-vals', null,
         el('b', null, temp(hi, units)),
         el('span', null, temp(lo, units))),
+      icon('chevron', 'ten-chev'),
     );
-    if (bd && bd.best && d.date === bd.best.date) {
-      row.appendChild(el('span.ten-star', { title: t('sec_bestday'), 'aria-label': t('sec_bestday') }, '⭐'));
-    }
-    list.appendChild(row);
+    if (star) row.setAttribute('title', `${t('sec_bestday')} · ${d.label ?? ''}`);
+    const wrap = el('div.ten-row-wrap', { role: 'listitem', class: i === 0 ? 'today' : '' }, row, detail);
+    list.appendChild(wrap);
   });
   return list;
 }
@@ -347,7 +381,8 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const heroCard = card(
     el('div.hero-now-top',
       el('div.hero-place', null, `${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
-      el('div.hero-top-actions', deltaPill, climatePill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `${t('updated')} ${relativeTime(s.fetchedAt)}`), shareBtn),
+      shareBtn, // direct child: mobile grid places it beside the name, desktop flows it after the pills
+      el('div.hero-top-actions', deltaPill, climatePill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `${t('updated')} ${relativeTime(s.fetchedAt)}`)),
     ),
     nowRow(s, units),
     (s.days?.[0]?.temp_max != null || s.days?.[0]?.temp_min != null)
@@ -383,12 +418,18 @@ export function renderDashboard(root, snapshot, units, ctx) {
     ));
   }
 
-  /* ---------- alerts (stacked, dismissible) ---------- */
+  /* ---------- alerts (stacked, dismissible, dismissal sticky for the session) ---------- */
+  const dismissed = readDismissedAlerts();
   for (const alert of computeAlerts(s)) {
+    if (dismissed.has(alert.title)) continue; // user closed this exact alert already
     const alertEl = el(`div.alert.alert-${alert.kind}.dash-alert`, { role: 'alert' },
       el('button.alert-close', {
         type: 'button', 'aria-label': t('alert_dismiss'), title: t('alert_dismiss'),
-        onclick: () => alertEl.remove(),
+        onclick: () => {
+          dismissed.add(alert.title);
+          try { sessionStorage.setItem('mausam:dismissedAlerts', JSON.stringify([...dismissed].slice(-30))); } catch { /* private mode */ }
+          alertEl.remove();
+        },
       }, icon('close', 'alert-close-ico')),
       el('div.alert-title', null, `${alert.icon} ${alert.title}`),
       el('div', null, alert.text),
@@ -446,7 +487,9 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const bd = computeBestDays(s);
   const tenList = tenDayList(s, units, bd);
   if (tenList) {
-    root.appendChild(tenList);
+    const tenWrap = el('div', null, tenList);
+    tenWrap.appendChild(el('div.ten-hint', null, t('ten_hint')));
+    root.appendChild(tenWrap);
   } else {
     root.appendChild(weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units)));
   }
@@ -588,4 +631,14 @@ export function renderDashboard(root, snapshot, units, ctx) {
 export function updateFreshness(snapshot) {
   const pill = document.getElementById('updated-pill');
   if (pill && snapshot) pill.textContent = `${t('updated')} ${relativeTime(snapshot.fetchedAt)}`;
+}
+
+/** Alert titles the user closed this session — they stay closed across
+ *  re-renders and reloads. Titles embed values ("AQI 404"), so genuinely
+ *  new conditions always produce a new, visible alert. */
+function readDismissedAlerts() {
+  try {
+    const arr = JSON.parse(sessionStorage.getItem('mausam:dismissedAlerts') ?? '[]');
+    return Array.isArray(arr) ? new Set(arr.filter((x) => typeof x === 'string')) : new Set();
+  } catch { return new Set(); }
 }

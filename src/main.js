@@ -72,6 +72,27 @@ let inflight = null;
 const $ = (id) => document.getElementById(id);
 const homeScroll = $('home-scroll');
 
+/* ================= chrome metrics → CSS vars =================
+ * The header wraps to two rows on small phones and the bottom nav's real
+ * height drifts from any static token (safe areas, font scaling). Measure
+ * both and publish --header-h / --nav-h so every rule that offsets by the
+ * chrome — #page-mitra height, .pages bottom padding, FAB offsets and the
+ * pull-to-refresh indicator — stays pixel-exact on every device.
+ */
+function publishChromeMetrics() {
+  const root = document.documentElement;
+  const header = document.querySelector('.app-header');
+  const nav = document.querySelector('.tab-nav');
+  if (header) root.style.setProperty('--header-h', `${Math.round(header.getBoundingClientRect().height)}px`);
+  if (nav) root.style.setProperty('--nav-h', `${Math.round(nav.getBoundingClientRect().height)}px`);
+}
+publishChromeMetrics();
+const chromeRO = new ResizeObserver(() => publishChromeMetrics());
+document.querySelector('.app-header') && chromeRO.observe(document.querySelector('.app-header'));
+document.querySelector('.tab-nav') && chromeRO.observe(document.querySelector('.tab-nav'));
+window.addEventListener('resize', publishChromeMetrics);
+window.addEventListener('load', publishChromeMetrics);
+
 /* ================= router ================= */
 const PAGES = ['home', 'crops', 'mitra', 'you', 'settings'];
 const PAGE_TITLE = {
@@ -484,6 +505,34 @@ $('page-home').addEventListener('touchend', () => {
   ptrEl.style.transform = '';
 }, { passive: true });
 
+/* ================= PWA share target =================
+ * The manifest declares a share_target so "Share → Mausam" from any app
+ * (WhatsApp, Maps, browser…) lands here with title/text/url params. If the
+ * shared text looks like a place, open location search with it pre-filled.
+ */
+function handleSharedText() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const raw = q.get('text') || q.get('title') || q.get('url') || '';
+    if (!q.toString()) return;
+    // clean the URL immediately so a reload/back doesn't re-trigger
+    history.replaceState(null, '', location.pathname + location.hash);
+    let query = String(raw).trim();
+    if (!query) return;
+    // shared URLs: try to pull a place out of maps-style links (?q= / ?query= / last path bit)
+    if (/^https?:\/\//i.test(query)) {
+      try {
+        const u = new URL(query);
+        query = u.searchParams.get('q') || u.searchParams.get('query') || u.searchParams.get('place')
+          || decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '') || query;
+      } catch { /* keep raw */ }
+    }
+    query = query.replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (query.length < 2) return;
+    setTimeout(() => header.openSearchWithQuery(query), 350);
+  } catch { /* never block boot */ }
+}
+
 /* ================= boot ================= */
 async function boot() {
   store.flags.set('bootedOnce', true);
@@ -491,6 +540,7 @@ async function boot() {
   // deep link: manifest shortcuts and shared links use #crops / #mitra etc.
   const hashPage = location.hash.slice(1);
   go(PAGES.includes(hashPage) ? hashPage : 'home');
+  handleSharedText();
   renderDashboard(); // instant paint (skeleton or cache)
   loadWeather(false, { silent: false });
 

@@ -20,5 +20,15 @@
     { "name": "Crop calendar", "url": "./index.html#crops", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Ask Mitra", "url": "./index.html#mitra", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "My profile", "url": "./index.html#you", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
-  ]
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

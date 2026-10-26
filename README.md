@@ -22,7 +22,42 @@ Settings  language, units, clock, theme, 9 accent colours, AI
           provider, IMD key, alerts, data saver, install, export / import
 ```
 
-## What v0.7 adds — the production pass
+## What v0.8 adds — measured polish
+
+A live audit (phone-size viewports, screen readers, real chat turns) drove
+this round: fix what phones actually feel.
+
+- **Chrome heights are measured, not guessed** — the header (two rows on
+  old two-row layouts, one row now) and bottom nav are observed with a
+  `ResizeObserver` and published as `--header-h` / `--nav-h`, so the Mitra
+  composer, page bottom padding, FABs and pull-to-refresh offsets are
+  pixel-exact on every device — including font-scaling and safe areas.
+  (Before: the composer could hide behind the nav bar.)
+- **One-row phone header** — brand goes icon-only and the city, source
+  pill and refresh share a single row, reclaiming ~36 px of content on
+  every screen.
+- **The hero never squeezes** — the place name owns its full row on
+  phones; delta/updated pills flow below it and wrap cleanly.
+- **10-day rows open a day detail** — tap any day (keyboard works too,
+  `aria-expanded`) for feels-like, rain mm + chance, wind + gusts, UV and
+  sunrise/sunset. Zero extra API calls.
+- **Dry charts read as dry** — a 0 % rain chart in Mitra renders a visible
+  flat baseline in accent tones (was: near-invisible slivers that looked
+  broken); the dashboard nowcast shows an intentional "dry line · 0 mm".
+- **🔊 Listen on every Mitra reply** — on-device Web Speech Synthesis
+  (hi-IN / en-IN), one tap to hear, tap again to stop; silent when you
+  send, switch or clear chats. Restored history replies get copy +
+  listen too.
+- **Share to Mausam** — PWA share target: "Share → Mausam" from any app
+  pre-fills location search (maps-style URLs are parsed for the place).
+- **Alerts stay dismissed** — closing an alert keeps it closed across
+  re-renders and reloads for the session; genuinely new conditions
+  (different title) always surface.
+- **Faster first byte** — `preconnect`/`dns-prefetch` to the Open-Meteo
+  origins; skip-link target is focusable; reduced-motion also disables
+  smooth scrolling.
+
+## What v0.7 added — the production pass
 
 Every flow was rebuilt to a release standard: same features, sharper
 product.
@@ -167,7 +202,7 @@ src/ai/               prompt · contract · render (stream parser)
                       tools · gemini · zai · offline (Mausam Core) · client
 src/styles/           tokens · base · layout · components · app (nav,
                       pages, crops, chat, explore)
-sw.js                 precache shell v0.7.0 + network-first API cache
+sw.js                 precache shell v0.8.0 + network-first API cache
 ```
 
 ## Privacy

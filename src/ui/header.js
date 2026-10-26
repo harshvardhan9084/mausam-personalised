@@ -68,6 +68,13 @@ export function wireHeader(refs, handlers) {
     searchFocus = trapFocus(searchOverlay);
     searchInput.focus();
   };
+  /** Share-target path: open the modal with a query already filled in. */
+  const openSearchWithQuery = (q) => {
+    openSearch();
+    if (!q) return;
+    searchInput.value = q;
+    runSearchDebounced(q);
+  };
   const closeSearch = () => {
     if (!searchOverlay.classList.contains('active')) return;
     searchOverlay.classList.remove('active');
@@ -173,10 +180,11 @@ export function wireHeader(refs, handlers) {
   }
 
   let debounceTimer = null;
-  searchInput.addEventListener('input', () => {
+  function runSearchDebounced(q) {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => runSearch(searchInput.value), 300);
-  });
+    debounceTimer = setTimeout(() => runSearch(q), 300);
+  }
+  searchInput.addEventListener('input', () => runSearchDebounced(searchInput.value));
 
-  return { setLocation, setRefreshing, setOffline, setSource, openSearch };
+  return { setLocation, setRefreshing, setOffline, setSource, openSearch, openSearchWithQuery };
 }

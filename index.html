@@ -25,6 +25,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
 
+  <!-- Warm up the data origins (first paint races the first forecast call) -->
+  <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
+  <link rel="dns-prefetch" href="https://api.open-meteo.com" />
+  <link rel="preconnect" href="https://air-quality-api.open-meteo.com" crossorigin />
+  <link rel="dns-prefetch" href="https://geocoding-api.open-meteo.com" />
+  <link rel="dns-prefetch" href="https://api.bigdatacloud.net" />
+
   <!-- Styles -->
   <link rel="stylesheet" href="src/styles/tokens.css" />
   <link rel="stylesheet" href="src/styles/base.css" />
@@ -65,7 +72,7 @@
 
       <!-- ============ PAGE · HOME ============ -->
       <section class="page active" id="page-home" aria-label="Weather dashboard">
-        <div class="page-scroll" id="home-scroll">
+        <div class="page-scroll" id="home-scroll" tabindex="-1">
           <div class="skeleton hero-skeleton"></div>
           <div class="skeleton"></div>
           <div class="skeleton"></div>
@@ -150,7 +157,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v0.7.0') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v0.8.0') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -160,15 +167,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v0.7.0') {
-            sessionStorage.setItem('mausam:swcheck', 'v0.7.0');
+          if (e && e.data && e.data.version === 'v0.8.0') {
+            sessionStorage.setItem('mausam:swcheck', 'v0.8.0');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v0.7.0');
+          sessionStorage.setItem('mausam:swcheck', 'v0.8.0');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {

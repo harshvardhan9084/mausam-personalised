@@ -209,11 +209,16 @@ function rainBarsSVG({ labels, pops }) {
   const bw = (W - GAP * (n - 1)) / n;
   const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'mchart', role: 'img', 'aria-label': 'Rain chance chart' });
   pops.forEach((p, i) => {
-    const h = Math.max(p > 0 ? 4 : 1.5, (p / 100) * (H - PADB - 8));
+    /* v0.8: zero-rain bars must still read as a deliberate flat baseline —
+       a 1.5px sliver looked like a broken, empty chart. */
+    const h = Math.max(p > 0 ? 5 : 3, (p / 100) * (H - PADB - 8));
     const rect = svgEl('rect', {
       x: (i * (bw + GAP)).toFixed(1), y: (H - PADB - h).toFixed(1),
       width: bw.toFixed(1), height: h.toFixed(1), rx: 2.5,
-      fill: p >= 60 ? 'var(--blue)' : p >= 30 ? 'color-mix(in srgb, var(--blue) 60%, var(--border))' : 'var(--border)',
+      fill: p >= 60 ? 'var(--blue)'
+        : p >= 30 ? 'color-mix(in srgb, var(--blue) 60%, var(--border))'
+        : p > 0 ? 'color-mix(in srgb, var(--blue) 34%, var(--border))'
+        : 'color-mix(in srgb, var(--blue) 16%, var(--border))',
     });
     svg.appendChild(rect);
     if (p >= 30) {
