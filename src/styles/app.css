@@ -916,6 +916,7 @@ textarea.chat-input {
   padding: 3px 10px;
   white-space: nowrap;
 }
+.ver-label { font-size: 0.74rem; color: var(--muted); }
 .ver-note { font-size: 0.72rem; color: var(--muted); }
 
 /* ---------- You: sticky save bar ---------- */

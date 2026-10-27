@@ -330,7 +330,8 @@ export function openJourney(ctx) {
     }, t('jny_empty_to'), ctl);
   }
 
-  box.append(fromBtn, toBtn, el('div.cmp-add-row'), depSeg, goBtn, out);
+  box.append(fromBtn, toBtn, el('div.cmp-add-row'),
+    el('div.set-label', null, t('jny_depart')), depSeg, goBtn, out);
 
   function departTarget(extraH = 0) {
     const now = new Date();

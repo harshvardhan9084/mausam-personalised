@@ -86,7 +86,7 @@ export function renderPlaces(mount, ctx) {
   const saved = store.destinations.get();
   if (!saved.length && !ctx.current) return;
 
-  const rail = el('div.places-rail', { role: 'list', 'aria-label': 'Your places' });
+  const rail = el('div.places-rail', { role: 'list', 'aria-label': t('sec_places') });
 
   // current place chip first
   const cur = ctx.current;

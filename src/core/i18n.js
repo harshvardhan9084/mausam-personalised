@@ -18,7 +18,6 @@ const dict = {
   nav_mitra:     ['Mitra', 'मित्र'],
   nav_you:       ['You', 'मेरी'],
   nav_settings:  ['Settings', 'सेटिंग'],
-  brand_tag:     ['weather that works like it\'s yours', 'मौसम जो आपका अपना है'],
   set_location:  ['Set location', 'जगह चुनें'],
   offline:       ['Offline', 'ऑफ़लाइन'],
   refresh:       ['Refresh', 'रिफ़्रेश'],
@@ -125,7 +124,6 @@ const dict = {
   ins_fog_t:     ['Visibility drops near {t} — headlights on, extra braking distance.', '{t} के आसपास दृश्यता कम — हेडलाइट जलाएँ, दूरी बनाकर चलें।'],
 
   /* ---------------- For You ---------------- */
-  foryou_greet:  ['Hi {n} — picked for you', 'नमस्ते {n} — आपके लिए चुना'],
   fy_commute_am: ['Morning commute ~{t}', 'सुबह का सफ़र ~{t}'],
   fy_commute_pm: ['Evening commute ~{t}', 'शाम का सफ़र ~{t}'],
   fy_commute_storm: ['storm risk — two-wheeler not advised', 'तूफ़ान का ख़तरा — दोपहिया न चलाएँ'],
@@ -205,7 +203,6 @@ const dict = {
   day_leave:     ['Step out', 'घर से निकलना'],
   day_back:      ['Heading back', 'वापसी'],
   day_sleep:     ['Bedtime', 'सोने का समय'],
-  day_now:       ['Now', 'अभी'],
 
   /* ---------------- You page ---------------- */
   you_title:     ['Make Mausam yours', 'मौसम को अपना बनाएँ'],
@@ -302,7 +299,6 @@ const dict = {
   sugg_air:      ['Air quality right now?', 'अभी हवा कैसी है?'],
   sugg_city:     ['Weather in Mumbai?', 'मुंबई का मौसम?'],
   sugg_weekend:  ['Plan my weekend', 'मेरा वीकेंड बनाओ'],
-  sugg_spray:    ['Spray window this week?', 'छिड़काव की खिड़की?'],
   sugg_wedding:  ['Best day for a function?', 'कार्यक्रम का सही दिन?'],
   sugg_laundry:  ['Laundry day today?', 'आज कपड़े सुखा सकते हैं?'],
   sugg_farm:     ['How\'s the week for the field?', 'खेत के लिए हफ़्ता कैसा है?'],
@@ -354,11 +350,9 @@ const dict = {
 
   /* ---------------- Mitra: history, voice, shortcuts ---------------- */
   mitra_history: ['Chat history', 'बातचीत का इतिहास'],
-  mitra_hist_btn:['History', 'इतिहास'],
   mitra_hist_empty: ['No past conversations yet — start one!', 'अभी कोई पुरानी बात नहीं — शुरू करें!'],
   mitra_hist_del:['Delete this conversation', 'यह बातचीत मिटाएँ'],
   mitra_hist_clear: ['Clear all history', 'पूरा इतिहास मिटाएँ'],
-  mitra_hist_restored: ['Previous conversation restored', 'पिछली बातचीत वापस आ गई'],
   mitra_scroll_down: ['Scroll to latest', 'नीचे ले जाएँ'],
   mitra_voice:   ['Speak', 'बोलें'],
   mitra_voice_listening: ['Listening…', 'सुन रहे हैं…'],
@@ -384,7 +378,6 @@ const dict = {
   set_datasaver_t: ['Fewer background refreshes and place probes only on demand. Good for limited data packs.', 'पीछे से रिफ़्रेश कम, जगहों की जाँच सिर्फ़ माँगने पर। सीमित डेटा के लिए ठीक।'],
   set_notif:     ['Rain & heat alerts', 'बारिश और गर्मी की चेतावनी'],
   set_notif_t:   ['While Mausam is open, get a notification when heavy rain, dangerous heat or severe air is within hours. Browser only — nothing is sent to any server.', 'जब मौसम खुला हो, तेज़ बारिश / ख़तरनाक गर्मी / गंभीर हवा नज़दीक होने पर सूचना मिलेगी। सिर्फ़ ब्राउज़र में — कोई सर्वर को कुछ नहीं जाता।'],
-  set_notif_ask: ['Allow notifications', 'सूचनाएँ अनुमति दें'],
   set_notif_on:  ['Alerts on', 'चेतावनी चालू'],
   set_notif_denied: ['Notifications blocked in browser settings', 'ब्राउज़र में सूचनाएँ बंद हैं'],
   set_export:    ['Download my data', 'मेरा डेटा डाउनलोड करें'],
@@ -418,7 +411,6 @@ const dict = {
   err_title:     ['Could not load weather', 'मौसम लोड नहीं हुआ'],
   err_body:      ['The weather service did not respond. Check your connection and try again.', 'मौसम सेवा ने जवाब नहीं दिया। कनेक्शन जाँचकर फिर कोशिश करें।'],
   retry:         ['Retry', 'फिर कोशिश'],
-  offline_cache: ['📴 You are offline — showing data fetched {t}.', '📴 आप ऑफ़लाइन हैं — {t} का डेटा दिखा रहे हैं।'],
   welcome_hi:    ['You\'re looking at {city}', 'अभी {city} देख रहे हैं'],
   keep_city:     ['Keep {city}', '{city} रखें'],
   nudge_title:   ['Make Mausam yours — 30 seconds', 'मौसम को अपना बनाएँ — 30 सेकंड'],

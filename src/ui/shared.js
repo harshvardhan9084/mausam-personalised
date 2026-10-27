@@ -131,16 +131,9 @@ export function skeleton() {
 export function errorCard(message, onRetry) {
   return el('div.state-card', null,
     el('div.state-icon', null, '📡'),
-    el('div.state-title', null, 'Could not load weather'),
-    el('div.state-sub', null, message || 'The weather service did not respond. Check your connection and try again.'),
-    onRetry ? el('button.btn.btn-primary', { onclick: onRetry }, 'Retry') : null
-  );
-}
-
-/** Offline notice card (used with cached data). */
-export function offlineCard(fetchedAt) {
-  return el('div.alert.alert-info', { role: 'status' },
-    `📴 You are offline — showing data fetched ${fetchedAt ? new Date(fetchedAt).toLocaleString() : 'earlier'}.`
+    el('div.state-title', null, t('err_title')),
+    el('div.state-sub', null, message || t('err_body')),
+    onRetry ? el('button.btn.btn-primary', { onclick: onRetry }, t('retry')) : null
   );
 }
 
