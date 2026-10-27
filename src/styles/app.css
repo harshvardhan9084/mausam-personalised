@@ -289,13 +289,33 @@
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 44px;
+  height: 52px;
 }
 .aqi-trend-bar {
   flex: 1;
-  min-height: 4px;
-  border-radius: 3px 3px 0 0;
-  opacity: 0.85;
+  min-width: 2px;
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.9;
+}
+.aqi-trend-labels {
+  position: relative;
+  height: 15px;
+  margin-top: 4px;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.aqi-trend-labels span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.aqi-outlook {
+  margin-top: 7px;
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 /* ---------------- misc ---------------- */

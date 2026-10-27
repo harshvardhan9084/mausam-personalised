@@ -230,7 +230,7 @@ function nowcastCard(s, units) {
 function aqiCardV2(s) {
   const aqi = s.currentAqi;
   const nowAir = s.hours[0]?.air ?? {};
-  const trend = s.hours.slice(0, 24).filter((h) => h.aqi != null);
+  const trend = s.hours.slice(0, 48).filter((h) => h.aqi != null);
   const head = el('div.aqi-head', el('div.card-h', null, t('sec_aqi')), aqiPill(aqi));
 
   const cardBody = card(head);
@@ -247,18 +247,39 @@ function aqiCardV2(s) {
       chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))));
   }
 
-  /* 24h mini trend */
+  /* 48h CPCB outlook — absolute 0–500 scale. (The old window-max
+     normalisation made Severe days look flat-full and Good days look
+     dramatic; on a fixed scale bar heights mean the same every day.)
+     Hour labels every 8 bars + worst/best verdict for outdoor planning.
+     Data is already on every hour — zero extra API calls. */
   if (trend.length >= 6) {
-    const maxA = Math.max(...trend.map((h) => h.aqi), 1);
+    const n = trend.length;
+    const clock = store.clock.get() === '24' ? 'h24' : 'h12';
     const bars = el('div.aqi-trend');
-    trend.filter((_, i) => i % 2 === 0).forEach((h) => {
-      const bar = el('div.aqi-trend-bar', { title: `${hourLabel(h.time)} · AQI ${h.aqi}` });
-      bar.style.height = `${Math.max(8, (h.aqi / maxA) * 100)}%`;
+    const labels = el('div.aqi-trend-labels');
+    trend.forEach((h, i) => {
+      const bar = el('div.aqi-trend-bar', { title: `${hourLabel(h.time, clock)} · AQI ${h.aqi} · ${h.aqiFull?.category ?? ''}` });
+      bar.style.height = `${Math.max(3, Math.min(100, (h.aqi / 500) * 100))}%`;
       bar.style.background = h.aqiFull?.color ?? 'var(--muted)';
       bars.appendChild(bar);
+      if (i % 8 === 0) {
+        const lab = el('span', null, hourLabel(h.time, clock));
+        lab.style.left = `${((i + 0.5) / n) * 100}%`;
+        labels.appendChild(lab);
+      }
     });
-    cardBody.appendChild(el('div.aqi-trend-wrap',
-      el('div.aqi-trend-h', null, '24h'), bars));
+    const wrap = el('div.aqi-trend-wrap',
+      el('div.aqi-trend-h', null, t('aqi_outlook_h')), bars, labels);
+    const worst = trend.reduce((a, b) => (b.aqi > a.aqi ? b : a));
+    const best = trend.reduce((a, b) => (b.aqi < a.aqi ? b : a));
+    if (best.aqi < worst.aqi - 15) {
+      wrap.appendChild(el('div.aqi-outlook',
+        el('span', null, `${t('aqi_worst', { t: hourLabel(worst.time, clock), a: worst.aqi })}`),
+        ' · ',
+        el('span', null, `${t('aqi_best', { t: hourLabel(best.time, clock), a: best.aqi })}`),
+      ));
+    }
+    cardBody.appendChild(wrap);
   }
   if (aqi?.dominant) cardBody.appendChild(el('div.aqi-dominant', null, `${t('aqi_dominant')}: ${aqi.dominant}`));
   return cardBody;

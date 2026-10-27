@@ -28,6 +28,25 @@ console.log(`dict keys parsed: ${dict.size}`);
 console.log(`missing hi: ${missingHi.length}${missingHi.length ? '\n  ' + missingHi.join('\n  ') : ''}`);
 
 // find t('key') usages across src and compare with dict
+// Comments are stripped first so doc-comment examples like
+// `* Usage: t('foryou_commute', ...)` don't register as real usages.
+function stripComments(src) {
+  // block comments → same-length whitespace (line numbers preserved)
+  let out = src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+  // line comments → truncate at the first // that sits outside a '...' string
+  out = out.split('\n').map((line) => {
+    let inStr = false, esc = false;
+    for (let i = 0; i < line.length - 1; i++) {
+      const c = line[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === "'") inStr = !inStr;
+      if (!inStr && c === '/' && line[i + 1] === '/') return line.slice(0, i);
+    }
+    return line;
+  }).join('\n');
+  return out;
+}
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -37,7 +56,7 @@ function* walk(dir) {
 }
 const used = new Map();
 for (const file of walk('src')) {
-  const txt = readFileSync(file, 'utf8');
+  const txt = stripComments(readFileSync(file, 'utf8'));
   for (const m of txt.matchAll(/\bt\(\s*'([a-z0-9_]+)'/g)) {
     used.set(m[1], file);
   }
