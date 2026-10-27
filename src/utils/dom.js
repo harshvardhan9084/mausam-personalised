@@ -110,3 +110,48 @@ export function trapFocus(overlay) {
     },
   };
 }
+
+/**
+ * Android back button closes modals — mobile-first papercut fix.
+ *
+ * While any `.modal-overlay` is open we keep ONE pushed history entry
+ * (state.mausamModal); the hardware/gesture back then pops that entry and
+ * closes the top modal via its own ✕ handler (so focus restore, Esc cleanup
+ * etc. all run) instead of leaving the app. Every normal close path (✕, Esc,
+ * backdrop tap) removes the overlay, which pops the pushed entry — history
+ * stays clean. `history.state` is the single source of truth (no shadow
+ * flag that can desync across reloads or popstate quirks). Self-wiring via
+ * MutationObserver, so every modal following the .modal-overlay pattern —
+ * current or future — gets back-button support for free.
+ * Call once at boot; safe no-op where pushState is unavailable (file://).
+ */
+export function wireModalHistory() {
+  // NOTE: .active matters — static overlays (the header search modal) sit in
+  // the DOM permanently and only gain/lose .active when opened/closed.
+  const SEL = '.modal-overlay.active';
+  const openOverlay = () => document.querySelector(SEL);
+  const armed = () => {
+    try { return history.state?.mausamModal === true; } catch { return false; }
+  };
+
+  new MutationObserver(() => {
+    if (openOverlay()) {
+      if (!armed()) {
+        try { history.pushState({ mausamModal: true }, ''); } catch { /* file:// etc. */ }
+      }
+    } else if (armed()) {
+      try { history.back(); } catch { /* ignore */ }
+    }
+  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+
+  window.addEventListener('popstate', () => {
+    // our own disarm-back fires this too — only act when a modal is actually
+    // open and the popped-to entry is NOT a modal entry (real back press)
+    if (!openOverlay() || armed()) return;
+    const overlay = openOverlay();
+    // reuse the modal's own close path — full cleanup, no double bookkeeping
+    const closeBtn = overlay.querySelector('.modal-close');
+    if (closeBtn) closeBtn.click();
+    else { overlay.classList.remove('active'); overlay.remove(); }
+  });
+}

@@ -9,7 +9,7 @@
  * Data saver: no auto-refresh, optional APIs only on demand.
  */
 
-import { el, clear } from './utils/dom.js';
+import { el, clear, wireModalHistory } from './utils/dom.js';
 import { relativeTime } from './utils/format.js';
 import { fetchWeatherBundle } from './api/open-meteo.js';
 import { fetchImdBundle } from './api/imd.js';
@@ -92,6 +92,9 @@ document.querySelector('.app-header') && chromeRO.observe(document.querySelector
 document.querySelector('.tab-nav') && chromeRO.observe(document.querySelector('.tab-nav'));
 window.addEventListener('resize', publishChromeMetrics);
 window.addEventListener('load', publishChromeMetrics);
+
+/* ================= modal history (Android back closes modals) ================= */
+wireModalHistory();
 
 /* ================= router ================= */
 const PAGES = ['home', 'crops', 'mitra', 'you', 'settings'];
