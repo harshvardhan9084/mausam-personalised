@@ -255,10 +255,40 @@ function aqiCardV2(s) {
   if (trend.length >= 6) {
     const n = trend.length;
     const clock = store.clock.get() === '24' ? 'h24' : 'h12';
+    /* Tappable AQI bars — title tooltips never show on touch screens, so a
+       tap opens the hour's AQI + pollutant values under the strip (same
+       expand pattern as the 48h weather strip and 10-day list). All fields
+       already sit on the hour object — zero extra API calls. */
+    let openBar = null;
+    const aqiDetail = el('div.hour-detail', { id: 'aqi-hour-detail', role: 'region', 'aria-label': t('sec_aqi') });
     const bars = el('div.aqi-trend');
     const labels = el('div.aqi-trend-labels');
     trend.forEach((h, i) => {
-      const bar = el('div.aqi-trend-bar', { title: `${hourLabel(h.time, clock)} · AQI ${h.aqi} · ${h.aqiFull?.category ?? ''}` });
+      const bar = el('button.aqi-trend-bar', {
+        type: 'button',
+        title: `${hourLabel(h.time, clock)} · AQI ${h.aqi} · ${h.aqiFull?.category ?? ''}`,
+        'aria-expanded': 'false',
+        'aria-controls': 'aqi-hour-detail',
+        onclick: () => {
+          const wasOpen = openBar === bar;
+          if (openBar) openBar.setAttribute('aria-expanded', 'false');
+          openBar = wasOpen ? null : bar;
+          bar.setAttribute('aria-expanded', String(!wasOpen));
+          aqiDetail.classList.toggle('open', !wasOpen);
+          if (wasOpen) aqiDetail.replaceChildren();
+          else {
+            const air = h.air ?? {};
+            aqiDetail.replaceChildren(el('div.ten-detail-grid', [
+              ['AQI', `${h.aqi} · ${h.aqiFull?.category ?? ''}`],
+              ['PM2.5', air.pm2_5 != null ? `${Math.round(air.pm2_5)}` : '—'],
+              ['PM10', air.pm10 != null ? `${Math.round(air.pm10)}` : '—'],
+              ...(air.ozone != null ? [['O₃', `${Math.round(air.ozone)}`]] : []),
+              ...(air.dust != null && air.dust >= 5 ? [['🌪 Dust', `${Math.round(air.dust)}`]] : []),
+              ...(h.aqiFull?.dominant ? [[t('aqi_dominant'), h.aqiFull.dominant]] : []),
+            ].map(([k, v]) => el('span', null, el('b', null, k), v))));
+          }
+        },
+      });
       bar.style.height = `${Math.max(3, Math.min(100, (h.aqi / 500) * 100))}%`;
       bar.style.background = h.aqiFull?.color ?? 'var(--muted)';
       bars.appendChild(bar);
@@ -279,6 +309,7 @@ function aqiCardV2(s) {
         el('span', null, `${t('aqi_best', { t: hourLabel(best.time, clock), a: best.aqi })}`),
       ));
     }
+    wrap.appendChild(aqiDetail);
     cardBody.appendChild(wrap);
   }
   if (aqi?.dominant) cardBody.appendChild(el('div.aqi-dominant', null, `${t('aqi_dominant')}: ${aqi.dominant}`));

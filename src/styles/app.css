@@ -298,6 +298,10 @@
   border-radius: 2px 2px 0 0;
   opacity: 0.9;
 }
+/* bars are real buttons (tap = hour detail) */
+button.aqi-trend-bar { appearance: none; border: 0; padding: 0; cursor: pointer; }
+button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.aqi-trend-bar[aria-expanded='true'] { opacity: 1; box-shadow: 0 0 0 1.5px var(--text); }
 .aqi-trend-labels {
   position: relative;
   height: 15px;
