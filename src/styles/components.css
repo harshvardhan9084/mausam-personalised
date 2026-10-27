@@ -155,6 +155,27 @@
 .hour-card.safe    { border-color: var(--green);  background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
 .hour-card.caution { border-color: var(--yellow); background: color-mix(in srgb, var(--yellow) 10%, var(--surface)); }
 .hour-card.danger  { border-color: var(--red);    background: color-mix(in srgb, var(--red) 10%, var(--surface)); }
+/* cards are real buttons (tappable hour detail) — reset UA button chrome */
+button.hour-card {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.hour-card[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.hour-detail {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.26s var(--t-med), opacity 0.2s ease;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.hour-detail.open { max-height: 150px; opacity: 1; }
 .h-time { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
 .h-icon { font-size: 1.2rem; margin-bottom: 3px; }
 .h-val  { font-size: 0.82rem; font-weight: 700; }

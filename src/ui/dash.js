@@ -489,12 +489,46 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- hourly strip ---------- */
   root.appendChild(sectionTitle(t('sec_48h')));
   const h48 = s.hours.slice(0, 48);
-  root.appendChild(hourlyStrip(h48, (h) => el('div.hour-card',
-    el('div.h-time', null, hourLabel(h.time, store.clock.get() === '24' ? 'h24' : 'h12')),
-    el('div.h-icon', null, h.wx?.icon ?? '·'),
-    el('div.h-val', null, temp(h.temperature_2m)),
-    el('div.h-sub', null, `${Math.round(h.precipitation_probability ?? 0)}%`),
-  )));
+  const clock = store.clock.get() === '24' ? 'h24' : 'h12';
+  /* Tappable hour detail — title tooltips never show on touch screens, so a
+     tap opens a kv grid (feels / rain / wind / humidity / dew / UV) under the
+     strip, mirroring the 10-day expand pattern. All fields already sit on the
+     hour object — zero extra API calls. */
+  let openCard = null;
+  const hourDetail = el('div.hour-detail', { id: 'hour-detail', role: 'region', 'aria-label': t('sec_48h') });
+  const strip = hourlyStrip(h48, (h) => {
+    const card = el('button.hour-card', {
+      type: 'button',
+      'aria-expanded': 'false',
+      'aria-controls': 'hour-detail',
+      onclick: () => {
+        const wasOpen = openCard === card;
+        if (openCard) openCard.setAttribute('aria-expanded', 'false');
+        openCard = wasOpen ? null : card;
+        card.setAttribute('aria-expanded', String(!wasOpen));
+        hourDetail.classList.toggle('open', !wasOpen);
+        if (wasOpen) hourDetail.replaceChildren();
+        else {
+          hourDetail.replaceChildren(el('div.ten-detail-grid', [
+            [`🌡 ${t('day_feels')}`, h.apparent_temperature != null ? temp(h.apparent_temperature, units) : '—'],
+            [`💧 ${t('rain_simple')}`, `${Math.round(h.precipitation_probability ?? 0)}% · ${rainMm(h.precipitation, units)}`],
+            [`${t('wind')}`, `${h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—'}${h.wind_gusts_10m != null ? ` · ${t('gusts')} ${wind(h.wind_gusts_10m, units)}` : ''}`],
+            [`${t('humidity')}`, h.relative_humidity_2m != null ? `${Math.round(h.relative_humidity_2m)}%` : '—'],
+            [`${t('dew_point')}`, h.dew_point_2m != null ? temp(h.dew_point_2m, units) : '—'],
+            [`${t('uv')}`, h.uv_index != null ? `${Math.round(h.uv_index * 10) / 10}` : '—'],
+          ].map(([k, v]) => el('span', null, el('b', null, k), v))));
+        }
+      },
+    },
+      el('div.h-time', null, hourLabel(h.time, clock)),
+      el('div.h-icon', null, h.wx?.icon ?? '·'),
+      el('div.h-val', null, temp(h.temperature_2m, units)),
+      el('div.h-sub', null, `${Math.round(h.precipitation_probability ?? 0)}%`),
+    );
+    return card;
+  });
+  root.appendChild(strip);
+  root.appendChild(hourDetail);
 
   /* ---------- temp curve ---------- */
   const curve = tempCurve(h48.slice(0, 24));

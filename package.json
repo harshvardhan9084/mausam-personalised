@@ -1,6 +1,6 @@
 {
   "name": "mausam-personalised",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "The generous Indian weather app — hourly to 10-day forecasts, CPCB air quality, a crop calendar engine, a volatile deeply-custom profile, and Mausam Mitra: an AI assistant with a rich component contract (MausamUI). English + हिंदी. Runs on Z.ai (preview), Gemini (your key) or the on-device Mausam Core engine. Data-saver mode. Zero build.",
   "license": "MIT",
   "author": "harsh vardhan <203862698+harshvardhan9084@users.noreply.github.com>",
