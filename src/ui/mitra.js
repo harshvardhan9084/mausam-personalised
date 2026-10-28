@@ -20,7 +20,7 @@ import { renderPayload, renderFallback, proseNode, createStreamParser } from '..
 import { t, getLang } from '../core/i18n.js';
 import { getProfile } from '../core/profile.js';
 import { store } from '../core/storage.js';
-import { icon, setIcon } from './icons.js';
+import { icon, setIcon, skyIcon } from './icons.js';
 
 const MAX_LEN = 500;
 const MAX_HISTORY = 16;      // messages kept in the LLM context
@@ -76,7 +76,7 @@ function init() {
   mount.append(
     el('div.chat-head.chat-head-page',
       el('div.chat-head-id',
-        el('div.chat-avatar', { 'aria-hidden': 'true' }, '🌦️'),
+        el('div.chat-avatar', { 'aria-hidden': 'true' }, skyIcon('partly-day')),
         el('div',
           el('div.chat-title', null, t('mitra_title')),
           el('div.chat-status', null, statusDot, statusText, el('span', { class: 'chat-status-sep' }, '·'), providerLabel),
@@ -178,7 +178,7 @@ function buildMic() {
   micBtn = el('button.chat-mic', {
     type: 'button', 'aria-label': t('mitra_voice'), title: t('mitra_voice'),
     onclick: toggleVoice,
-  }, '🎤');
+  }, icon('mic'));
   return micBtn;
 }
 
@@ -219,7 +219,7 @@ function toggleVoice() {
 function setListening(on) {
   listening = on;
   micBtn?.classList.toggle('listening', on);
-  if (micBtn) micBtn.textContent = on ? '⏺' : '🎤';
+  if (micBtn) setIcon(micBtn, on ? 'stop' : 'mic');
   if (micBtn) micBtn.setAttribute('aria-label', on ? t('mitra_voice_listening') : t('mitra_voice'));
   input?.setAttribute('placeholder', on ? t('mitra_voice_listening') : t('mitra_ph'));
 }
@@ -347,7 +347,7 @@ function openHistorySheet() {
         el('button.chat-hist-del', {
           type: 'button', 'aria-label': t('mitra_hist_del'), title: t('mitra_hist_del'),
           onclick: (e) => { e.stopPropagation(); deleteChat(c.id); close(); openHistorySheet(); },
-        }, '🗑'),
+        }, icon('trash')),
       ));
     }
     box.appendChild(list);
@@ -682,16 +682,16 @@ async function send(raw, { isRetry = false } = {}) {
       clear(turn.streamBox);
       if (!streamed.trim()) turn.streamBox.remove();
       const card = el('div.chat-error',
-        el('div.chat-error-title', null, `⚠️ ${err.title}`),
+        el('div.chat-error-title', null, icon('warn', 'chip-ico'), ' ', err.title),
         el('div.chat-error-text', null, err.text),
         err.raw && err.raw !== err.text ? el('div.chat-error-raw', null, String(err.raw).slice(0, 160)) : null,
         el('div.chat-error-actions',
           el('button.chip', { type: 'button', onclick: () => send(lastQuestion, { isRetry: true }) }, '↻ Retry'),
           (err.provider === 'gemini' && (err.kind === 'badkey' || err.kind === 'nokey' || err.kind === 'model'))
-            ? el('button.chip', { type: 'button', onclick: () => hooks?.openSettings?.('ai') }, '⚙️ Settings')
+            ? el('button.chip', { type: 'button', onclick: () => hooks?.openSettings?.('ai') }, icon('settings', 'chip-ico'), ' ', t('nav_settings'))
             : null,
           err.provider !== 'offline'
-            ? el('button.chip', { type: 'button', onclick: () => send('Use Mausam Core', { isRetry: false }) }, '🧠 Use Mausam Core')
+            ? el('button.chip', { type: 'button', onclick: () => send('Use Mausam Core', { isRetry: false }) }, icon('cpu', 'chip-ico'), ' ', t('mitra_core_retry'))
             : null,
         ),
       );

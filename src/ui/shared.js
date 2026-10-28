@@ -19,7 +19,7 @@ export function hero(labelText, bigNode, ...subNodes) {
 }
 
 /** Section heading. */
-export const sectionTitle = (text, mt = false) => el(`span.sec-title${mt ? '.mt' : ''}`, { role: 'heading', 'aria-level': '2' }, text);
+export const sectionTitle = (text, mt = false, glyph = null) => el(`span.sec-title${mt ? '.mt' : ''}`, { role: 'heading', 'aria-level': '2' }, glyph ? icon(glyph, 'sec-ico') : null, glyph ? ' ' : '', text);
 
 /** Generic card. */
 export const card = (...children) => el('div.card', null, ...children);
@@ -137,7 +137,7 @@ export function skeleton() {
 /** Full error card with retry. */
 export function errorCard(message, onRetry) {
   return el('div.state-card', null,
-    el('div.state-icon', null, '📡'),
+    el('div.state-icon', null, icon('signal-off', 'state-glyph')),
     el('div.state-title', null, t('err_title')),
     el('div.state-sub', null, message || t('err_body')),
     onRetry ? el('button.btn.btn-primary', { onclick: onRetry }, t('retry')) : null

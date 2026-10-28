@@ -14,7 +14,7 @@
 
 import { el, clear } from '../utils/dom.js';
 import { sectionTitle } from './shared.js';
-import { tipIcon } from './icons.js';
+import { icon, tipIcon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t, getLang } from '../core/i18n.js';
 import { CROPS, cropCalendar, farmAdvisories, seasonStarterIds } from '../core/crops.js';
@@ -68,7 +68,7 @@ function matchesFilter(crop) {
 
 function render() {
   clear(mount);
-  mount.appendChild(el('div.page-h', null, `🌾 ${t('crop_title')}`));
+  mount.appendChild(el('div.page-h', null, icon('crops', 'page-ico'), ' ', t('crop_title')));
 
   const snapshot = getState().snapshot ?? null;
   const { season } = cropCalendar(snapshot, selectedIds());

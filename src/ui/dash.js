@@ -198,12 +198,12 @@ function nowcastCard(s, units) {
   const head = el('div.nowcast-head');
   let verdict;
   if (total < 0.1) {
-    verdict = el('div.nowcast-verdict', null, t('nowcast_dry'));
+    verdict = el('div.nowcast-verdict', null, icon('moon', 'verdict-ico'), t('nowcast_dry'));
   } else if (firstWet === 0) {
-    verdict = el('div.nowcast-verdict.wet', null, t('nowcast_wet', { t: startLabel }));
+    verdict = el('div.nowcast-verdict.wet', null, icon('umbrella', 'verdict-ico'), t('nowcast_wet', { t: startLabel }));
   } else {
     const at = fmtT(new Date(new Date(m.start).getTime() + firstWet * 15 * 60000));
-    verdict = el('div.nowcast-verdict', null, t('nowcast_soon', { t: at }));
+    verdict = el('div.nowcast-verdict', null, icon('umbrella', 'verdict-ico'), t('nowcast_soon', { t: at }));
   }
   head.appendChild(verdict);
 
@@ -443,7 +443,7 @@ function tenDayList(s, units, bd) {
         row.setAttribute('aria-expanded', String(open));
       },
     },
-      el('span.ten-day', null, `${star ? '⭐' : ''}${i === 0 ? t('today') : dayLabel(d.date, i)}`),
+      el('span.ten-day', null, star ? icon('star', 'ten-star') : null, i === 0 ? t('today') : dayLabel(d.date, i)),
       el('span.ten-icon', null, d.weather_code != null ? skyIcon(skyBucket(d.weather_code, true), 'wx-ico') : (d.wx?.icon ?? '·')),
       el('span.ten-pop', { class: (d.precip_prob_max ?? 0) >= 50 ? 'wet' : '', title: t('rain_simple') }, `${Math.round(d.precip_prob_max ?? 0)}%`),
       bar,
@@ -529,10 +529,10 @@ export function renderDashboard(root, snapshot, units, ctx) {
   if (ctx.openCompare || ctx.openJourney) {
     root.appendChild(el('div.places-tools', { role: 'group', 'aria-label': 'Place tools' },
       ctx.openCompare
-        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openCompare?.() }, t('cmp_open'))
+        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openCompare?.() }, icon('scale', 'chip-ico'), ' ', t('cmp_open'))
         : null,
       ctx.openJourney
-        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openJourney?.() }, t('jny_open'))
+        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openJourney?.() }, icon('route', 'chip-ico'), ' ', t('jny_open'))
         : null,
     ));
   }
@@ -573,7 +573,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- For You ---------- */
   const forYou = computeForYou(s, profile);
   if (forYou && forYou.cards.length) {
-    root.appendChild(sectionTitle(`✨ ${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`));
+    root.appendChild(sectionTitle(`${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`, false, 'sparkles'));
     const rail = el('div.foryou-rail');
     for (const c of forYou.cards) {
       rail.appendChild(el(`div.card.foryou-card.${toneClass(c.tone)}`,
@@ -651,7 +651,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   if (profile?.interests?.includes('farming')) {
     const farmCards = computeFarmCards(s);
     if (farmCards.length) {
-      root.appendChild(sectionTitle(`🌾 ${t('sec_farm')}`));
+      root.appendChild(sectionTitle(t('sec_farm'), false, 'crops'));
       const grid = el('div.insight-grid');
       for (const c of farmCards) {
         grid.appendChild(el(`div.card.insight-card.${toneClass(c.tone)}`,
@@ -725,11 +725,11 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- sea & coast (only where marine data exists) ---------- */
   const marine = s.extras?.marine;
   if (marine?.now?.waveHeightM != null) {
-    root.appendChild(sectionTitle(`🌊 ${t('sec_coast')}`));
+    root.appendChild(sectionTitle(t('sec_coast'), false, 'waves'));
     const wave = marine.now.waveHeightM;
     root.appendChild(card(
       el('div.kv-list',
-        el('div.kv-row', el('span.kv-label', null, '🌊 Waves now'), el('span.kv-value', null, `${Math.round(wave * 10) / 10} m · ${Math.round(marine.now.wavePeriodS ?? 0)} s`)),
+        el('div.kv-row', el('span.kv-label', null, icon('waves', 'chip-ico'), ' Waves now'), el('span.kv-value', null, `${Math.round(wave * 10) / 10} m · ${Math.round(marine.now.wavePeriodS ?? 0)} s`)),
         ...marine.days.slice(0, 3).map((d) =>
           el('div.kv-row',
             el('span.kv-label', null, dateLabel(d.date)),
@@ -741,7 +741,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- river watch (only when abnormal) ---------- */
   const flood = s.extras?.flood;
   if (flood?.peak && flood.peak.ratio >= 1.5) {
-    root.appendChild(sectionTitle(`🏞️ ${t('sec_flood')}`));
+    root.appendChild(sectionTitle(t('sec_flood'), false, 'droplet'));
     const ratio = Math.round(flood.peak.ratio * 10) / 10;
     root.appendChild(el(`div.alert.alert-${flood.peak.ratio >= 3 ? 'danger' : 'warn'}.dash-alert`,
       { role: 'alert' },
@@ -772,7 +772,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   if (!profile && !store.flags.get('nudgeDismissed')) {
     root.appendChild(el('div.card.nudge-card',
       el('div.nudge-text',
-        el('div.nudge-title', null, `✨ ${t('nudge_title')}`),
+        el('div.nudge-title', null, icon('sparkles', 'chip-ico'), ' ', t('nudge_title')),
         el('div.nudge-sub', null, t('nudge_sub')),
       ),
       el('div.nudge-actions',

@@ -1035,3 +1035,49 @@ textarea.chat-input {
 @media (prefers-reduced-motion: reduce) {
   .page.active, .tab-btn.active .tab-ico { animation: none; }
 }
+
+/* ================================================================
+   v0.8.13 — one language, every surface. Accent dots become real
+   color circles; inline stroke glyphs get sized wherever chrome
+   just converted from emoji (buttons, chips, headings, states).
+================================================================ */
+.accent-dot {
+  width: 22px; height: 22px; border-radius: 50%; display: block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.accent-dot[data-accent-id='']       { background: var(--blue); }
+.accent-dot[data-accent-id='blue']   { background: var(--blue); }
+.accent-dot[data-accent-id='green']  { background: var(--green); }
+.accent-dot[data-accent-id='orange'] { background: var(--orange); }
+.accent-dot[data-accent-id='pink']   { background: var(--pink); }
+.accent-dot[data-accent-id='purple'] { background: var(--purple); }
+.accent-dot[data-accent-id='teal']   { background: var(--teal); }
+.accent-dot[data-accent-id='red']    { background: var(--red); }
+.accent-dot[data-accent-id='yellow'] { background: var(--yellow); }
+
+.btn .chip-ico, .seg-btn .chip-ico, .pack-chip .chip-ico, .privacy-note .chip-ico,
+.set-help .chip-ico, .chat-error-title .chip-ico, .explore-from .chip-ico,
+.jny-headline .chip-ico, .kv-label .chip-ico, .nudge-title .chip-ico,
+.places-tools .chip-ico, .btn-ico {
+  width: 14px; height: 14px; vertical-align: -2px;
+}
+.page-h .page-ico, .you-hello .you-hello-ico {
+  width: 18px; height: 18px; vertical-align: -3px; color: var(--accent);
+}
+.sec-title .sec-ico { width: 13px; height: 13px; vertical-align: -2px; }
+.nowcast-verdict { display: flex; align-items: center; gap: 7px; }
+.nowcast-verdict .verdict-ico { width: 16px; height: 16px; flex: 0 0 16px; }
+.ten-star {
+  width: 12px; height: 12px; vertical-align: -1px;
+  color: var(--yellow); margin-right: 2px;
+}
+.state-icon svg { width: 30px; height: 30px; color: var(--muted); }
+.chat-avatar svg { width: 22px; height: 22px; color: var(--accent); }
+.search-icon { color: var(--muted); }
+.you-hello { display: flex; align-items: center; gap: 8px; }
+.you-privacy .chip-ico { width: 13px; height: 13px; vertical-align: -2px; }
+.chat-mic { display: grid; place-items: center; }
+.chat-mic svg { width: 17px; height: 17px; display: block; }
+.chat-hist-del { display: grid; place-items: center; }
+.chat-hist-del svg { width: 15px; height: 15px; }
+.btn-xs svg { width: 14px; height: 14px; display: block; }

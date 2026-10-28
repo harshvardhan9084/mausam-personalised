@@ -9,7 +9,7 @@
  */
 
 import { el, clear } from '../utils/dom.js';
-import { icon } from './icons.js';
+import { icon, setIcon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t, setLang } from '../core/i18n.js';
 import { aiSettings } from '../ai/client.js';
@@ -23,10 +23,10 @@ const MODEL_OPTIONS = [
 ];
 
 const ACCENTS = [
-  ['', '🟦', 'Default blue'],
-  ['blue', '🔵', 'Blue'], ['green', '🟢', 'Green'], ['orange', '🟠', 'Orange'],
-  ['pink', '🩷', 'Pink'], ['purple', '🟣', 'Purple'], ['teal', '🩵', 'Teal'],
-  ['red', '🔴', 'Red'], ['yellow', '🟡', 'Yellow'],
+  ['', 'Default blue'],
+  ['blue', 'Blue'], ['green', 'Green'], ['orange', 'Orange'],
+  ['pink', 'Pink'], ['purple', 'Purple'], ['teal', 'Teal'],
+  ['red', 'Red'], ['yellow', 'Yellow'],
 ];
 
 let mount = null;
@@ -45,7 +45,7 @@ export function renderSettings() {
 
 function build() {
   clear(mount);
-  mount.appendChild(el('div.page-h', null, '⚙️ ' + t('set_title')));
+  mount.appendChild(el('div.page-h', null, icon('settings', 'page-ico'), ' ', t('set_title')));
 
   /* ---------------- language ---------------- */
   mount.appendChild(section(t('set_lang'),
@@ -75,20 +75,20 @@ function build() {
   mount.appendChild(section(t('set_theme'),
     el('div.seg-group.set-seg',
       segBtn(store.theme.get() === 'auto', 'Auto', () => setTheme('auto')),
-      segBtn(store.theme.get() === 'dark', '🌙 Dark', () => setTheme('dark')),
-      segBtn(store.theme.get() === 'light', '☀️ Light', () => setTheme('light')),
+      segBtn(store.theme.get() === 'dark', [icon('moon', 'chip-ico'), ' Dark'], () => setTheme('dark')),
+      segBtn(store.theme.get() === 'light', [icon('sun', 'chip-ico'), ' Light'], () => setTheme('light')),
     )
   ));
 
   /* ---------------- accent ---------------- */
   mount.appendChild(section(t('set_accent'),
     el('div.accent-row',
-      ACCENTS.map(([id, dot, name]) =>
+      ACCENTS.map(([id, name]) =>
         el('button.accent-swatch', {
           type: 'button', title: name, 'aria-label': name,
           class: (store.accent.get() ?? '') === id ? 'on' : '',
           onclick: () => { store.accent.set(id); hooks?.onAccentChange?.(id); renderSettings(); },
-        }, el('span.accent-dot', { 'data-accent-id': id }, dot))),
+        }, el('span.accent-dot', { 'data-accent-id': id }))),
     )
   ));
 
@@ -115,18 +115,18 @@ function build() {
   /* ---------------- data & privacy ---------------- */
   mount.appendChild(section(t('set_backup'),
     el('div.key-actions',
-      el('button.btn', { type: 'button', onclick: exportData }, '⬇️ ' + t('set_export')),
-      el('button.btn', { type: 'button', onclick: importData }, '⬆️ ' + t('set_import')),
-      el('button.btn.btn-danger', { type: 'button', onclick: wipeData }, '🗑️ ' + t('set_wipe')),
+      el('button.btn', { type: 'button', onclick: exportData }, icon('download', 'chip-ico'), ' ', t('set_export')),
+      el('button.btn', { type: 'button', onclick: importData }, icon('upload', 'chip-ico'), ' ', t('set_import')),
+      el('button.btn.btn-danger', { type: 'button', onclick: wipeData }, icon('trash', 'chip-ico'), ' ', t('set_wipe')),
     ),
-    el('div.privacy-note', null, '🔒 ' + t('you_intro')),
+    el('div.privacy-note', null, icon('lock', 'chip-ico'), ' ', t('you_intro')),
   ));
 
   /* ---------------- about ---------------- */
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.12'),
+      el('span.ver-badge', null, 'v0.8.13'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -142,7 +142,7 @@ function section(title, ...children) {
 function buildInstallSection() {
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
   if (standalone) {
-    mount.appendChild(section(t('inst_row'), el('div.set-help', null, '✅ ' + t('inst_done'))));
+    mount.appendChild(section(t('inst_row'), el('div.set-help', null, icon('check', 'chip-ico'), ' ', t('inst_done'))));
     return;
   }
   const kids = [el('div.set-help', null, t('inst_row_t'))];
@@ -159,10 +159,10 @@ function buildInstallSection() {
             renderSettings();
           } catch { /* ignore */ }
         },
-      }, '📲 ' + t('inst_btn')),
+      }, icon('download', 'chip-ico'), ' ', t('inst_btn')),
     ));
   } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    kids.push(el('div.set-help', null, '📱 ' + t('inst_ios_hint')));
+    kids.push(el('div.set-help', null, t('inst_ios_hint')));
   }
   mount.appendChild(section(t('inst_row'), ...kids));
 }
@@ -217,9 +217,10 @@ function buildAiSection() {
     type: 'button',
     onclick: () => {
       keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-      showBtn.textContent = keyInput.type === 'password' ? '👁' : '🙈';
+      setIcon(showBtn, keyInput.type === 'password' ? 'eye' : 'eye-off');
     },
-  }, '👁');
+  });
+  setIcon(showBtn, 'eye');
 
   const modelInput = el('input.set-input', {
     type: 'text', value: cfg.model ?? 'gemini-3.5-flash-lite',

@@ -116,7 +116,7 @@ function buildModal(title, onclose) {
 function searchRow(box, onPick, placeholder, signalCtl) {
   const results = el('div.explore-results');
   const wrap = el('div.search-wrap',
-    el('span.search-icon', { 'aria-hidden': 'true' }, '🔍'),
+    el('span.search-icon', { 'aria-hidden': 'true' }, icon('search')),
     el('input.search-input', {
       type: 'search', placeholder, autocomplete: 'off', spellcheck: 'false',
       'aria-label': placeholder,
@@ -291,10 +291,19 @@ export function openJourney(ctx) {
   let to = null;
   let depart = 'now';
 
-  const fromBtn = el('button.explore-from', { type: 'button', onclick: () => searchFrom() },
-    `${t('jny_from')}: ${from ? `📍 ${from.name}` : t('jny_pick_from')}`);
-  const toBtn = el('button.explore-from', { type: 'button', onclick: () => searchTo() },
-    `${t('jny_to')}: ${to ? `📍 ${to.name}` : t('jny_empty_to')}`);
+  const fromBtn = el('button.explore-from', { type: 'button', onclick: () => searchFrom() });
+  const toBtn = el('button.explore-from', { type: 'button', onclick: () => searchTo() });
+  const paintFrom = () => {
+    fromBtn.replaceChildren(`${t('jny_from')}: `);
+    if (from) fromBtn.append(icon('pin', 'chip-ico'), ` ${from.name}`);
+    else fromBtn.append(t('jny_pick_from'));
+  };
+  const paintTo = () => {
+    toBtn.replaceChildren(`${t('jny_to')}: `);
+    if (to) toBtn.append(icon('pin', 'chip-ico'), ` ${to.name}`);
+    else toBtn.append(t('jny_empty_to'));
+  };
+  paintFrom(); paintTo();
 
   const depSeg = el('div.set-seg.dep-seg',
     ['now', '3h', 'morning', 'evening'].map((k) =>
@@ -308,7 +317,7 @@ export function openJourney(ctx) {
     ),
   );
 
-  const goBtn = el('button.btn.btn-primary.btn-lg', { type: 'button', onclick: () => run() }, `🛣 ${t('jny_go')}`);
+  const goBtn = el('button.btn.btn-primary.btn-lg', { type: 'button', onclick: () => run() }, icon('route', 'chip-ico'), ' ', t('jny_go'));
   const out = el('div.jny-out');
 
   function searchFrom() {
@@ -316,7 +325,7 @@ export function openJourney(ctx) {
     fromBtn.after(slot);
     searchRow(slot, (h) => {
       from = normPlace(h);
-      fromBtn.textContent = `${t('jny_from')}: 📍 ${from.name}`;
+      paintFrom();
       slot.remove();
     }, t('jny_pick_from'), ctl);
   }
@@ -325,7 +334,7 @@ export function openJourney(ctx) {
     toBtn.after(slot);
     searchRow(slot, (h) => {
       to = normPlace(h);
-      toBtn.textContent = `${t('jny_to')}: 📍 ${to.name}`;
+      paintTo();
       toBtn.classList.remove('hint');
       slot.remove();
     }, t('jny_empty_to'), ctl);
@@ -391,7 +400,7 @@ export function openJourney(ctx) {
     clear(out);
     const depLabel = departTarget(0).label;
     out.appendChild(el('div.jny-headline',
-      el('b', null, `📍 ${from.name} → ${to.name}`),
+      el('b', null, icon('pin', 'chip-ico'), ` ${from.name} → ${to.name}`),
       el('span.jny-km', null, `· ~${Math.round(km)} km · ${depLabel}${durH >= 1 ? ` · ${t('jny_eta')} ~${durH.toFixed(0)} h` : ''}`),
     ));
 

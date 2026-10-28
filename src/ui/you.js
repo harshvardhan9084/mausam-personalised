@@ -40,7 +40,7 @@ function build() {
 
   /* ---------- intro ---------- */
   mount.appendChild(el('div.you-intro',
-    el('div.you-hello', null, draft.name ? `🙏 ${t('nav_you')} · ${draft.name}` : `🙏 ${t('you_title')}`),
+    el('div.you-hello', null, icon('you', 'you-hello-ico'), draft.name ? ` ${t('nav_you')} · ${draft.name}` : ` ${t('you_title')}`),
     el('div.you-intro-text', null, t('you_intro')),
   ));
 
@@ -50,8 +50,8 @@ function build() {
     PACKS.map((p) => el('button.pack-chip', {
       type: 'button',
       onclick: () => { applyPack(p); },
-    }, t(p.label))),
-    el('button.pack-chip.pack-fresh', { type: 'button', onclick: () => { draft = emptyProfile(); build(); } }, t('pack_fresh')),
+    }, icon(p.glyph ?? 'home', 'chip-ico'), t(p.label))),
+    el('button.pack-chip.pack-fresh', { type: 'button', onclick: () => { draft = emptyProfile(); build(); } }, icon('sparkles', 'chip-ico'), t('pack_fresh')),
   ));
 
   /* ---------- name ---------- */
@@ -104,12 +104,12 @@ function build() {
   /* ---------- interests ---------- */
   mount.appendChild(blockTitle(t('you_interests')));
   mount.appendChild(el('div.chip-grid',
-    INTERESTS.map(([id, labelKey]) =>
+    INTERESTS.map(([id, labelKey, glyph]) =>
       el('button.chip.you-chip', {
         type: 'button',
         class: draft.interests.includes(id) ? 'on' : '',
         onclick: (e) => toggleInterest(id, e.currentTarget),
-      }, t(labelKey))),
+      }, icon(glyph, 'chip-ico'), t(labelKey))),
     el('button.chip.you-chip.you-add', {
       type: 'button',
       onclick: (e) => {
@@ -154,7 +154,7 @@ function build() {
   /* ---------- sensitivities ---------- */
   mount.appendChild(blockTitle(t('you_sens')));
   mount.appendChild(el('div.chip-grid',
-    SENSITIVITIES.map(([id, labelKey]) =>
+    SENSITIVITIES.map(([id, labelKey, glyph]) =>
       el('button.chip.you-chip', {
         type: 'button',
         class: draft.sensitive?.[id] ? 'on' : '',
@@ -163,7 +163,7 @@ function build() {
           draft.sensitive[id] = !draft.sensitive[id];
           e.currentTarget.classList.toggle('on');
         },
-      }, t(labelKey))),
+      }, icon(glyph, 'chip-ico'), t(labelKey))),
   ));
 
   /* ---------- tone ---------- */
@@ -197,7 +197,7 @@ function build() {
     mount.appendChild(el('div.you-saved-at', null,
       `${t('saved_since')}: ${new Date(draft.savedAt).toLocaleString()}`));
   }
-  mount.appendChild(el('div.you-privacy', null, '🔒 ' + t('you_intro')));
+  mount.appendChild(el('div.you-privacy', null, icon('lock', 'chip-ico'), ' ', t('you_intro')));
 
   function timeField(label, key) {
     return el('label.you-time', null, label + ' ',
