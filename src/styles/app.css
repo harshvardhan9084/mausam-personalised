@@ -801,6 +801,37 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   .explore-box.is-journey .jny-out  { grid-column: 2; grid-row: 2; }
 }
 
+/* v0.8.15 — crops joins the desktop: the selection cluster becomes a sticky
+   rail on the left, the calendar content owns the main column. Width mirrors
+   the explore sheets (940px) so every desktop surface shares one frame.
+   Mobile (<900px) is untouched: .crop-rail is plain block flow there. */
+@media (min-width: 900px) {
+  #page-crops.active {
+    max-width: min(94vw, 940px);
+    display: grid;
+    grid-template-columns: minmax(264px, 300px) minmax(0, 1fr);
+    column-gap: 30px;
+    align-items: start;
+  }
+  #page-crops .page-h { grid-column: 1 / -1; }
+  #page-crops .crop-rail {
+    grid-column: 1; grid-row: 2;
+    position: sticky;
+    top: calc(var(--header-h) + 14px);
+    /* short desktop windows: the rail scrolls internally instead of pinning
+       its bottom out of reach (content ~440px tall, so this is a guard) */
+    max-height: calc(100dvh - var(--header-h) - 28px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 2px;
+    margin: -2px; /* keep focus rings visible without shifting the layout */
+  }
+  #page-crops .crop-cards-zone { grid-column: 2; grid-row: 2; min-width: 0; }
+  #page-crops .crop-disclaimer { grid-column: 1 / -1; grid-row: 3; }
+  /* the wider content zone breathes: farm advisories pair up (max 4 → 2×2) */
+  #page-crops .crop-advisories { grid-template-columns: 1fr 1fr; }
+}
+
 /* ================================================================
    v0.7 — production polish: transitions, PTR, snackbar, sheets,
    10-day list, composer, crops filter, settings about

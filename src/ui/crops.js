@@ -73,18 +73,24 @@ function render() {
   const snapshot = getState().snapshot ?? null;
   const { season } = cropCalendar(snapshot, selectedIds());
 
+  /* v0.8.15 — the selection cluster (season banner, pick title, filter,
+     chips, hint) lives in one wrapper so desktop CSS can pin it as a
+     sticky rail beside the content zone. On <900px the wrapper is plain
+     block flow: mobile is pixel-identical to the old flat markup. */
+  const rail = el('div.crop-rail');
+
   /* season banner */
-  mount.appendChild(el('div.crop-season',
+  rail.appendChild(el('div.crop-season',
     el('span.crop-season-ico', { 'aria-hidden': 'true' }, tipIcon(season.icon, 'season-svg') ?? document.createTextNode(String(season.icon ?? ''))),
     el('span', null, season.label),
   ));
 
   if (!snapshot) {
-    mount.appendChild(el('div.card.pad-sm.crop-note', null, t('crop_wait_data')));
+    rail.appendChild(el('div.card.pad-sm.crop-note', null, t('crop_wait_data')));
   }
 
   /* crop filter — the tab's main text field ("/" reaches it) */
-  mount.appendChild(sectionTitle(t('crop_pick')));
+  rail.appendChild(sectionTitle(t('crop_pick')));
   const filterWrap = el('div.search-wrap.crop-filter-wrap',
     el('span.search-icon', { 'aria-hidden': 'true' },
       el('span', { class: 'crop-filter-glyph' }, '⌕')),
@@ -101,11 +107,13 @@ function render() {
       },
     }),
   );
-  mount.appendChild(filterWrap);
+  rail.appendChild(filterWrap);
 
   chipsGrid = el('div.chip-grid.crop-chips');
-  mount.appendChild(chipsGrid);
-  mount.appendChild(el('div.crop-tiny', null, t('crop_pick_hint')));
+  rail.appendChild(chipsGrid);
+  rail.appendChild(el('div.crop-tiny', null, t('crop_pick_hint')));
+
+  mount.appendChild(rail);
 
   cardsZone = el('div.crop-cards-zone');
   mount.appendChild(cardsZone);
