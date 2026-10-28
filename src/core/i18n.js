@@ -342,6 +342,7 @@ const dict = {
   jny_evening:   ['Tomorrow evening', 'कल शाम'],
   jny_go:        ['Check the route', 'रास्ता देखें'],
   jny_empty_to:  ['Pick a destination to see the sky along the way.', 'रास्ते का मौसम देखने के लिए मंज़िल चुनें।'],
+  jny_empty_hint:['Pick a from & to, then check the route — the sky along your journey appears here.', 'शुरुआत और मंज़िल चुनें, फिर रास्ता देखें — रास्ते का आसमान यहीं दिखेगा।'],
   jny_pick_from: ['Choose origin', 'शुरुआत चुनें'],
   jny_calculating:['Reading the sky along the route…', 'रास्ते का आसमान पढ़ रहे हैं…'],
   jny_worst_rain:['Wettest stretch: {p}%', 'सबसे गीला हिस्सा: {p}%'],

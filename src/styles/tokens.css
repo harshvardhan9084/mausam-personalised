@@ -31,6 +31,10 @@
   --shadow:     0 2px 14px rgba(0, 0, 0, 0.4);
   --shadow-pop: 0 8px 30px rgba(0, 0, 0, 0.55);
 
+  /* ambient desktop stage (≥900px) — hero-echo atmosphere behind the column */
+  --stage-glow-a: rgba(59, 79, 145, 0.30);
+  --stage-glow-b: rgba(30, 90, 110, 0.22);
+
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
   --header-h: 58px;
   --nav-h: 62px;
@@ -63,6 +67,10 @@
 
   --shadow:     0 2px 10px rgba(20, 30, 60, 0.08);
   --shadow-pop: 0 10px 32px rgba(20, 30, 60, 0.18);
+
+  /* ambient desktop stage — soft sky tints, quiet enough for text nearby */
+  --stage-glow-a: rgba(188, 208, 240, 0.55);
+  --stage-glow-b: rgba(205, 220, 244, 0.45);
 }
 
 /* Accent colors — user-picked in Settings, applied via body[data-accent] */

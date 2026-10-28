@@ -85,7 +85,7 @@ function haversineKm(a, b) {
 
 /* ---------------- shared modal plumbing ---------------- */
 
-function buildModal(title, onclose) {
+function buildModal(title, onclose, typeClass) {
   const overlay = el('div.modal-overlay.active', { role: 'dialog', 'aria-modal': 'true' });
   const focusCtl = trapFocus(overlay);
   const onEsc = (e) => { if (e.key === 'Escape') close(); };
@@ -96,7 +96,9 @@ function buildModal(title, onclose) {
     overlay.remove();
   };
   document.addEventListener('keydown', onEsc);
-  const box = el('div.modal-box.explore-box',
+  // typeClass (is-compare / is-journey) lets desktop CSS grid the sheet into
+  // two columns without touching the shared modal plumbing
+  const box = el(`div.modal-box.explore-box${typeClass ? `.${typeClass}` : ''}`,
     el('div.modal-header',
       el('span.modal-title', null, title),
       el('button.modal-close', { type: 'button', 'aria-label': 'Close', onclick: close }, '✕'),
@@ -183,7 +185,7 @@ async function getPlaceData(p, signal) {
  */
 export function openCompare(ctx) {
   const ctl = new AbortController();
-  const { overlay, box } = buildModal(t('cmp_title'), () => ctl.abort());
+  const { overlay, box } = buildModal(t('cmp_title'), () => ctl.abort(), 'is-compare');
   const added = []; // session-only extra places from search
   const listWrap = el('div.cmp-list');
   const verdict = el('div.cmp-verdict');
@@ -284,7 +286,7 @@ function aqiToneClass(aqi) {
  */
 export function openJourney(ctx) {
   const ctl = new AbortController();
-  const { overlay, box } = buildModal(t('jny_title'), () => ctl.abort());
+  const { overlay, box } = buildModal(t('jny_title'), () => ctl.abort(), 'is-journey');
   const units = ctx?.units ?? 'metric';
 
   let from = ctx?.location ?? null;
@@ -319,6 +321,12 @@ export function openJourney(ctx) {
 
   const goBtn = el('button.btn.btn-primary.btn-lg', { type: 'button', onclick: () => run() }, icon('route', 'chip-ico'), ' ', t('jny_go'));
   const out = el('div.jny-out');
+  // designed empty state — the sheet should never show a dead void where the
+  // route result will land (cleared by run()'s clear(out) on first compute)
+  out.appendChild(el('div.jny-empty',
+    el('span.jny-empty-ico', null, icon('route', 'pill-ico')),
+    el('span', null, t('jny_empty_hint')),
+  ));
 
   function searchFrom() {
     const slot = el('div.jny-search');
@@ -340,8 +348,10 @@ export function openJourney(ctx) {
     }, t('jny_empty_to'), ctl);
   }
 
-  box.append(fromBtn, toBtn, el('div.cmp-add-row'),
-    el('div.set-label', null, t('jny_depart')), depSeg, goBtn, out);
+  // v0.8.14: form wrapped so desktop CSS can place form | result side by side
+  const form = el('div.jny-form', fromBtn, toBtn, el('div.cmp-add-row'),
+    el('div.set-label', null, t('jny_depart')), depSeg, goBtn);
+  box.append(form, out);
 
   function departTarget(extraH = 0) {
     const now = new Date();

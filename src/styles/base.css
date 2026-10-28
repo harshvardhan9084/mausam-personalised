@@ -18,6 +18,24 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
+/* v0.8.14 — ambient desktop stage: on ≥900px the body background propagates
+   to the canvas, so this fixed glow layer sits above the void but below all
+   content — the empty margins read as framing, not dead space. Mobile (<900px)
+   stays untouched (content fills the screen edge-to-edge anyway). Static
+   gradients — no motion, safe under prefers-reduced-motion. */
+@media (min-width: 900px) {
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(52rem 30rem at 12% -8%, var(--stage-glow-a), transparent 68%),
+      radial-gradient(64rem 38rem at 98% 110%, var(--stage-glow-b), transparent 70%);
+  }
+}
+
 img, svg { display: block; max-width: 100%; }
 
 button, input, select {

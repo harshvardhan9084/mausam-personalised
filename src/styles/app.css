@@ -736,6 +736,71 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .jny-verdict.bad b { color: var(--red); }
 .jny-where { font-size: 0.72rem; color: var(--muted); }
 
+/* v0.8.14 — journey result rail ships with a designed empty state, not a void */
+.jny-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 16px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.jny-empty-ico {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.jny-empty-ico svg { width: 16px; height: 16px; }
+
+/* v0.8.14 — desktop (≥900px): the explore sheets become two-column panels.
+   Compare: place list left, verdict panel + add-place rail right.
+   Journey: route form left, result rail right. Phones/tablets keep the
+   single-column sheet (mobile bottom-sheet behavior untouched below 640px). */
+@media (min-width: 900px) {
+  .explore-box {
+    width: min(92vw, 940px);
+    max-width: min(92vw, 940px); /* beat .modal-box's 520px clamp */
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+    column-gap: 26px;
+    align-items: start;
+    align-content: start;
+  }
+  .explore-box .modal-header { grid-column: 1 / -1; }
+  /* compare: list spans both content rows on the left; verdict + add rail right */
+  .explore-box.is-compare .cmp-list    { grid-column: 1; grid-row: 2 / 4; }
+  .explore-box.is-compare .cmp-verdict {
+    grid-column: 2; grid-row: 2;
+    margin-bottom: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 13px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .explore-box.is-compare .cmp-verdict:empty { display: none; }
+  .explore-box.is-compare .cmp-add-row {
+    grid-column: 2; grid-row: 3;
+    margin-top: 14px;
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+  }
+  /* journey: form left, result rail right */
+  .explore-box.is-journey .jny-form { grid-column: 1; grid-row: 2; }
+  .explore-box.is-journey .jny-out  { grid-column: 2; grid-row: 2; }
+}
+
 /* ================================================================
    v0.7 — production polish: transitions, PTR, snackbar, sheets,
    10-day list, composer, crops filter, settings about
