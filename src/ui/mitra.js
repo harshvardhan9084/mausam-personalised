@@ -62,6 +62,9 @@ export function showMitra() {
   if (!inited) { init(); inited = true; }
   statusDot?.classList.toggle('off', !navigator.onLine);
   if (statusText) statusText.textContent = navigator.onLine ? t('mitra_sub_live') : t('mitra_sub_off');
+  // size the composer to its (possibly multi-line, possibly Hindi) placeholder —
+  // at phone widths a 1-row textarea clips the wrapped placeholder mid-glyph
+  autogrow();
 }
 
 function init() {

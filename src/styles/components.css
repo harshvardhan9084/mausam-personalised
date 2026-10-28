@@ -469,6 +469,9 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   .irr-table th:nth-child(2), .irr-table td:nth-child(2) { display: none; }
 }
 @media (max-width: 400px) {
-  .row-2, .row-3, .row-4 { grid-template-columns: 1fr; }
+  .row-2, .row-3 { grid-template-columns: 1fr; }
+  /* stat tiles stay paired — 1-col stacked 8 detail cards and doubled the
+     home scroll on every ≤400px phone (390px is the most common width) */
+  .row-4 { grid-template-columns: 1fr 1fr; }
   .week-grid { grid-template-columns: repeat(3, 1fr); }
 }
