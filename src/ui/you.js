@@ -7,6 +7,7 @@
  */
 
 import { el, clear } from '../utils/dom.js';
+import { icon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
 import {
@@ -81,6 +82,8 @@ function build() {
   /* v0.8.9: the chip previously read '⏰ On / Off' — a toggle that never
      said WHAT it toggled. Label it by what it controls; the .on state
      styling (accent ring) already communicates on/off. */
+  /* v0.8.11: the clock emoji joins the glyph language — UI chrome on this page
+     (identity emoji on the pack/interest chips stay by design). */
   const schedOn = el('button.chip.you-chip', {
     type: 'button', class: draft.scheduleOn ? 'on' : '',
     onclick: (e) => {
@@ -88,7 +91,7 @@ function build() {
       e.currentTarget.classList.toggle('on');
       e.currentTarget.closest('.you-block').querySelector('.you-times').style.display = draft.scheduleOn ? '' : 'none';
     },
-  }, '⏰ ' + t('you_sched_chip'));
+  }, icon('clock', 'chip-ico'), ' ' + t('you_sched_chip'));
   mount.appendChild(el('div.you-block', schedOn,
     el('div.you-times', { style: { display: draft.scheduleOn ? '' : 'none' } },
       timeField(t('you_wake'), 'wake'),

@@ -104,7 +104,7 @@
   font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, transform 0.12s ease;
   display: inline-flex; align-items: center; gap: 6px;
 }
 .btn:hover { border-color: var(--accent); }
@@ -380,6 +380,7 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   font-size: 0.78rem;
   cursor: pointer;
   color: var(--muted);
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.12s ease;
 }
 .seg-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 700; }
 .settings-item {
@@ -412,15 +413,32 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 
 /* ---------- Skeleton / error / offline ---------- */
 @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
-.skeleton {
-  border-radius: var(--radius);
-  background: linear-gradient(90deg, var(--surface) 40%, var(--surface-2) 50%, var(--surface) 60%);
+
+/* v0.8.11: the cold-load skeleton mirrors the dashboard it replaces —
+   hero block, hour-strip cells, chart band, 10-day rows, card trio —
+   so a slow first paint shows the page's real shape, not gray mush. */
+.sk-page { --sk-grad: linear-gradient(90deg, var(--surface) 40%, var(--surface-2) 50%, var(--surface) 60%); }
+.sk {
+  background: var(--sk-grad);
   background-size: 200px 100%;
   animation: shimmer 1.2s linear infinite;
-  min-height: 90px;
-  margin-bottom: 20px;
+  border-radius: 10px;
+  min-height: 12px;
 }
-.skeleton.hero-skeleton { min-height: 210px; }
+.sk-hero { height: 208px; border-radius: 18px; margin-bottom: 20px; }
+.sk-row { display: flex; gap: 8px; margin-bottom: 20px; }
+.sk-cell { flex: 1 0 64px; height: 76px; border-radius: 12px; }
+.sk-chart { height: 118px; border-radius: 14px; margin-bottom: 20px; }
+.sk-ten { display: flex; flex-direction: column; gap: 13px; margin-bottom: 22px; }
+.sk-ten-row { display: flex; align-items: center; gap: 10px; }
+.sk-day { width: 52px; height: 13px; flex-shrink: 0; }
+.sk-bar { flex: 1; height: 13px; }
+.sk-num { width: 58px; height: 13px; flex-shrink: 0; }
+.sk-cards { gap: 10px; }
+.sk-card { flex: 1; height: 92px; border-radius: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; background: var(--surface-2); }
+}
 
 .state-card {
   text-align: center;

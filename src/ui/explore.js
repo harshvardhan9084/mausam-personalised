@@ -19,6 +19,7 @@ import { describeWeather } from '../api/wmo.js';
 import { computeCPCBAqi } from '../core/aqi-cpcb.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { t, getLang } from '../core/i18n.js';
+import { icon, tipIcon } from './icons.js';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
@@ -235,14 +236,14 @@ export function openCompare(ctx) {
     const withData = list.map((p, i) => ({ p, d: datas[i] })).filter((x) => x.d?.wx?.temp != null);
     if (withData.length >= 2) {
       const coolest = withData.reduce((a, b) => (b.d.wx.temp < a.d.wx.temp ? b : a));
-      verdict.appendChild(el('span.cmp-verdict-pill', null, `🧊 ${t('cmp_verdict_cooler', { c: coolest.p.name })}`));
+      verdict.appendChild(el('span.cmp-verdict-pill', null, icon('thermo', 'pill-ico'), ` ${t('cmp_verdict_cooler', { c: coolest.p.name })}`));
       const driest = withData.filter((x) => x.d.wx.popMax24 != null).reduce((a, b) => ((b.d.wx.popMax24 ?? 100) < (a.d.wx.popMax24 ?? 100) ? b : a), withData[0]);
       if (driest?.d?.wx?.popMax24 != null) {
-        verdict.appendChild(el('span.cmp-verdict-pill', null, `🌤 ${t('cmp_verdict_drier', { c: driest.p.name })}`));
+        verdict.appendChild(el('span.cmp-verdict-pill', null, tipIcon('sun', 'pill-ico'), ` ${t('cmp_verdict_drier', { c: driest.p.name })}`));
       }
       const clean = withData.filter((x) => x.d?.aqi != null).reduce((a, b) => (b.d.aqi < a.d.aqi ? b : a), withData.find((x) => x.d?.aqi != null));
       if (clean?.d?.aqi != null) {
-        verdict.appendChild(el('span.cmp-verdict-pill', null, `🍃 ${t('cmp_verdict_cleaner', { c: clean.p.name })}`));
+        verdict.appendChild(el('span.cmp-verdict-pill', null, icon('wind', 'pill-ico'), ` ${t('cmp_verdict_cleaner', { c: clean.p.name })}`));
       }
     }
   }
@@ -418,7 +419,7 @@ export function openJourney(ctx) {
     const worst = Math.max(...pops, 0);
     const worstIdx = pops.indexOf(worst);
     out.appendChild(el(`div.jny-verdict.${worst >= 70 ? 'bad' : worst >= 40 ? 'care' : 'ok'}`,
-      el('b', null, `🌧 ${t('jny_worst_rain', { p: worst })}`),
+      el('b', null, tipIcon('rain', 'pill-ico'), ` ${t('jny_worst_rain', { p: worst })}`),
       el('span', null,
         worst >= 70 ? t('jny_verdict_bad')
           : worst >= 40 ? t('jny_verdict_care')

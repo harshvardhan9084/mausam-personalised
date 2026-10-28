@@ -212,7 +212,10 @@
 .chat-new {
   background: none; border: none; color: var(--muted);
   font-size: 0.9rem; cursor: pointer; padding: 8px; border-radius: 8px;
+  transition: color 0.15s, background 0.15s, transform 0.12s ease;
+  display: grid; place-items: center;
 }
+.chat-new svg { width: 17px; height: 17px; display: block; }
 .chat-new:hover { color: var(--text); background: var(--surface-2); }
 .chat-status-sep { color: var(--border); }
 .chat-provider-label { color: var(--accent); font-weight: 600; }

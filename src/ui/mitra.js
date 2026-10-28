@@ -83,8 +83,8 @@ function init() {
         ),
       ),
       el('div.chat-head-actions',
-        el('button.chat-new', { type: 'button', 'aria-label': t('mitra_history'), title: t('mitra_history'), onclick: () => openHistorySheet() }, '🕘'),
-        el('button.chat-new', { type: 'button', 'aria-label': t('mitra_new'), title: t('mitra_new'), onclick: () => newChat() }, '🧹'),
+        el('button.chat-new', { type: 'button', 'aria-label': t('mitra_history'), title: t('mitra_history'), onclick: () => openHistorySheet() }, icon('history')),
+        el('button.chat-new', { type: 'button', 'aria-label': t('mitra_new'), title: t('mitra_new'), onclick: () => newChat() }, icon('broom')),
       ),
     ),
     el('div.chat-body',
@@ -601,6 +601,7 @@ function suggestions() {
 async function send(raw, { isRetry = false } = {}) {
   const text = String(raw ?? '').trim().slice(0, MAX_LEN);
   if (!text || busy) return;
+  msgs.classList.remove('is-empty'); // first real turn ends the centered empty state
   stopSpeaking(); // a new turn silences the reader
   if (!isRetry && !/^use mausam core$/i.test(text)) {
     prevQuestion = lastQuestion;
@@ -753,11 +754,21 @@ function welcome() {
   const name = getProfile()?.name;
   turn.streamBox.remove();
   turn.setMeta('Mausam Core · on-device');
+  // v0.8.11: the empty state is a composed moment, not a top-hugging card over
+  // a gray void — .is-empty centers the cluster vertically in .chat-msgs-page
+  // (removed on the first real turn), and the '/' shortcut tip renders the key
+  // as a real key-cap instead of a keyboard emoji.
+  msgs.classList.add('is-empty');
+  const hint = t('mitra_shortcut_hint');
+  const slash = hint.indexOf('/');
+  const tipKids = slash >= 0
+    ? [hint.slice(0, slash), el('kbd.kbd', null, '/'), hint.slice(slash + 1)]
+    : [hint];
   turn.cards.appendChild(el('div.chat-welcome',
     el('div.chat-welcome-title', null, `${t('mitra_welcome_hi')}${name ? ` ${name}` : ''}! 👋`),
     el('div.chat-welcome-text', null,
       t(n ? 'mitra_welcome_t' : 'mitra_welcome_t_nocity', { city: s?.location?.name ?? '' })),
-    el('div.chat-welcome-tip', null, `⌨️ ${t('mitra_shortcut_hint')}`),
+    el('div.chat-welcome-tip', null, tipKids),
   ));
   turn.cards.appendChild(el('div.chat-chips.chat-suggestions',
     suggestions().map((s2) => el('button.chip', { type: 'button', onclick: () => send(s2) }, s2)),

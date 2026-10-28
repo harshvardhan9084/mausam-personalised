@@ -117,14 +117,20 @@ export function scoreColor(score) {
   return score >= 65 ? 'var(--green)' : score >= 40 ? 'var(--yellow)' : 'var(--red)';
 }
 
-/** Skeleton placeholders while loading. */
+/** Skeleton placeholders while loading.
+ *  v0.8.11: mirrors the dashboard it replaces — hero block, hour-strip cells,
+ *  temperature-chart band, 10-day rows and the insight-card trio — instead of
+ *  three anonymous bars. A cold 3G load now shows the page's real shape. */
 export function skeleton() {
-  return el(
-    'div',
-    { 'aria-hidden': 'true' },
-    el('div.skeleton.hero-skeleton'),
-    el('div.skeleton'),
-    el('div.skeleton')
+  const row = (cls, n, maker) => el('div' + cls, null,
+    Array.from({ length: n }, maker));
+  return el('div', { 'aria-hidden': 'true', class: 'sk-page' },
+    el('div.sk.sk-hero'),
+    row('.sk-row', 6, () => el('div.sk.sk-cell')),
+    el('div.sk.sk-chart'),
+    row('.sk-ten', 4, () => el('div.sk-ten-row', null,
+      el('div.sk.sk-day'), el('div.sk.sk-bar'), el('div.sk.sk-num'))),
+    row('.sk-row.sk-cards', 3, () => el('div.sk.sk-card')),
   );
 }
 

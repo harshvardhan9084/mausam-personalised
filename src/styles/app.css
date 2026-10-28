@@ -272,6 +272,15 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* v0.8.11: with no conversation yet, center the welcome cluster vertically —
+   the empty chat reads as intentional calm, not a card stranded over a void.
+   .is-empty is added by welcome() and removed on the first real turn. */
+.chat-msgs-page.is-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .chat-inputbar-page {
   flex-shrink: 0;
   display: flex;
@@ -541,6 +550,30 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   margin-top: 8px;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+/* v0.8.11: keyboard shortcut shown as a real key-cap, not a ⌨️ emoji */
+.kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  text-align: center;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* v0.8.11: stroke glyphs inside chips/pills sit inline with the label */
+.chip .chip-ico, .cmp-verdict-pill .pill-ico, .jny-verdict b .pill-ico {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
 }
 
 /* history sheet */
@@ -958,13 +991,13 @@ textarea.chat-input {
   position: sticky;
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
   z-index: 20;
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 93%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 10px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .you-actions .btn { flex: 1; white-space: nowrap; }
 
@@ -973,6 +1006,31 @@ textarea.chat-input {
 @media (max-width: 420px) {
   .you-actions .btn-lg { padding: 12px 10px; font-size: 0.9rem; }
 }
+
+/* ---------- v0.8.11: tactile press layer ----------
+   Every interactive surface answers the finger. Until now only 3 elements
+   had :active feedback (tab-btn, pack-chip, city-btn) — chips, buttons,
+   settings segments, 10-day rows, AQI bars and modal rows all felt inert
+   on touch. Instant press (fast transition), eased release. Instant
+   transform feedback is intentional under prefers-reduced-motion too —
+   it is state, not animation.
+   NOTE: classes whose base rules already transition transform/all (.chip,
+   .chat-send, .chat-mic, .accent-swatch, .persona-card, .delta-pill,
+   .hero-share, .you-btn, .place-chip, .tab-btn, .pack-chip, .city-btn)
+   get ONLY the :active rule here — re-declaring `transition` last in the
+   cascade would erase their existing color/shadow transitions. */
+.seg-btn, .aqi-trend-bar, .modal-close, .chat-new, .chat-scroll-down {
+  transition: transform 0.12s ease;
+}
+.btn:active, .chip:active, .seg-btn:active, .accent-swatch:active,
+.persona-card:active, .hero-share:active, .delta-pill:active,
+.you-btn:active, .place-chip:active, .aqi-trend-bar:active,
+.modal-close:active, .chat-new:active, .chat-send:active,
+.chat-mic:active, .chat-scroll-down:active {
+  transform: scale(0.96);
+}
+.ten-row, .search-result { transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease; }
+.ten-row:active, .search-result:active { transform: translateX(2px); }
 
 @media (prefers-reduced-motion: reduce) {
   .page.active, .tab-btn.active .tab-ico { animation: none; }
