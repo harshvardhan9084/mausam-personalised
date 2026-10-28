@@ -50,6 +50,26 @@
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
 }
 
+/* sliding active pill (v0.8.10): one element morphs behind the active tab
+   (position/width set by main.js moveTabPill) — the highlight glides
+   between tabs instead of teleporting. Sits under the buttons. */
+.tab-pill {
+  position: absolute;
+  top: 6px;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  width: 64px;
+  border-radius: 12px;
+  background: var(--accent-dim);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: transform var(--t-med), width var(--t-med), opacity 0.25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-pill { transition: opacity 0.2s ease; }
+}
+
 .tab-btn {
   flex: 1;
   background: none;
@@ -63,6 +83,8 @@
   color: var(--muted);
   cursor: pointer;
   min-height: 54px;
+  position: relative;
+  z-index: 1;
   -webkit-tap-highlight-color: transparent;
   transition: color var(--t-fast), background var(--t-fast);
 }
@@ -136,6 +158,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+/* both selects fill their cell equally — intrinsic widths made gender
+   ~2× wider than age on desktop (v0.8.10 consistency pass) */
+.you-2col select { width: 100%; }
 
 .custom-tags { margin-top: 10px; }
 .you-own-row {
@@ -268,7 +293,9 @@
   font-size: 0.88rem;
 }
 .day-tl-row:last-child { border-bottom: none; }
-.day-tl-icon { font-size: 1.05rem; }
+.day-tl-icon { font-size: 1.05rem; color: var(--muted); }
+.day-tl-icon .tl-ico { width: 15px; height: 15px; display: block; }
+.day-tl-row.wet .day-tl-icon { color: var(--blue); }
 .day-tl-label { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-tl-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .day-tl-wx { font-size: 1rem; }
@@ -362,7 +389,8 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   font-size: 0.92rem;
   margin-bottom: 6px;
 }
-.crop-season-ico { font-size: 1.15rem; }
+.crop-season-ico { font-size: 1.15rem; display: inline-grid; place-items: center; color: var(--sky); }
+.crop-season-ico .season-svg { width: 17px; height: 17px; display: block; }
 .crop-chips { margin: 4px 0 2px; }
 .crop-tiny {
   font-size: 0.72rem;
@@ -433,22 +461,17 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .crop-fit-row { display: flex; gap: 8px; font-size: 0.82rem; line-height: 1.5; align-items: flex-start; }
 .crop-fit-row > span:first-child { flex-shrink: 0; }
 .crop-tone-good { color: var(--text); }
-.crop-tone-good::before { content: ''; }
 .crop-tone-warn  { color: var(--text); }
 .crop-tone-bad   { color: var(--text); }
 .crop-tone-info  { color: var(--text); }
-.crop-fit-row::before {
-  content: '';
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  margin-top: 7px;
-  flex-shrink: 0;
-  background: var(--muted);
-}
-.crop-tone-good::before  { background: var(--green); }
-.crop-tone-info::before  { background: var(--accent); }
-.crop-tone-warn::before  { background: var(--yellow); }
-.crop-tone-bad::before   { background: var(--red); }
+/* v0.8.10: the tone dot is replaced by the tip glyph itself, tinted by
+   tone — one marker instead of dot + icon, same language as advice cards */
+.crop-fit-ico { display: inline-grid; place-items: center; margin-top: 2px; color: var(--muted); }
+.crop-fit-ico svg { width: 14px; height: 14px; display: block; }
+.crop-tone-good .crop-fit-ico { color: var(--green); }
+.crop-tone-info .crop-fit-ico { color: var(--accent); }
+.crop-tone-warn .crop-fit-ico { color: var(--yellow); }
+.crop-tone-bad .crop-fit-ico  { color: var(--red); }
 
 /* ================================================================
    v0.6 — Mitra: scroll-to-latest, mic, history sheet

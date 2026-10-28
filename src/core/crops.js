@@ -312,12 +312,12 @@ function seasonInfo(today) {
   const nov1 = dayOfYear(new Date(today.getFullYear(), 10, 1));
   const mar31 = dayOfYear(new Date(today.getFullYear(), 2, 31));
   if (d >= jun15 && d <= oct31) {
-    return { id: 'kharif', label: pick(S('Kharif season — monsoon crops', 'खरीफ़ सीज़न — मानसूनी फ़सलें')), icon: '🌧️' };
+    return { id: 'kharif', label: pick(S('Kharif season — monsoon crops', 'खरीफ़ सीज़न — मानसूनी फ़सलें')), icon: 'rain' };
   }
   if (d >= nov1 || d <= mar31) {
-    return { id: 'rabi', label: pick(S('Rabi season — winter crops', 'रबी सीज़न — सर्दी की फ़सलें')), icon: '❄️' };
+    return { id: 'rabi', label: pick(S('Rabi season — winter crops', 'रबी सीज़न — सर्दी की फ़सलें')), icon: 'snow' };
   }
-  return { id: 'zaid', label: pick(S('Zaid season — short summer crops', 'ज़ायद सीज़न — छोटी गर्मी फ़सलें')), icon: '☀️' };
+  return { id: 'zaid', label: pick(S('Zaid season — short summer crops', 'ज़ायद सीज़न — छोटी गर्मी फ़सलें')), icon: 'sun' };
 }
 
 /**
@@ -343,7 +343,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
   if (row.status === 'sowing' && hotMax != null && coldMin != null) {
     if (hotMax > crop.sowT[1] + 3) {
       fit.push({
-        tone: 'warn', icon: '🌡️',
+        tone: 'warn', icon: 'thermo',
         text: pick([
           `Sowing window is open but days reach ${Math.round(hotMax)}°C — sow in the evening, water right after.`,
           `बुवाई की खिड़की खुली है पर दिन ${Math.round(hotMax)}°C तक जाएगा — शाम को बोएँ, तुरंत पानी दें।`,
@@ -351,7 +351,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else if (coldMin < crop.sowT[0] - 3) {
       fit.push({
-        tone: 'warn', icon: '🌡️',
+        tone: 'warn', icon: 'thermo',
         text: pick([
           `Sowing window is open but nights fall to ${Math.round(coldMin)}°C — germination will be slow; wait for a warmer spell if you can.`,
           `बुवाई की खिड़की खुली है पर रात ${Math.round(coldMin)}°C तक गिरेगी — अंकुरण धीमा होगा; हो सके तो गर्म समय की राह देखें।`,
@@ -365,7 +365,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
     if (soil < 0.12) {
       fit.push({
         tone: row.status === 'sowing' ? 'warn' : 'info',
-        icon: '💧',
+        icon: 'droplet',
         text: pick([
           `Top soil is dry (${soilPct}%). ${row.status === 'sowing' ? 'Irrigate before sowing for even germination.' : 'Irrigation looks due — check moisture at root depth.'}`,
           `ऊपरी मिट्टी सूखी है (${soilPct}%)। ${row.status === 'sowing' ? 'बुवाई से पहले सिंचाई करें — अंकुरण बराबर होगा।' : 'सिंचाई का समय लग रहा है — जड़ों में नमी जाँचें।'}`,
@@ -373,7 +373,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else if (soil <= 0.32) {
       fit.push({
-        tone: 'good', icon: '💧',
+        tone: 'good', icon: 'droplet',
         text: pick([
           `Soil moisture comfortable (${soilPct}%).`,
           `मिट्टी की नमी ठीक है (${soilPct}%)।`,
@@ -381,7 +381,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else {
       fit.push({
-        tone: 'info', icon: '💧',
+        tone: 'info', icon: 'droplet',
         text: pick([
           `Soil is wet (${soilPct}%) — hold irrigation; watch for waterlogging in the field.`,
           `मिट्टी गई है (${soilPct}%) — सिंचाई टालें; खेत में जल-थहराव से बचें।`,
@@ -395,7 +395,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
     const need = crop.rainWant;
     if (rain7 >= need) {
       fit.push({
-        tone: 'good', icon: '🌧️',
+        tone: 'good', icon: 'rain',
         text: pick([
           `~${rain7} mm rain expected this week — covers the crop's need (~${need} mm).`,
           `इस हफ़्ते ~${rain7} mm बारिश — फ़सल की ज़रूरत (~${need} mm) पूरी।`,
@@ -403,7 +403,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else if (rain7 >= need * 0.5) {
       fit.push({
-        tone: 'info', icon: '🌦️',
+        tone: 'info', icon: 'partly',
         text: pick([
           `~${rain7} mm this week — partial rain; top up with one light irrigation if soil dries.`,
           `इस हफ़्ते ~${rain7} mm — आधी-अधूरी बारिश; मिट्टी सूखी हो तो एक हल्की सिंचाई करें।`,
@@ -411,7 +411,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else {
       fit.push({
-        tone: 'warn', icon: '☀️',
+        tone: 'warn', icon: 'sun',
         text: pick([
           `Only ~${rain7} mm rain this week — plan irrigation (crop wants ~${need} mm).`,
           `इस हफ़्ते सिर्फ़ ~${rain7} mm बारिश — सिंचाई की योजना बनाएँ (ज़रूरत ~${need} mm)।`,
@@ -424,7 +424,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
   if (hotMax != null && hotMax >= crop.hotT) {
     const flowerish = row.progress >= 0.45 && row.progress <= 0.92;
     fit.push({
-      tone: flowerish ? 'bad' : 'warn', icon: '🥵',
+      tone: flowerish ? 'bad' : 'warn', icon: 'thermo',
       text: pick([
         `Day temps hit ${Math.round(hotMax)}°C this week${flowerish ? ' — flowering / grain-fill is heat-sensitive; evening irrigation cools the field' : ' — keep soil moist and mulch where possible'}.`,
         `इस हफ़्ते दिन का तापमान ${Math.round(hotMax)}°C${flowerish ? ' — फूल/दाना भरने के समय गर्मी नुक़सान करती है; शाम को सिंचाई करें' : ' — नमी बनाए रखें, मल्चिंग करें'}।`,
@@ -435,7 +435,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
   /* --- cold stress (rabi crops, frost risk) --- */
   if (coldMin != null && coldMin <= crop.coldT) {
     fit.push({
-      tone: coldMin <= crop.coldT - 2 ? 'bad' : 'warn', icon: '🧊',
+      tone: coldMin <= crop.coldT - 2 ? 'bad' : 'warn', icon: 'snow',
       text: pick([
         `Nights drop to ${Math.round(coldMin)}°C — light frost possible; evening irrigation or smoking protects the crop.`,
         `रात ${Math.round(coldMin)}°C तक गिरेगी — हल्की पाला संभव; शाम की हल्की सिंचाई या धुआँ बचाव में काम आता है।`,
@@ -449,7 +449,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
     if (calm48.length >= 4) {
       const at = new Date(calm48[0].time);
       fit.push({
-        tone: 'good', icon: '🚜',
+        tone: 'good', icon: 'crops',
         text: pick([
           `Spray window: ${fmtDate(at)}, around ${at.getHours() % 12 || 12} ${at.getHours() < 12 ? 'AM' : 'PM'} — wind stays < 15 km/h.`,
           `छिड़काव की खिड़की: ${fmtDate(at)}, लगभग ${at.getHours() % 12 || 12} ${at.getHours() < 12 ? 'बजे दिन' : 'बजे शाम'} — हवा 15 km/h से नीचे।`,
@@ -457,7 +457,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else {
       fit.push({
-        tone: 'info', icon: '🚜',
+        tone: 'info', icon: 'crops',
         text: pick([
           'No calm spray window in 48 h (wind/rain) — hold the sprayer.',
           '48 घंटे में छिड़काव की शांत खिड़की नहीं (हवा/बारिश) — स्प्रेयर रोकें।',
@@ -471,7 +471,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
     const wet = days.slice(0, 7).filter((d) => (d.precip_prob_max ?? 0) >= 50 || (d.precipitation_sum ?? 0) >= 10);
     if (wet.length) {
       fit.push({
-        tone: 'warn', icon: '⚠️',
+        tone: 'warn', icon: 'storm',
         text: pick([
           `Harvest window has ${wet.length} wet day(s) ahead — cut and dry under cover; grain discolours in rain.`,
           `कटाई के दिनों में ${wet.length} गीला दिन — काटकर छाँव में सुखाएँ; बारिश में दाना रंग बदलता है।`,
@@ -479,7 +479,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
       });
     } else {
       fit.push({
-        tone: 'good', icon: '✅',
+        tone: 'good', icon: 'calcheck',
         text: pick([
           'Dry harvest week ahead — good time to cut, thresh and dry.',
           'कटाई के लिए सूखा हफ़्ता — काटने, गाहने और सुखाने का सही समय।',
@@ -491,7 +491,7 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
   /* --- sowing prep (next sowing within 21 days) --- */
   if (row.status === 'off' && row.nextSowDays <= 21) {
     fit.push({
-      tone: 'info', icon: '🌱',
+      tone: 'info', icon: 'crops',
       text: pick([
         `Sowing opens in ${row.nextSowDays} day(s) — book seed, basel fertiliser and get the field ready.`,
         `${row.nextSowDays} दिन में बुवाई — बीज और खाद पहले से बुक करें, खेत तैयार करें।`,

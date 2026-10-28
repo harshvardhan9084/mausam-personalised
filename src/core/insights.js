@@ -31,28 +31,28 @@ export function computeAlerts(s) {
 
   const storm = h12.find((h) => [95, 96, 99].includes(h.weather_code));
   if (storm) {
-    out.push({ kind: 'danger', icon: '⛈️', title: t('alert_storm'), text: t('alert_storm_t', { t: hourLabel(storm.time) }) });
+    out.push({ kind: 'danger', icon: 'storm', title: t('alert_storm'), text: t('alert_storm_t', { t: hourLabel(storm.time) }) });
   }
   const aqi = s.currentAqi?.aqi;
   if (aqi != null && aqi >= 300) {
-    out.push({ kind: 'danger', icon: '😷', title: t('alert_severe_air', { n: aqi }), text: t('alert_severe_air_t') });
+    out.push({ kind: 'danger', icon: 'fog', title: t('alert_severe_air', { n: aqi }), text: t('alert_severe_air_t') });
   }
   const hi = s.now.hi ?? s.now.feels;
   if (hi != null && hi >= 41) {
-    out.push({ kind: 'danger', icon: '🥵', title: t('alert_heat', { t: fmtTemp(hi, true) }), text: t('alert_heat_t') });
+    out.push({ kind: 'danger', icon: 'thermo', title: t('alert_heat', { t: fmtTemp(hi, true) }), text: t('alert_heat_t') });
   }
   const heavyRain = h6.find((h) => (h.precipitation_probability ?? 0) >= 75 || (h.precipitation ?? 0) >= 7.5);
   if (heavyRain) {
-    out.push({ kind: 'warn', icon: '🌧️', title: t('alert_rain'), text: t('alert_rain_t', { t: hourLabel(heavyRain.time) }) });
+    out.push({ kind: 'warn', icon: 'rain', title: t('alert_rain'), text: t('alert_rain_t', { t: hourLabel(heavyRain.time) }) });
   }
   if (aqi != null && aqi >= 200 && aqi < 300) {
-    out.push({ kind: 'warn', icon: '😷', title: t('alert_poor_air', { n: aqi }), text: t('alert_poor_air_t') });
+    out.push({ kind: 'warn', icon: 'fog', title: t('alert_poor_air', { n: aqi }), text: t('alert_poor_air_t') });
   }
   if (hi != null && hi >= 37 && hi < 41) {
-    out.push({ kind: 'warn', icon: '☀️', title: t('alert_warmer', { t: fmtTemp(hi, true) }), text: t('alert_warmer_t') });
+    out.push({ kind: 'warn', icon: 'sun', title: t('alert_warmer', { t: fmtTemp(hi, true) }), text: t('alert_warmer_t') });
   }
   if ((s.now.temp ?? 99) <= 6) {
-    out.push({ kind: 'warn', icon: '🥶', title: t('alert_cold', { t: fmtTemp(s.now.temp, true) }), text: t('alert_cold_t') });
+    out.push({ kind: 'warn', icon: 'snow', title: t('alert_cold', { t: fmtTemp(s.now.temp, true) }), text: t('alert_cold_t') });
   }
   return out.slice(0, 2);
 }
@@ -72,9 +72,9 @@ export function computeInsights(s) {
   const maxPop = Math.max(0, ...pops);
   const firstWet = h12.find((h) => (h.precipitation_probability ?? 0) >= 40);
   if (maxPop >= 40 && firstWet) {
-    out.push({ icon: '🌧️', tone: 'info', title: t('ins_rain_window'), text: t('ins_rain_window_t', { t: hourLabel(firstWet.time), p: Math.round(maxPop) }) });
+    out.push({ icon: 'rain', tone: 'info', title: t('ins_rain_window'), text: t('ins_rain_window_t', { t: hourLabel(firstWet.time), p: Math.round(maxPop) }) });
   } else if (maxPop < 20) {
-    out.push({ icon: '🌤️', tone: 'good', title: t('ins_dry_day'), text: t('ins_dry_day_t', { p: Math.round(maxPop) }) });
+    out.push({ icon: 'partly', tone: 'good', title: t('ins_dry_day'), text: t('ins_dry_day_t', { p: Math.round(maxPop) }) });
   }
 
   /* heat / comfort arc */
@@ -84,7 +84,7 @@ export function computeInsights(s) {
     if (maxH.time && minH.time) {
       const swing = Math.round((maxH.temperature_2m ?? 0) - (minH.temperature_2m ?? 0));
       out.push({
-        icon: swing >= 10 ? '🌡️' : '📊', tone: swing >= 12 ? 'warn' : 'info', title: t('ins_swing', { n: swing }),
+        icon: swing >= 10 ? 'thermo' : 'trend', tone: swing >= 12 ? 'warn' : 'info', title: t('ins_swing', { n: swing }),
         text: t('ins_swing_t', { lo: fmtTemp(minH.temperature_2m), tlo: hourLabel(minH.time), hi: fmtTemp(maxH.temperature_2m), thi: hourLabel(maxH.time) }),
       });
     }
@@ -98,7 +98,7 @@ export function computeInsights(s) {
     const a = scored[w.startIdx], b = scored[w.endIdx];
     const bd = band(w.avg);
     out.push({
-      icon: '🪟', tone: bd.label === 'Good' ? 'good' : 'info',
+      icon: 'calcheck', tone: bd.label === 'Good' ? 'good' : 'info',
       title: t('ins_best_slot', { s: bd.label === 'Good' ? t('best_run_days') : bd.label === 'Fair' ? t('fair_run_days') : t('poor_run_days') }),
       text: t('ins_best_slot_t', {
         t: `${hourLabel(a.time)} – ${hourLabel(b.time)}`,
@@ -111,26 +111,26 @@ export function computeInsights(s) {
 
   /* UV */
   if ((s.uvNow.value ?? 0) >= 7) {
-    out.push({ icon: '🧴', tone: 'warn', title: t('ins_uv', { n: Math.round(s.uvNow.value), l: s.uvNow.label }), text: t('ins_uv_t') });
+    out.push({ icon: 'sun', tone: 'warn', title: t('ins_uv', { n: Math.round(s.uvNow.value), l: s.uvNow.label }), text: t('ins_uv_t') });
   }
 
   /* wind / gust */
   const gustMax = Math.max(0, ...h12.map((h) => h.wind_gusts_10m ?? 0));
   if (gustMax >= 40) {
-    out.push({ icon: '💨', tone: 'warn', title: t('ins_gusts'), text: t('ins_gusts_t', { w: fmtWind(gustMax) }) });
+    out.push({ icon: 'wind', tone: 'warn', title: t('ins_gusts'), text: t('ins_gusts_t', { w: fmtWind(gustMax) }) });
   }
 
   /* AQI */
   const aqi = s.currentAqi?.aqi;
   if (aqi != null) {
-    if (aqi >= 150) out.push({ icon: '😷', tone: aqi >= 300 ? 'danger' : 'warn', title: t('ins_aqi_bad', { n: aqi, c: s.currentAqi.category }), text: `${s.currentAqi.advice} ${t('aqi_dominant')}: ${s.currentAqi.dominant ?? '—'}.` });
-    else if (aqi <= 60) out.push({ icon: '🌿', tone: 'good', title: t('ins_clean_air', { n: aqi }), text: t('ins_clean_air_t') });
+    if (aqi >= 150) out.push({ icon: 'fog', tone: aqi >= 300 ? 'danger' : 'warn', title: t('ins_aqi_bad', { n: aqi, c: s.currentAqi.category }), text: `${s.currentAqi.advice} ${t('aqi_dominant')}: ${s.currentAqi.dominant ?? '—'}.` });
+    else if (aqi <= 60) out.push({ icon: 'crops', tone: 'good', title: t('ins_clean_air', { n: aqi }), text: t('ins_clean_air_t') });
   }
 
   /* fog / visibility */
   const fog = h12.find((h) => [45, 48].includes(h.weather_code) || (h.visibility ?? 99999) < 1000);
   if (fog) {
-    out.push({ icon: '🌫️', tone: 'warn', title: t('ins_fog'), text: t('ins_fog_t', { t: hourLabel(fog.time) }) });
+    out.push({ icon: 'fog', tone: 'warn', title: t('ins_fog'), text: t('ins_fog_t', { t: hourLabel(fog.time) }) });
   }
 
   return out.slice(0, 6);
@@ -151,10 +151,10 @@ const minutesOf = (hhmm) => {
 export function computeDayTimeline(s, profile) {
   if (!s || !profile?.scheduleOn) return null;
   const beats = [
-    ['🌅', t('day_wake'), profile.schedule.wake],
-    ['🛵', t('day_leave'), profile.schedule.leaveAm],
-    ['🏠', t('day_back'), profile.schedule.backPm],
-    ['🌙', t('day_sleep'), profile.schedule.sleep],
+    ['sunrise', t('day_wake'), profile.schedule.wake],
+    ['scooter', t('day_leave'), profile.schedule.leaveAm],
+    ['home', t('day_back'), profile.schedule.backPm],
+    ['moon', t('day_sleep'), profile.schedule.sleep],
   ];
   const rows = [];
   for (const [icon, label, timeStr] of beats) {
@@ -192,14 +192,14 @@ export function computeFarmCards(s) {
   const wet = h24.filter((h) => (h.precipitation_probability ?? 0) >= 40);
   if (calm && wet.length < 8) {
     cards.push({
-      icon: '🌾', tone: 'good', title: t('fy_farm_spray'),
+      icon: 'crops', tone: 'good', title: t('fy_farm_spray'),
       text: t('fy_farm_spray_good', { t: hourLabel(calm.time), w: fmtWind(calm.wind_speed_10m), p: Math.round(calm.precipitation_probability ?? 0) }),
     });
   } else {
     const maxWind = Math.max(0, ...h24.map((h) => h.wind_speed_10m ?? 0));
     const maxPop = Math.max(0, ...h24.map((h) => h.precipitation_probability ?? 0));
     cards.push({
-      icon: '🌾', tone: 'warn', title: t('fy_farm_spray'),
+      icon: 'crops', tone: 'warn', title: t('fy_farm_spray'),
       text: t('fy_farm_spray_bad', { w: fmtWind(maxWind), p: Math.round(maxPop) }),
     });
   }
@@ -212,7 +212,7 @@ export function computeFarmCards(s) {
       : top > 0.35 ? t('fy_farm_soil_wet', { v: pct })
         : t('fy_farm_soil_ok', { v: pct });
     cards.push({
-      icon: '💧', tone: top < 0.15 ? 'warn' : top > 0.35 ? 'info' : 'good', title: t('fy_farm_soil'),
+      icon: 'droplet', tone: top < 0.15 ? 'warn' : top > 0.35 ? 'info' : 'good', title: t('fy_farm_soil'),
       text,
     });
   }
@@ -222,7 +222,7 @@ export function computeFarmCards(s) {
   const total = week.reduce((a, d) => a + (d.precipitation_sum ?? 0), 0);
   const peakPop = Math.max(0, ...week.map((d) => d.precip_prob_max ?? 0));
   cards.push({
-    icon: '☔', tone: total >= 40 ? 'good' : total >= 10 ? 'info' : 'warn', title: t('fy_farm_rain7'),
+    icon: 'umbrella', tone: total >= 40 ? 'good' : total >= 10 ? 'info' : 'warn', title: t('fy_farm_rain7'),
     text: t('fy_farm_rain7_t', { n: Math.round(total * 10) / 10, p: Math.round(peakPop) }),
   });
 
@@ -253,7 +253,7 @@ export function computeForYou(s, p) {
       else if (avg >= 70) note = t('fy_commute_clear');
       else note = t('fy_commute_mixed');
       push({
-        icon: '🛵', tone: bd.label === 'Good' ? 'good' : bd.label === 'Fair' ? 'info' : 'warn', title: label,
+        icon: 'scooter', tone: bd.label === 'Good' ? 'good' : bd.label === 'Fair' ? 'info' : 'warn', title: label,
         text: `${bd.label === 'Good' ? t('best_run_days') : bd.label === 'Fair' ? t('fair_run_days') : t('poor_run_days')} · ${note}`,
       });
     };
@@ -267,15 +267,15 @@ export function computeForYou(s, p) {
 
   /* activity windows */
   const ACT = {
-    run: { label: 'fy_run', fn: runScore, icon: '🏃' },
-    walk: { label: 'fy_walk', fn: runScore, icon: '🚶' },
-    cycling: { label: 'fy_cycling', fn: runScore, icon: '🚴' },
-    fitness: { label: 'fy_run', fn: runScore, icon: '🏃' },
-    outdoor: { label: 'fy_outdoor', fn: eventScore, icon: '🧺' },
-    cricket: { label: 'fy_cricket', fn: eventScore, icon: '🏏' },
-    photography: { label: 'fy_photography', fn: eventScore, icon: '📷' },
-    events: { label: 'fy_outdoor', fn: eventScore, icon: '🪔' },
-    construction: { label: 'fy_outdoor', fn: eventScore, icon: '🧱' },
+    run: { label: 'fy_run', fn: runScore, icon: 'run' },
+    walk: { label: 'fy_walk', fn: runScore, icon: 'walk' },
+    cycling: { label: 'fy_cycling', fn: runScore, icon: 'bike' },
+    fitness: { label: 'fy_run', fn: runScore, icon: 'run' },
+    outdoor: { label: 'fy_outdoor', fn: eventScore, icon: 'basket' },
+    cricket: { label: 'fy_cricket', fn: eventScore, icon: 'cricket' },
+    photography: { label: 'fy_photography', fn: eventScore, icon: 'camera' },
+    events: { label: 'fy_outdoor', fn: eventScore, icon: 'diya' },
+    construction: { label: 'fy_outdoor', fn: eventScore, icon: 'bricks' },
   };
   for (const act of p.interests ?? []) {
     const spec = ACT[act];
@@ -304,7 +304,7 @@ export function computeForYou(s, p) {
     const worst = [...days].sort((a, b) => a.score - b.score)[0];
     if (best) {
       push({
-        icon: '💍', tone: 'info', title: t('fy_event'),
+        icon: 'ring', tone: 'info', title: t('fy_event'),
         text: t('fy_event_t', {
           d: `${dayName(best)} ${dateLabel(best.date)}`,
           t1: fmtTemp(best.temp_max), t2: fmtTemp(best.temp_min),
@@ -320,7 +320,7 @@ export function computeForYou(s, p) {
   if (p.interests.includes('laundry')) {
     const dry = s.hours.slice(0, 14).filter((h) => (h.precipitation_probability ?? 0) < 30 && (h.relative_humidity_2m ?? 100) < 68).length;
     push({
-      icon: '👕', tone: dry >= 6 ? 'good' : dry >= 3 ? 'info' : 'warn', title: t('fy_laundry'),
+      icon: 'shirt', tone: dry >= 6 ? 'good' : dry >= 3 ? 'info' : 'warn', title: t('fy_laundry'),
       text: dry >= 6 ? t('fy_laundry_good', { n: dry }) : dry >= 3 ? t('fy_laundry_ok', { n: dry }) : t('fy_laundry_bad'),
     });
   }
@@ -334,7 +334,7 @@ export function computeForYou(s, p) {
   if (p.interests.includes('fishing') && s.extras?.marine?.now?.waveHeightM != null) {
     const w = s.extras.marine.now.waveHeightM;
     push({
-      icon: '🎣', tone: w <= 1.2 ? 'good' : 'warn', title: t('fy_fishing'),
+      icon: 'fish', tone: w <= 1.2 ? 'good' : 'warn', title: t('fy_fishing'),
       text: t('fy_fishing_t', { w: Math.round(w * 10) / 10, p: Math.round(s.extras.marine.now.wavePeriodS ?? 0), v: w <= 1.2 ? t('fy_fishing_ok') : t('fy_fishing_rough') }),
     });
   }
@@ -343,7 +343,7 @@ export function computeForYou(s, p) {
   if (p.interests.includes('cooking')) {
     const hum = Math.round(s.now.humidity ?? 0);
     push({
-      icon: '🍳', tone: hum <= 55 ? 'good' : 'info', title: t('fy_cooking'),
+      icon: 'pan', tone: hum <= 55 ? 'good' : 'info', title: t('fy_cooking'),
       text: t('fy_cooking_t', { h: hum, v: hum <= 55 ? t('fy_cooking_good') : t('fy_cooking_bad') }),
     });
   }
@@ -353,7 +353,7 @@ export function computeForYou(s, p) {
     const uv = Math.round(s.uvNow.value ?? 0);
     const hum = Math.round(s.now.humidity ?? 50);
     push({
-      icon: '💇', tone: uv >= 7 ? 'warn' : 'info', title: t('fy_skin'),
+      icon: 'scissors', tone: uv >= 7 ? 'warn' : 'info', title: t('fy_skin'),
       text: t('fy_skin_t', { n: uv, l: s.uvNow.label ?? '', h: hum, v: hum < 35 ? t('fy_skin_dry') : t('fy_skin_humid') }),
     });
   }
@@ -363,7 +363,7 @@ export function computeForYou(s, p) {
     const h = s.hours.find((x) => hh(x.time) === hh(`2026-01-01T${p.schedule.leaveAm}`)) ?? s.hours[0];
     const pop = Math.round(h?.precipitation_probability ?? 0);
     push({
-      icon: '🎒', tone: pop >= 50 ? 'warn' : 'good', title: t('fy_kids'),
+      icon: 'backpack', tone: pop >= 50 ? 'warn' : 'good', title: t('fy_kids'),
       text: t('fy_kids_t', { p: pop, t: hourLabel(h?.time), w: pop >= 50 ? t('fy_kids_wet') : t('fy_kids_dry') }),
     });
   }
@@ -372,19 +372,19 @@ export function computeForYou(s, p) {
   if (p.interests.includes('elders')) {
     const hi = s.now.hi ?? s.now.feels;
     if (hi != null && hi >= 36) {
-      push({ icon: '👵', tone: 'warn', title: t('fy_elders'), text: t('fy_elders_t', { t: fmtTemp(hi, true) }) });
+      push({ icon: 'heart', tone: 'warn', title: t('fy_elders'), text: t('fy_elders_t', { t: fmtTemp(hi, true) }) });
     } else if ((s.now.temp ?? 99) <= 12) {
-      push({ icon: '👵', tone: 'info', title: t('fy_elders'), text: t('fy_elders_cold_t', { t: fmtTemp(s.now.temp, true) }) });
+      push({ icon: 'heart', tone: 'info', title: t('fy_elders'), text: t('fy_elders_cold_t', { t: fmtTemp(s.now.temp, true) }) });
     }
   }
 
   /* pets */
   if (p.interests.includes('pets')) {
     if ((s.now.feels ?? 0) >= 40) {
-      push({ icon: '🐾', tone: 'warn', title: t('fy_pets'), text: t('fy_pets_t', { t: fmtTemp(s.now.feels, true) }) });
+      push({ icon: 'paw', tone: 'warn', title: t('fy_pets'), text: t('fy_pets_t', { t: fmtTemp(s.now.feels, true) }) });
     } else {
       const firstWet = s.hours.slice(0, 12).find((h) => (h.precipitation_probability ?? 0) >= 50);
-      if (firstWet) push({ icon: '🐾', tone: 'info', title: t('fy_pets'), text: t('fy_pets_ok_t', { p: Math.round(firstWet.precipitation_probability ?? 0), t: hourLabel(firstWet.time) }) });
+      if (firstWet) push({ icon: 'paw', tone: 'info', title: t('fy_pets'), text: t('fy_pets_ok_t', { p: Math.round(firstWet.precipitation_probability ?? 0), t: hourLabel(firstWet.time) }) });
     }
   }
 
@@ -393,7 +393,7 @@ export function computeForYou(s, p) {
     const work = s.hours.slice(0, 12);
     const maxPop = Math.max(0, ...work.map((h) => h.precipitation_probability ?? 0));
     push({
-      icon: '🏪', tone: maxPop >= 50 ? 'warn' : 'good', title: t('fy_shop'),
+      icon: 'basket', tone: maxPop >= 50 ? 'warn' : 'good', title: t('fy_shop'),
       text: t('fy_shop_t', { p: Math.round(maxPop), v: maxPop >= 50 ? t('fy_shop_cover') : t('fy_shop_open') }),
     });
   }
@@ -405,7 +405,7 @@ export function computeForYou(s, p) {
     if (sat && sun) {
       const p1 = Math.round(sat.precip_prob_max ?? 0), p2 = Math.round(sun.precip_prob_max ?? 0);
       push({
-        icon: '🧳', tone: Math.max(p1, p2) >= 55 ? 'warn' : 'good', title: t('fy_travel'),
+        icon: 'route', tone: Math.max(p1, p2) >= 55 ? 'warn' : 'good', title: t('fy_travel'),
         text: t('fy_travel_t', {
           sat: dateLabel(sat.date), p1, sun: dateLabel(sun.date), p2,
           v: Math.max(p1, p2) >= 55 ? t('fy_travel_bad') : t('fy_travel_good'),
@@ -418,23 +418,23 @@ export function computeForYou(s, p) {
   const hi = s.now.hi ?? s.now.feels;
   const sens = p.sensitive ?? {};
   if (sens.heat && hi != null && hi >= 36) {
-    push({ icon: '🥵', tone: 'warn', title: t('fy_heat'), text: t('fy_heat_t', { t: fmtTemp(hi, true) }) });
+    push({ icon: 'thermo', tone: 'warn', title: t('fy_heat'), text: t('fy_heat_t', { t: fmtTemp(hi, true) }) });
   }
   if (sens.cold && (s.now.temp ?? 99) <= 14) {
-    push({ icon: '🧣', tone: 'info', title: t('fy_cold'), text: t('fy_cold_t', { t: fmtTemp(s.now.temp, true) }) });
+    push({ icon: 'snow', tone: 'info', title: t('fy_cold'), text: t('fy_cold_t', { t: fmtTemp(s.now.temp, true) }) });
   }
   if (sens.rain) {
     const firstWet = s.hours.slice(0, 12).find((h) => (h.precipitation_probability ?? 0) >= 45);
-    if (firstWet) push({ icon: '☔', tone: 'info', title: t('fy_rain_sens'), text: t('fy_rain_sens_t', { p: Math.round(firstWet.precipitation_probability ?? 0), t: hourLabel(firstWet.time) }) });
+    if (firstWet) push({ icon: 'umbrella', tone: 'info', title: t('fy_rain_sens'), text: t('fy_rain_sens_t', { p: Math.round(firstWet.precipitation_probability ?? 0), t: hourLabel(firstWet.time) }) });
   }
   if (sens.air && (s.currentAqi?.aqi ?? 0) >= 120) {
-    push({ icon: '😷', tone: (s.currentAqi.aqi >= 200) ? 'warn' : 'info', title: t('fy_air_sens'), text: t('fy_air_sens_t', { n: s.currentAqi.aqi, c: s.currentAqi.category }) });
+    push({ icon: 'fog', tone: (s.currentAqi.aqi >= 200) ? 'warn' : 'info', title: t('fy_air_sens'), text: t('fy_air_sens_t', { n: s.currentAqi.aqi, c: s.currentAqi.category }) });
   }
   if (sens.dust && (s.hours[0]?.air?.dust ?? 0) >= 80) {
-    push({ icon: '🌪', tone: 'warn', title: t('fy_air_sens'), text: `${Math.round(s.hours[0].air.dust)} µg/m³ dust — mask helps outdoors today.` });
+    push({ icon: 'wind', tone: 'warn', title: t('fy_air_sens'), text: `${Math.round(s.hours[0].air.dust)} µg/m³ dust — mask helps outdoors today.` });
   }
   if (sens.humidity && (s.now.humidity ?? 0) >= 80) {
-    push({ icon: '💧', tone: 'info', title: t('fy_air_sens'), text: `Humidity ${Math.round(s.now.humidity)}% — sticky hours ahead.` });
+    push({ icon: 'droplet', tone: 'info', title: t('fy_air_sens'), text: `Humidity ${Math.round(s.now.humidity)}% — sticky hours ahead.` });
   }
 
   /* custom tags */

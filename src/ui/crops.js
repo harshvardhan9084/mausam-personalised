@@ -14,6 +14,7 @@
 
 import { el, clear } from '../utils/dom.js';
 import { sectionTitle } from './shared.js';
+import { tipIcon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t, getLang } from '../core/i18n.js';
 import { CROPS, cropCalendar, farmAdvisories, seasonStarterIds } from '../core/crops.js';
@@ -74,7 +75,7 @@ function render() {
 
   /* season banner */
   mount.appendChild(el('div.crop-season',
-    el('span.crop-season-ico', { 'aria-hidden': 'true' }, season.icon),
+    el('span.crop-season-ico', { 'aria-hidden': 'true' }, tipIcon(season.icon, 'season-svg') ?? document.createTextNode(String(season.icon ?? ''))),
     el('span', null, season.label),
   ));
 
@@ -144,7 +145,7 @@ function renderDynamic() {
     const wrap = el('div.crop-advisories');
     for (const a of advisories) {
       wrap.appendChild(el(`div.crop-advice.insight-${a.tone === 'bad' ? 'danger' : a.tone}`,
-        el('span.crop-advice-ico', { 'aria-hidden': 'true' }, a.icon),
+        el('span.crop-advice-ico', { 'aria-hidden': 'true' }, tipIcon(a.icon) ?? document.createTextNode(String(a.icon ?? ''))),
         el('div.crop-advice-body',
           el('div.crop-advice-crop', null, `${a.crop.emoji} ${a.crop.name[langIdx()]}${statusChipText(a.status) ? ` · ${statusChipText(a.status)}` : ''}`),
           el('div.crop-advice-text', null, a.text),
@@ -222,7 +223,7 @@ function cropCard(row, hasData) {
     const fit = el('div.crop-fit');
     for (const f of row.fit) {
       fit.appendChild(el(`div.crop-fit-row.crop-tone-${f.tone}`,
-        el('span', { 'aria-hidden': 'true' }, f.icon),
+        el('span.crop-fit-ico', { 'aria-hidden': 'true' }, tipIcon(f.icon) ?? document.createTextNode(String(f.icon ?? ''))),
         el('span', null, f.text),
       ));
     }

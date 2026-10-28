@@ -30,7 +30,12 @@
 .dash-hero .hero-now-meta { margin-top: 4px; font-size: 0.88rem; }
 
 .dash-alert { margin: 0 0 16px; }
-.dash-alert .alert-title { font-weight: 700; margin-bottom: 2px; }
+.dash-alert .alert-title { font-weight: 700; margin-bottom: 2px; display: flex; align-items: center; gap: 7px; }
+.dash-alert .alert-title .alert-ico { width: 16px; height: 16px; flex: 0 0 16px; }
+.dash-alert.alert-warn .alert-title .alert-ico { color: var(--yellow); }
+.dash-alert.alert-danger .alert-title .alert-ico { color: var(--red); }
+.dash-alert.alert-ok .alert-title .alert-ico { color: var(--green); }
+.dash-alert.alert-info .alert-title .alert-ico { color: var(--blue); }
 
 .welcome-hint .welcome-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .btn-sm { font-size: 0.78rem; padding: 6px 12px; }
@@ -47,7 +52,6 @@
 .foryou-card.insight-warn   { border-left-color: var(--yellow); }
 .foryou-card.insight-danger { border-left-color: var(--red); }
 .foryou-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.86rem; margin-bottom: 4px; }
-.foryou-icon { font-size: 1rem; }
 .foryou-text { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
 .foryou-text strong { color: var(--text); font-weight: 650; }
 
@@ -82,6 +86,11 @@
   padding: 2px 6px 0;
 }
 .dash-curve-rains .wet { color: var(--blue); font-weight: 700; }
+/* stroke droplets replace the 💧 emoji in curve labels + day timeline (v0.8.10) */
+.curve-drop { width: 10px; height: 10px; vertical-align: -1px; margin-right: 1px; }
+.tl-drop { width: 12px; height: 12px; vertical-align: -2px; margin-right: 2px; }
+/* hero meta pill calendar glyph (vs-last-year) */
+.pill-ico { width: 13px; height: 13px; flex: 0 0 13px; }
 
 /* ---------- insights ---------- */
 .insight-grid {
@@ -95,7 +104,28 @@
   display: flex; align-items: center; gap: 8px;
   font-weight: 700; font-size: 0.86rem; margin-bottom: 4px;
 }
-.insight-icon { font-size: 1rem; }
+/* advice chip (v0.8.10): one round, tone-tinted container for every card
+   icon — glyph or legacy-emoji fallback — so advice cards share the
+   hero's designed rhythm instead of loose emoji. */
+.insight-icon, .crop-advice-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.insight-icon .tip-svg, .crop-advice-ico .tip-svg { width: 16px; height: 16px; display: block; }
+.insight-good > .insight-head .insight-icon,
+.insight-good .crop-advice-ico { background: color-mix(in srgb, var(--green) 13%, transparent); color: var(--green); }
+.insight-warn > .insight-head .insight-icon,
+.insight-warn .crop-advice-ico { background: color-mix(in srgb, var(--yellow) 17%, transparent); color: var(--yellow); }
+.insight-danger > .insight-head .insight-icon,
+.insight-danger .crop-advice-ico { background: color-mix(in srgb, var(--red) 13%, transparent); color: var(--red); }
 .insight-text { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
 .insight-text strong { color: var(--text); font-weight: 650; }
 .insight-card.insight-good   { border-color: color-mix(in srgb, var(--green) 35%, var(--border)); }
@@ -107,8 +137,38 @@
 
 .aqi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .aqi-head .card-h { margin-bottom: 0; }
-.aqi-advice { font-size: 0.82rem; line-height: 1.5; margin-bottom: 6px; }
+/* AQI dial (v0.8.10) — the CPCB number gets a real face: semicircular
+   gauge on the absolute 0–500 scale, arc in the category colour, big
+   numeral, category label. Advice + chips anchor to its right. */
+.aqi-top { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.aqi-dial { flex: 0 0 128px; text-align: center; }
+.aqi-dial-svgwrap { position: relative; }
+.aqi-dial svg { display: block; width: 128px; height: 70px; }
+.aqi-dial-track { fill: none; stroke: var(--border); stroke-width: 11; stroke-linecap: round; }
+.aqi-dial-arc { fill: none; stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.7s var(--t-med); }
+.aqi-dial-num {
+  position: absolute; left: 0; right: 0; bottom: 6px;
+  font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px;
+  line-height: 1; font-variant-numeric: tabular-nums;
+}
+.aqi-dial-cat {
+  margin-top: 3px;
+  font-size: 0.68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;
+}
+.aqi-dial.empty { display: grid; place-items: center; min-height: 74px; color: var(--muted); font-size: 0.8rem; }
+.aqi-side { flex: 1; min-width: 0; }
+.aqi-advice { font-size: 0.82rem; line-height: 1.5; margin-bottom: 8px; }
 .aqi-dominant { font-size: 0.74rem; color: var(--muted); }
+@media (max-width: 420px) {
+  .aqi-top { gap: 11px; }
+  .aqi-dial { flex: 0 0 108px; }
+  .aqi-dial svg { width: 108px; height: 60px; }
+  .aqi-dial-num { font-size: 1.45rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aqi-dial-arc { transition: none; }
+}
 
 /* ---------- IMD block ---------- */
 .imd-note { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }

@@ -107,6 +107,26 @@ const PAGE_TITLE = {
 };
 let currentPage = 'home';
 
+/* Sliding tab pill (v0.8.10): one element morphs behind the active tab so
+   switching feels physical instead of the highlight teleporting. Widths
+   differ per label (i18n), so it is measured, never assumed; re-measured
+   on resize and after fonts load. Respects reduced motion via CSS only
+   transitioning transform (kept instant-safe under prefers-reduced-motion). */
+function moveTabPill(instant = false) {
+  const btn = document.querySelector('.tab-btn.active');
+  const pill = document.querySelector('.tab-pill');
+  const nav = document.querySelector('.tab-nav');
+  if (!btn || !pill || !nav) return;
+  const nb = nav.getBoundingClientRect();
+  const bb = btn.getBoundingClientRect();
+  if (!bb.width) return;
+  if (instant) pill.style.transition = 'none';
+  pill.style.width = `${Math.round(bb.width - 8)}px`;
+  pill.style.transform = `translateX(${Math.round(bb.left - nb.left + 4)}px)`;
+  pill.style.opacity = '1';
+  if (instant) requestAnimationFrame(() => { pill.style.transition = ''; });
+}
+
 function go(page) {
   if (!PAGES.includes(page)) page = 'home';
   currentPage = page;
@@ -124,6 +144,7 @@ function go(page) {
   if (page === 'mitra') showMitra();
   if (page === 'you') renderYou();
   if (page === 'settings') renderSettings();
+  moveTabPill();
 }
 
 for (const p of PAGES) {
@@ -133,6 +154,10 @@ window.addEventListener('hashchange', () => {
   const page = location.hash.slice(1);
   if (PAGES.includes(page) && page !== currentPage) go(page);
 });
+window.addEventListener('resize', () => moveTabPill(true));
+window.addEventListener('load', () => moveTabPill(true));
+document.fonts?.ready?.then(() => moveTabPill(true)).catch(() => {});
+moveTabPill(true);
 export function navigate(page) { go(page); }
 
 /* ================= "/" — focus the screen's main text field =================

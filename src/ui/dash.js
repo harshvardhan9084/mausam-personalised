@@ -17,8 +17,8 @@ import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
-import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow, skyBucket } from './shared.js';
-import { icon, skyIcon } from './icons.js';
+import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, nowRow, skyBucket } from './shared.js';
+import { icon, skyIcon, tipIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
@@ -47,6 +47,17 @@ function rich(text) {
 
 function toneClass(tone) {
   return { good: 'insight-good', info: 'insight-info', warn: 'insight-warn', danger: 'insight-danger' }[tone] ?? 'insight-info';
+}
+
+/** Advice-card icon: stroke glyph from the tip language when the key
+ *  resolves, else the legacy emoji text — never a broken empty chip. */
+function tipContent(key) {
+  return tipIcon(key) ?? document.createTextNode(String(key ?? ''));
+}
+
+/** Alert icon: same fallback rule, inline sizing (no chip on banners). */
+function alertIcon(key) {
+  return tipIcon(key, 'alert-ico tip-svg') ?? document.createTextNode(String(key ?? ''));
 }
 
 /** rain amount formatting (mm, with inch conversion under imperial) */
@@ -136,7 +147,7 @@ function tempCurve(hours) {
     [0, Math.floor((n - 1) / 2), n - 1].map((i) => el('span', null, hourLabel(hours[i].time, store.clock.get() === '24' ? 'h24' : 'h12'))),
   );
   const rains = el('div.dash-curve-rains',
-    hours.filter((_, i) => i % 3 === 0).map((h) => el('span', { class: (h.precipitation_probability ?? 0) >= 50 ? 'wet' : '' }, `💧${Math.round(h.precipitation_probability ?? 0)}%`)),
+    hours.filter((_, i) => i % 3 === 0).map((h) => el('span', { class: (h.precipitation_probability ?? 0) >= 50 ? 'wet' : '' }, icon('droplet', 'curve-drop'), `${Math.round(h.precipitation_probability ?? 0)}%`)),
   );
   wrap.appendChild(labels);
   wrap.appendChild(rains);
@@ -154,7 +165,7 @@ function shareWeather(s, units, loc) {
   const locale = dateLocale();
   const lines = [
     `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${n.wx?.label ?? ''}`,
-    today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · 💧 ${Math.round(today.precip_prob_max ?? 0)}%` : null,
+    today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
     aqi?.aqi != null ? `AQI ${aqi.aqi} (${aqi.category})` : null,
     '— Mausam',
   ].filter(Boolean);
@@ -224,28 +235,81 @@ function nowcastCard(s, units) {
 }
 
 /* ================================================================
-   AQI CARD v2 — values, dust, 24h mini trend
+   AQI CARD v3 — dial, advice, dust, 24h mini trend (v0.8.10)
 ================================================================ */
+
+/** Semicircular CPCB gauge — absolute 0–500 scale, arc in the category
+ *  colour, rounded caps. Pure SVG, one draw-in transition (off under
+ *  reduced motion). The number + category render as HTML beside/over it
+ *  so font rendering and i18n stay crisp. */
+function aqiDialSvg(aqi) {
+  const val = Math.max(0, Math.min(500, aqi?.aqi ?? 0));
+  const R = 52, CX = 70, CY = 62;
+  const half = Math.PI * R;
+  const dash = (val / 500) * half;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 140 76');
+  svg.setAttribute('aria-hidden', 'true');
+  const arc = `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`;
+  const track = document.createElementNS(NS, 'path');
+  track.setAttribute('d', arc);
+  track.setAttribute('class', 'aqi-dial-track');
+  svg.appendChild(track);
+  const value = document.createElementNS(NS, 'path');
+  value.setAttribute('d', arc);
+  value.setAttribute('class', 'aqi-dial-arc');
+  value.setAttribute('stroke', aqi?.color ?? 'var(--muted)');
+  value.setAttribute('stroke-dasharray', `${dash.toFixed(1)} ${half.toFixed(1)}`);
+  svg.appendChild(value);
+  /* draw-in: start empty, fill to value on the next frame */
+  try {
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && dash > 0) {
+      const target = `${dash.toFixed(1)} ${half.toFixed(1)}`;
+      value.setAttribute('stroke-dasharray', `0 ${half.toFixed(1)}`);
+      requestAnimationFrame(() => requestAnimationFrame(() => value.setAttribute('stroke-dasharray', target)));
+    }
+  } catch { /* matchMedia unavailable — render final state */ }
+  return svg;
+}
 
 function aqiCardV2(s) {
   const aqi = s.currentAqi;
   const nowAir = s.hours[0]?.air ?? {};
   const trend = s.hours.slice(0, 48).filter((h) => h.aqi != null);
-  const head = el('div.aqi-head', el('div.card-h', null, t('sec_aqi')), aqiPill(aqi));
+  const head = el('div.aqi-head', el('div.card-h', null, t('sec_aqi')));
 
   const cardBody = card(head);
-  if (aqi?.advice) cardBody.appendChild(el('div.aqi-advice', null, aqi.advice));
 
   /* pollutant chips */
   const chips = [];
   if (nowAir.pm2_5 != null) chips.push(['PM2.5', `${Math.round(nowAir.pm2_5)}`]);
   if (nowAir.pm10 != null) chips.push(['PM10', `${Math.round(nowAir.pm10)}`]);
-  if (nowAir.dust != null && nowAir.dust >= 5) chips.push(['🌪 Dust', `${Math.round(nowAir.dust)}`]);
+  if (nowAir.dust != null && nowAir.dust >= 5) chips.push(['Dust', `${Math.round(nowAir.dust)}`]);
   if (nowAir.ozone != null) chips.push(['O₃', `${Math.round(nowAir.ozone)}`]);
-  if (chips.length) {
-    cardBody.appendChild(el('div.aqi-chips',
-      chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))));
+
+  /* dial row (v0.8.10): the CPCB number gets a real face — gauge left,
+     advice + chips anchored to its right, instead of a lone pill. */
+  const dial = el('div.aqi-dial', {
+    role: 'img',
+    'aria-label': aqi?.aqi != null ? `AQI ${aqi.aqi} · ${aqi.category ?? ''}` : t('aqi_unavail'),
+  });
+  if (aqi?.aqi != null) {
+    const wrap = el('div.aqi-dial-svgwrap', aqiDialSvg(aqi));
+    wrap.appendChild(el('div.aqi-dial-num', null, String(aqi.aqi)));
+    dial.appendChild(wrap);
+    dial.appendChild(el('div.aqi-dial-cat', { style: { color: aqi.color } }, aqi.category ?? ''));
+  } else {
+    dial.classList.add('empty');
+    dial.appendChild(el('div.aqi-dial-none', null, t('aqi_unavail')));
   }
+  cardBody.appendChild(el('div.aqi-top', dial,
+    el('div.aqi-side',
+      aqi?.advice ? el('div.aqi-advice', null, aqi.advice) : null,
+      chips.length ? el('div.aqi-chips',
+        chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))) : null,
+    ),
+  ));
 
   /* 48h CPCB outlook — absolute 0–500 scale. (The old window-max
      normalisation made Severe days look flat-full and Good days look
@@ -283,7 +347,7 @@ function aqiCardV2(s) {
               ['PM2.5', air.pm2_5 != null ? `${Math.round(air.pm2_5)}` : '—'],
               ['PM10', air.pm10 != null ? `${Math.round(air.pm10)}` : '—'],
               ...(air.ozone != null ? [['O₃', `${Math.round(air.ozone)}`]] : []),
-              ...(air.dust != null && air.dust >= 5 ? [['🌪 Dust', `${Math.round(air.dust)}`]] : []),
+              ...(air.dust != null && air.dust >= 5 ? [['Dust', `${Math.round(air.dust)}`]] : []),
               ...(h.aqiFull?.dominant ? [[t('aqi_dominant'), h.aqiFull.dominant]] : []),
             ].map(([k, v]) => el('span', null, el('b', null, k), v))));
           }
@@ -323,12 +387,12 @@ function aqiCardV2(s) {
 function dayTimelineCard(rows) {
   return card(el('div.day-tl',
     rows.map((r) => el('div.day-tl-row', { class: r.cls },
-      el('span.day-tl-icon', null, r.icon),
+      el('span.day-tl-icon', null, tipIcon(r.icon, 'tl-ico') ?? document.createTextNode(String(r.icon ?? ''))),
       el('span.day-tl-label', null, r.label),
       el('span.day-tl-time', null, r.time),
       el('span.day-tl-wx', null, r.icon2),
       el('span.day-tl-temp', null, r.temp),
-      el('span.day-tl-pop', null, `💧${r.pop}%`),
+      el('span.day-tl-pop', null, icon('droplet', 'tl-drop'), `${r.pop}%`),
     )),
   ));
 }
@@ -362,10 +426,10 @@ function tenDayList(s, units, bd) {
     const star = bd && bd.best && d.date === bd.best.date;
     const detail = el('div.ten-detail', { id: detailId, role: 'region', 'aria-label': `${d.label ?? ''} ${d.date}` },
       el('div.ten-detail-grid', [
-        [`🌡 ${t('day_feels')}`, d.feels_max != null ? temp(d.feels_max, units) : '—'],
-        [`💧 ${t('rain_simple')}`, `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
-        [`${t('wind')}`, `${d.wind_max != null ? wind(d.wind_max, units) : '—'}${d.gusts_max != null ? ` · ${t('gusts')} ${wind(d.gusts_max, units)}` : ''}`],
-        [`${t('uv')}`, d.uv_max != null ? `${Math.round(d.uv_max * 10) / 10}` : '—'],
+        [el('span.tlbl', icon('thermo', 'kv-ico ico-mut'), t('day_feels')), d.feels_max != null ? temp(d.feels_max, units) : '—'],
+        [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('rain_simple')), `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
+        [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')), `${d.wind_max != null ? wind(d.wind_max, units) : '—'}${d.gusts_max != null ? ` · ${t('gusts')} ${wind(d.gusts_max, units)}` : ''}`],
+        [el('span.tlbl', icon('sun', 'kv-ico ico-sun'), t('uv')), d.uv_max != null ? `${Math.round(d.uv_max * 10) / 10}` : '—'],
         [el('span.tlbl', icon('sunrise', 'kv-ico ico-sun'), t('sunrise')), fmtT(d.sunrise)],
         [el('span.tlbl', icon('sunset', 'kv-ico ico-dusk'), t('sunset')), fmtT(d.sunset)],
       ].map(([k, v]) => el('span', null, el('b', null, k), v))),
@@ -423,7 +487,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
         type: 'button',
         onclick: () => toast(`Last year this week averaged ${Math.round(climate.lastYearAvgMaxC)}° — ${t('vs_last_year')}`),
       },
-        '📆',
+        icon('calendar', 'pill-ico'),
         `${t('vs_last_year')}: ${s.days[0].temp_max >= climate.lastYearAvgMaxC ? '+' : '−'}${Math.abs(Math.round((s.days[0].temp_max - climate.lastYearAvgMaxC) * 10) / 10)}°`)
     : null;
   const shareBtn = el('button.hero-share', {
@@ -486,7 +550,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
           alertEl.remove();
         },
       }, icon('close', 'alert-close-ico')),
-      el('div.alert-title', null, `${alert.icon} ${alert.title}`),
+      el('div.alert-title', null, alertIcon(alert.icon), el('span', null, alert.title)),
       el('div', null, alert.text),
     );
     root.appendChild(alertEl);
@@ -513,7 +577,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
     const rail = el('div.foryou-rail');
     for (const c of forYou.cards) {
       rail.appendChild(el(`div.card.foryou-card.${toneClass(c.tone)}`,
-        el('div.foryou-head', el('span.foryou-icon', null, c.icon), el('span', null, c.title)),
+        el('div.foryou-head', el('span.insight-icon', null, tipContent(c.icon)), el('span', null, c.title)),
         el('div.foryou-text', null, rich(c.text)),
       ));
     }
@@ -544,12 +608,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
         if (wasOpen) hourDetail.replaceChildren();
         else {
           hourDetail.replaceChildren(el('div.ten-detail-grid', [
-            [`🌡 ${t('day_feels')}`, h.apparent_temperature != null ? temp(h.apparent_temperature, units) : '—'],
-            [`💧 ${t('rain_simple')}`, `${Math.round(h.precipitation_probability ?? 0)}% · ${rainMm(h.precipitation, units)}`],
-            [`${t('wind')}`, `${h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—'}${h.wind_gusts_10m != null ? ` · ${t('gusts')} ${wind(h.wind_gusts_10m, units)}` : ''}`],
-            [`${t('humidity')}`, h.relative_humidity_2m != null ? `${Math.round(h.relative_humidity_2m)}%` : '—'],
-            [`${t('dew_point')}`, h.dew_point_2m != null ? temp(h.dew_point_2m, units) : '—'],
-            [`${t('uv')}`, h.uv_index != null ? `${Math.round(h.uv_index * 10) / 10}` : '—'],
+            [el('span.tlbl', icon('thermo', 'kv-ico ico-mut'), t('day_feels')), h.apparent_temperature != null ? temp(h.apparent_temperature, units) : '—'],
+            [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('rain_simple')), `${Math.round(h.precipitation_probability ?? 0)}% · ${rainMm(h.precipitation, units)}`],
+            [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')), `${h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—'}${h.wind_gusts_10m != null ? ` · ${t('gusts')} ${wind(h.wind_gusts_10m, units)}` : ''}`],
+            [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('humidity')), h.relative_humidity_2m != null ? `${Math.round(h.relative_humidity_2m)}%` : '—'],
+            [el('span.tlbl', icon('droplet', 'kv-ico ico-mut'), t('dew_point')), h.dew_point_2m != null ? temp(h.dew_point_2m, units) : '—'],
+            [el('span.tlbl', icon('sun', 'kv-ico ico-sun'), t('uv')), h.uv_index != null ? `${Math.round(h.uv_index * 10) / 10}` : '—'],
           ].map(([k, v]) => el('span', null, el('b', null, k), v))));
         }
       },
@@ -591,7 +655,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
       const grid = el('div.insight-grid');
       for (const c of farmCards) {
         grid.appendChild(el(`div.card.insight-card.${toneClass(c.tone)}`,
-          el('div.insight-head', el('span.insight-icon', null, c.icon), el('span', null, c.title)),
+          el('div.insight-head', el('span.insight-icon', null, tipContent(c.icon)), el('span', null, c.title)),
           el('div.insight-text', null, rich(c.text)),
         ));
       }
@@ -614,7 +678,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
     const grid = el('div.insight-grid');
     for (const ins of insights) {
       grid.appendChild(el(`div.card.insight-card.${toneClass(ins.tone)}`,
-        el('div.insight-head', el('span.insight-icon', null, ins.icon), el('span', null, ins.title)),
+        el('div.insight-head', el('span.insight-icon', null, tipContent(ins.icon)), el('span', null, ins.title)),
         el('div.insight-text', null, rich(ins.text)),
       ));
     }
@@ -681,7 +745,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
     const ratio = Math.round(flood.peak.ratio * 10) / 10;
     root.appendChild(el(`div.alert.alert-${flood.peak.ratio >= 3 ? 'danger' : 'warn'}.dash-alert`,
       { role: 'alert' },
-      el('div.alert-title', null, `🏞️ River flow ${ratio}× normal`),
+      el('div.alert-title', null, alertIcon('wind'), el('span', null, `River flow ${ratio}× normal`)),
       el('div', null, `Peak around ${dateLabel(flood.peak.date)} — ${Math.round(flood.peak.discharge)} m³/s vs usual ${Math.round(flood.peak.mean)} m³/s. People near the river: stay alert, follow local administration.`),
     ));
   }

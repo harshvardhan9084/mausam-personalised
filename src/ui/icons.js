@@ -42,6 +42,30 @@ const PATHS = {
   hourglass: S('<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 1 17 6.172V2"/>'),
   droplet: S('<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>'),
   wind: S('<path d="M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'),
+  /* v0.8.10 — advice/tip glyphs: every insight, alert, For-You and farm card
+     icon comes from this language (see tipIcon below) so the advice surfaces
+     match the hero's stroke-SVG system instead of raw Android emoji. */
+  trend: S('<path d="M3 20h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16V5"/>'),
+  calendar: S('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M3 10h18"/>'),
+  calcheck: S('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="m9 15 2 2 4-4"/>'),
+  umbrella: S('<path d="M22 12a10 10 0 0 0-20 0Z"/><path d="M12 12v7a2 2 0 0 0 4 0"/><path d="M12 2v1"/>'),
+  scooter: S('<circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M8 17.5h8"/><path d="M5.5 17.5 8.5 9H12"/><path d="m13 5 3.5 10"/><path d="M13 5h2"/>'),
+  run: S('<circle cx="15.5" cy="4.5" r="1.8"/><path d="m12.5 9.5 2-2.5 2.5 2 2.5.5"/><path d="m12.5 9.5-2 3.5 3 2.5-1.5 5.5"/><path d="m10.5 13-3.5-1-2.5 3"/><path d="m13.5 15.5 2 2.5.5 2.5"/>'),
+  walk: S('<circle cx="13" cy="4.5" r="1.8"/><path d="m12 8-1.5 4L13 15l-1 6"/><path d="m10.5 12-3 1.5L6 17"/><path d="m13 15 2.5 1 1 3.5"/><path d="M12 8 9.5 9.5"/>'),
+  bike: S('<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>'),
+  basket: S('<path d="M5 11h14l-1.4 7.5a2 2 0 0 1-2 1.5H8.4a2 2 0 0 1-2-1.5Z"/><path d="M8 11l2-6"/><path d="m16 11-2-6"/><path d="M3.5 11h17"/><path d="M9.5 15v2"/><path d="M14.5 15v2"/>'),
+  cricket: S('<path d="m5 19-1-1L14.5 7.5l3 3L7 21l-2-2Z"/><circle cx="19.5" cy="4.5" r="2"/>'),
+  camera: S('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/>'),
+  diya: S('<path d="M12 3c2.3 2.8 3.5 4.7 3.5 6.8a3.5 3.5 0 0 1-7 0C8.5 7.7 9.7 5.8 12 3Z"/><path d="M5 17.5c2.2 1.4 4.7 2 7 2s4.8-.6 7-2"/><path d="M5 17.5 6.5 21h11l1.5-3.5"/>'),
+  bricks: S('<rect x="3" y="5" width="18" height="6" rx="1"/><rect x="3" y="13" width="18" height="6" rx="1"/><path d="M12 5v6"/><path d="M7.5 13v6"/><path d="M16.5 13v6"/>'),
+  ring: S('<circle cx="12" cy="14.5" r="6"/><path d="m9 8.5 3-4.5 3 4.5"/><path d="M9 8.5h6"/>'),
+  shirt: S('<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/>'),
+  fish: S('<path d="m3 3 11 12.5"/><circle cx="15.5" cy="17" r="2"/><path d="M14.2 15.6C12 17.8 8.6 18.4 5.5 17c1.6-2.8 4.4-4.4 7.4-4.2"/><path d="M15 5.5c2.5.5 4.5 2.5 5 5"/>'),
+  pan: S('<circle cx="10" cy="13" r="7"/><path d="m15.3 8.7 5.2-4.2"/><circle cx="10" cy="13" r="2.2"/>'),
+  scissors: S('<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>'),
+  backpack: S('<path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/>'),
+  heart: S('<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>'),
+  paw: S('<circle cx="6.5" cy="10" r="1.6"/><circle cx="10.5" cy="6.8" r="1.7"/><circle cx="15.5" cy="6.8" r="1.7"/><circle cx="19.5" cy="10" r="1.6"/><path d="M12 11.5c2.8 0 5.5 1.8 5.5 4.3 0 1.9-1.4 3.2-3.2 3.2-1 0-1.6-.4-2.3-.4s-1.3.4-2.3.4c-1.8 0-3.2-1.3-3.2-3.2 0-2.5 2.7-4.3 5.5-4.3Z"/>'),
 };
 
 /**
@@ -122,4 +146,29 @@ export function skyIcon(bucket, cls = '') {
  */
 export function wxGlyph(bucket, cls = 'wx-ico') {
   return skyIcon(bucket, cls);
+}
+
+/* ================================================================
+   TIP — advice glyph resolver (v0.8.10).
+   Insight / alert / For-You / farm cards used to carry raw emoji, which
+   every Android skin draws differently — the last big "generated vs
+   designed" tell. tipIcon(key) resolves an advice key to the SAME
+   stroke-SVG language as the hero: weather keys reuse the SKY set,
+   everything else lives in PATHS. Returns null for unknown keys so
+   callers fall back to the emoji (never a broken empty chip).
+================================================================ */
+
+/* weather-ish advice keys → SKY buckets (static small glyphs) */
+const TIP_WX = {
+  rain: 'rain', storm: 'storm', drizzle: 'drizzle', fog: 'fog',
+  snow: 'snow', sun: 'clear-day', moon: 'clear-night',
+  cloud: 'cloudy', partly: 'partly-day',
+};
+
+export function tipIcon(key, cls = 'tip-svg') {
+  if (typeof key !== 'string' || !key) return null;
+  const bucket = TIP_WX[key];
+  if (bucket) return skyIcon(bucket, cls);
+  if (PATHS[key]) return icon(key, cls);
+  return null; // caller falls back to the legacy emoji
 }
