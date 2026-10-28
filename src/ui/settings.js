@@ -9,6 +9,7 @@
  */
 
 import { el, clear } from '../utils/dom.js';
+import { icon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t, setLang } from '../core/i18n.js';
 import { aiSettings } from '../ai/client.js';
@@ -125,7 +126,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.11'),
+      el('span.ver-badge', null, 'v0.8.12'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -321,28 +322,94 @@ function buildImdSection() {
 
 /* ---------------- notifications ---------------- */
 
+/* v0.8.12 "the ask deserves design": the browser permission prompt is a
+   one-shot, trust-heavy moment — it never fires cold from a toggle flip.
+   Flow: toggle ON (permission 'default') → priming card explains what will
+   happen; the browser prompt fires only from the card's Allow button.
+   If the browser has notifications blocked, the card becomes a recovery
+   path with the actual unblock steps instead of a dead-end "✗ denied".
+   Transient 'ask' rides outside the store — renderSettings() is the renderer. */
+let notifAsk = null; // null | 'ask'
+
+function notifFlowCard(kind) {
+  const blocked = kind === 'blocked';
+  return el(`div.notif-flow${blocked ? '.notif-flow-blocked' : ''}`, { role: 'status' },
+    el('div.notif-flow-head', null, icon('bell', 'notif-flow-ico'),
+      el('b', null, t(blocked ? 'set_notif_blocked_t' : 'set_notif_ask_t'))),
+    el('div.notif-flow-body', null,
+      t(blocked ? 'set_notif_blocked_b' : 'set_notif_ask_b')),
+    blocked
+      ? el('div.notif-flow-actions', null,
+          el('button.btn.btn-sm', {
+            type: 'button',
+            onclick: () => { store.notif.set({ on: false }); renderSettings(); },
+          }, t('set_notif_gotit')))
+      : el('div.notif-flow-actions', null,
+          el('button.btn.btn-sm.btn-primary', {
+            type: 'button',
+            onclick: async () => {
+              const perm = await Notification.requestPermission();
+              if (perm === 'granted') {
+                notifAsk = null;
+                store.notif.set({ on: true });
+                hooks?.onNotifChange?.();
+              } else if (perm === 'denied') {
+                // keep the intent — the recovery card now explains the unblock
+                notifAsk = null;
+                store.notif.set({ on: true });
+              } else {
+                notifAsk = null; // prompt dismissed — stay silent
+              }
+              renderSettings();
+            },
+          }, icon('bell', 'btn-ico'), t('set_notif_allow')),
+          el('button.btn.btn-sm', {
+            type: 'button',
+            onclick: () => { notifAsk = null; renderSettings(); },
+          }, t('set_notif_later'))),
+  );
+}
+
 function buildNotifSection() {
   const notif = store.notif.get() ?? { on: false };
+  const supported = 'Notification' in window;
+  const granted = supported && Notification.permission === 'granted';
+  const denied = supported && Notification.permission === 'denied';
   const statusNote = el('div.set-status');
-  const row = toggleRow('', t('set_notif_t'), notif.on && Notification?.permission === 'granted', async (on) => {
+  const row = toggleRow('', t('set_notif_t'), notif.on && granted, async (on) => {
+    if (!supported) {
+      store.notif.set({ on: false });
+      statusNote.textContent = t('set_notif_denied');
+      renderSettings();
+      return;
+    }
     if (on) {
-      if (!('Notification' in window)) { statusNote.textContent = t('set_notif_denied'); store.notif.set({ on: false }); renderSettings(); return; }
-      let perm = Notification.permission;
-      if (perm === 'default') perm = await Notification.requestPermission();
-      if (perm !== 'granted') {
-        store.notif.set({ on: false });
-        statusNote.textContent = t('set_notif_denied');
-        renderSettings();
-        return;
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        store.notif.set({ on: true });
+        hooks?.onNotifChange?.();
+      } else if (perm === 'denied') {
+        store.notif.set({ on: true }); // intent kept — recovery card explains the unblock
+      } else {
+        notifAsk = 'ask'; // prime first; the card's Allow button fires the prompt
       }
-      store.notif.set({ on: true });
-      statusNote.textContent = '✓ ' + t('set_notif_on');
-      hooks?.onNotifChange?.();
+      renderSettings();
     } else {
+      notifAsk = null;
       store.notif.set({ on: false });
       hooks?.onNotifChange?.();
+      renderSettings();
     }
   });
+  if (notifAsk === 'ask') {
+    mount.appendChild(section(t('set_notif'), row, notifFlowCard('ask')));
+    return;
+  }
+  if (notif.on && denied) {
+    mount.appendChild(section(t('set_notif'), row, notifFlowCard('blocked')));
+    return;
+  }
+  if (notif.on && granted) statusNote.textContent = '✓ ' + t('set_notif_on');
   mount.appendChild(section(t('set_notif'), row, statusNote));
 }
 

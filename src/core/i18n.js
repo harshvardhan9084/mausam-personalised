@@ -382,6 +382,15 @@ const dict = {
   set_notif_t:   ['While Mausam is open, get a notification when heavy rain, dangerous heat or severe air is within hours. Browser only — nothing is sent to any server.', 'जब मौसम खुला हो, तेज़ बारिश / ख़तरनाक गर्मी / गंभीर हवा नज़दीक होने पर सूचना मिलेगी। सिर्फ़ ब्राउज़र में — कोई सर्वर को कुछ नहीं जाता।'],
   set_notif_on:  ['Alerts on', 'चेतावनी चालू'],
   set_notif_denied: ['Notifications blocked in browser settings', 'ब्राउज़र में सूचनाएँ बंद हैं'],
+  /* v0.8.12 — the alerts permission flow: priming card before the browser
+     prompt, and a real recovery path when the browser has them blocked. */
+  set_notif_ask_t:  ['Get alerts before it hits', 'बारिश या गर्मी से पहले चेतावनी पाएँ'],
+  set_notif_ask_b:  ['Heavy rain, dangerous heat or severe air — Mausam notifies you within hours, while the app is open. Nothing is sent to any server.', 'तेज़ बारिश, ख़तरनाक गर्मी या गंभीर हवा — मौसम घंटों पहले सूचना देगा, जब तक ऐप खुला है। कोई सर्वर को कुछ नहीं जाता।'],
+  set_notif_allow:  ['Allow notifications', 'सूचनाएँ देने की अनुमति'],
+  set_notif_later:  ['Not now', 'अभी नहीं'],
+  set_notif_blocked_t: ['Notifications are blocked for this site', 'इस साइट के लिए सूचनाएँ ब्लॉक हैं'],
+  set_notif_blocked_b: ['To unblock: tap the lock or info icon beside the address bar, set Notifications to Allow, then reload Mausam.', 'अनब्लॉक करने के लिए: एड्रेस बार के पास लॉक या info आइकन दबाएँ, Notifications को Allow करें, फिर मौसम को रीलोड करें।'],
+  set_notif_gotit:  ['Got it', 'समझ गया'],
   set_export:    ['Download my data', 'मेरा डेटा डाउनलोड करें'],
   set_import:    ['Restore from file', 'फ़ाइल से वापस लाएँ'],
   set_wipe:      ['Erase everything', 'सब मिटाएँ'],

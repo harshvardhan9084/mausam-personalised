@@ -73,6 +73,35 @@
 .set-status.bad { color: var(--red); }
 .set-status.busy { color: var(--muted); }
 
+/* ---------- v0.8.12: alerts permission flow cards ----------
+   The ask (priming) and the blocked (recovery) states of the Rain & heat
+   alerts toggle. Same tone-card language as insight cards: tinted surface,
+   1px tone border, glyph in a tinted head, quiet body, compact actions. */
+.notif-flow {
+  margin-top: 10px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.notif-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 0.86rem;
+  margin-bottom: 5px;
+}
+.notif-flow-ico { width: 17px; height: 17px; flex-shrink: 0; }
+.notif-flow-body { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+.notif-flow-actions { display: flex; gap: 8px; margin-top: 10px; }
+.notif-flow-actions .btn-ico { width: 14px; height: 14px; }
+.notif-flow-blocked {
+  background: color-mix(in srgb, var(--red) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+}
+.notif-flow-blocked .notif-flow-head { color: var(--red); }
+
 /* ---------- you sheet ---------- */
 .you-block { padding: 13px 2px 15px; border-bottom: 1px solid var(--border); }
 .you-block:first-child { padding-top: 2px; }
