@@ -78,6 +78,9 @@ function build() {
 
   /* ---------- schedule ---------- */
   mount.appendChild(blockTitle(t('you_schedule')));
+  /* v0.8.9: the chip previously read '⏰ On / Off' — a toggle that never
+     said WHAT it toggled. Label it by what it controls; the .on state
+     styling (accent ring) already communicates on/off. */
   const schedOn = el('button.chip.you-chip', {
     type: 'button', class: draft.scheduleOn ? 'on' : '',
     onclick: (e) => {
@@ -85,7 +88,7 @@ function build() {
       e.currentTarget.classList.toggle('on');
       e.currentTarget.closest('.you-block').querySelector('.you-times').style.display = draft.scheduleOn ? '' : 'none';
     },
-  }, '⏰ ' + t('on') + ' / ' + t('off'));
+  }, '⏰ ' + t('you_sched_chip'));
   mount.appendChild(el('div.you-block', schedOn,
     el('div.you-times', { style: { display: draft.scheduleOn ? '' : 'none' } },
       timeField(t('you_wake'), 'wake'),

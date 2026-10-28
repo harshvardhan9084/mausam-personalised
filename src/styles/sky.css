@@ -173,28 +173,31 @@
 .card.sky[data-sky='clear-night'] .sky-glyph,
 .card.sky[data-sky='partly-night'] .sky-glyph { filter: drop-shadow(0 0 18px rgba(185, 200, 255, 0.5)); }
 
-/* ---------------- glyph part animations ---------------- */
+/* ---------------- glyph part animations ----------------
+   SCOPED to .sky-glyph (v0.8.9): the same SKY svgs render statically at
+   small sizes (hour strip, 10-day rows, week cells) — without the scope,
+   48 hour cards would each run infinite animations on low-end phones. */
 
 .sky-rays,
 .sky-mini-rays { transform-box: fill-box; transform-origin: center; }
-.sky-rays { animation: skySpin 36s linear infinite; }
-.sky-mini-rays { animation: skyPulse 5s ease-in-out infinite; }
+.sky-glyph .sky-rays { animation: skySpin 36s linear infinite; }
+.sky-glyph .sky-mini-rays { animation: skyPulse 5s ease-in-out infinite; }
 
-.sky-drops path { transform-box: fill-box; animation: skyDrop 1.4s linear infinite; }
-.sky-drops path:nth-child(2) { animation-delay: -0.45s; }
-.sky-drops path:nth-child(3) { animation-delay: -0.9s; }
-.sky-drops path:nth-child(4) { animation-delay: -0.3s; }
-.sky-drops path:nth-child(5) { animation-delay: -0.75s; }
-.sky-drops path:nth-child(6) { animation-delay: -1.05s; }
+.sky-glyph .sky-drops path { transform-box: fill-box; animation: skyDrop 1.4s linear infinite; }
+.sky-glyph .sky-drops path:nth-child(2) { animation-delay: -0.45s; }
+.sky-glyph .sky-drops path:nth-child(3) { animation-delay: -0.9s; }
+.sky-glyph .sky-drops path:nth-child(4) { animation-delay: -0.3s; }
+.sky-glyph .sky-drops path:nth-child(5) { animation-delay: -0.75s; }
+.sky-glyph .sky-drops path:nth-child(6) { animation-delay: -1.05s; }
 
-.sky-flakes path { animation: skyFlake 2.6s ease-in-out infinite; }
-.sky-flakes path:nth-child(2) { animation-delay: -0.6s; }
-.sky-flakes path:nth-child(3) { animation-delay: -1.2s; }
-.sky-flakes path:nth-child(4) { animation-delay: -0.9s; }
-.sky-flakes path:nth-child(5) { animation-delay: -1.7s; }
-.sky-flakes path:nth-child(6) { animation-delay: -2.1s; }
+.sky-glyph .sky-flakes path { animation: skyFlake 2.6s ease-in-out infinite; }
+.sky-glyph .sky-flakes path:nth-child(2) { animation-delay: -0.6s; }
+.sky-glyph .sky-flakes path:nth-child(3) { animation-delay: -1.2s; }
+.sky-glyph .sky-flakes path:nth-child(4) { animation-delay: -0.9s; }
+.sky-glyph .sky-flakes path:nth-child(5) { animation-delay: -1.7s; }
+.sky-glyph .sky-flakes path:nth-child(6) { animation-delay: -2.1s; }
 
-.sky-bolt { animation: skyFlash 4.5s linear infinite; }
+.sky-glyph .sky-bolt { animation: skyFlash 4.5s linear infinite; }
 
 @keyframes skySpin { to { transform: rotate(360deg); } }
 @keyframes skyPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
@@ -259,3 +262,37 @@
   .sky-flakes path,
   .sky-bolt { animation: none !important; }
 }
+
+/* ================================================================
+   SMALL WEATHER GLYPHS — v0.8.9 "one visual language".
+   The hero's SKY svg set now also renders in hour cards, 10-day rows
+   and week cells (replacing Android-varying emoji), tinted per sky.
+   Static by design — animations stay hero-only (scoped above).
+================================================================ */
+
+.wx-ico { width: 22px; height: 22px; stroke-width: 1.8; display: block; margin: 0 auto; }
+.ten-icon .wx-ico { width: 20px; height: 20px; margin: 0; }
+.w-icon .wx-ico { width: 26px; height: 26px; }
+.wx-ico-xs { width: 11px; height: 11px; stroke-width: 2.2; vertical-align: -1px; display: inline; }
+
+/* kv-row / detail-grid label glyphs (sun & moon card, 10-day detail) */
+.kv-ico { width: 15px; height: 15px; stroke-width: 2; vertical-align: -2.5px; margin-right: 6px; }
+.tlbl { white-space: nowrap; }
+
+/* per-sky tint — same hue logic as the hero gradients */
+.wx-ico[data-wx='clear-day'],
+.wx-ico[data-wx='partly-day'] { color: var(--yellow); }
+.wx-ico[data-wx='clear-night'],
+.wx-ico[data-wx='partly-night'] { color: var(--sky); }
+.wx-ico[data-wx='cloudy'],
+.wx-ico[data-wx='fog'] { color: var(--muted); }
+.wx-ico[data-wx='drizzle'],
+.wx-ico[data-wx='snow'] { color: var(--sky); }
+.wx-ico[data-wx='rain'] { color: var(--blue); }
+.wx-ico[data-wx='storm'] { color: var(--orange); }
+
+/* sun & moon card label tints */
+.ico-sun { color: var(--yellow); }
+.ico-dusk { color: var(--orange); }
+.ico-moon { color: var(--sky); }
+.ico-mut { color: var(--muted); }

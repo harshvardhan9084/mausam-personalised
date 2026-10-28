@@ -34,6 +34,12 @@ const PATHS = {
   route: S('<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>'),
   listen: S('<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>'),
   thermo: S('<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>'),
+  /* sun/moon calendar glyphs (v0.8.9) — static, for kv rows (sun & moon card,
+     10-day detail grid). Same stroke language as the SKY set. */
+  sunrise: S('<path d="M12 11V6"/><path d="M9.5 8.5 12 6l2.5 2.5"/><path d="M7 20a5 5 0 0 1 10 0"/><path d="M3 20h18"/>'),
+  sunset: S('<path d="M12 6v5"/><path d="M9.5 8.5 12 11l2.5-2.5"/><path d="M7 20a5 5 0 0 1 10 0"/><path d="M3 20h18"/>'),
+  moon: S('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  hourglass: S('<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 1 17 6.172V2"/>'),
   droplet: S('<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>'),
   wind: S('<path d="M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'),
 };
@@ -93,11 +99,27 @@ const SKY = {
     S('<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path class="sky-bolt" d="m13 12-3 5h4l-3 5"/>'),
 };
 
-/** Hero weather glyph node (decorative; condition text carries meaning). */
+/**
+ * Hero weather glyph node (decorative; condition text carries meaning).
+ * Also used at small sizes (hour strip, 10-day rows, week cells) since
+ * v0.8.9 "one visual language" — the svg carries data-wx={bucket} so CSS
+ * can tint per sky; part animations stay scoped to .sky-glyph (hero), so
+ * small glyphs are static (no 48× infinite animations on a phone).
+ */
 export function skyIcon(bucket, cls = '') {
   const tpl = document.createElement('template');
   tpl.innerHTML = (SKY[bucket] ?? SKY.cloudy).trim();
   const svg = tpl.content.firstElementChild;
+  svg.setAttribute('data-wx', SKY[bucket] ? bucket : 'cloudy');
   if (cls) svg.setAttribute('class', cls);
   return svg;
+}
+
+/**
+ * Small weather glyph for data rows — folds code + day/night via skyBucket
+ * (imported lazily by callers, who pass the bucket). Falls back to the
+ * neutral cloud; a missing code still renders the glyph, never '·'.
+ */
+export function wxGlyph(bucket, cls = 'wx-ico') {
+  return skyIcon(bucket, cls);
 }

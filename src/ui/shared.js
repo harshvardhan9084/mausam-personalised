@@ -78,7 +78,7 @@ export function scoredHourCard(h, { value, sub, title }) {
     `div.hour-card.${h.band?.cls ?? ''}`,
     { title: title ?? '' },
     el('div.h-time', null, hourLabel(h.time)),
-    el('div.h-icon', null, h.wx?.icon ?? '·'),
+    el('div.h-icon', null, h.weather_code != null ? skyIcon(skyBucket(h.weather_code, !h.night), 'wx-ico') : (h.wx?.icon ?? '·')),
     el('div.h-val', null, value),
     el('div.h-sub', null, sub)
   );
@@ -106,9 +106,9 @@ export function simpleWeekCell(d, i, units) {
     null,
     el('div.w-day', null, dayLabel(d.date, i)),
     el('div.w-date', null, dateLabel(d.date)),
-    el('div.w-icon', null, d.wx?.icon ?? '·'),
+    el('div.w-icon', null, d.weather_code != null ? skyIcon(skyBucket(d.weather_code, true), 'wx-ico') : (d.wx?.icon ?? '·')),
     el('div.w-temp', null, `${temp(d.temp_max, units)}/${temp(d.temp_min, units)}`),
-    el('div.w-rain', null, `💧 ${Math.round(d.precip_prob_max ?? 0)}%`)
+    el('div.w-rain', null, icon('droplet', 'wx-ico-xs'), ` ${Math.round(d.precip_prob_max ?? 0)}%`)
   );
 }
 

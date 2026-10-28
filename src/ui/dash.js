@@ -18,7 +18,7 @@ import {
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
 import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow, skyBucket } from './shared.js';
-import { icon } from './icons.js';
+import { icon, skyIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
@@ -366,8 +366,8 @@ function tenDayList(s, units, bd) {
         [`💧 ${t('rain_simple')}`, `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
         [`${t('wind')}`, `${d.wind_max != null ? wind(d.wind_max, units) : '—'}${d.gusts_max != null ? ` · ${t('gusts')} ${wind(d.gusts_max, units)}` : ''}`],
         [`${t('uv')}`, d.uv_max != null ? `${Math.round(d.uv_max * 10) / 10}` : '—'],
-        [`🌅 ${t('sunrise')}`, fmtT(d.sunrise)],
-        [`🌇 ${t('sunset')}`, fmtT(d.sunset)],
+        [el('span.tlbl', icon('sunrise', 'kv-ico ico-sun'), t('sunrise')), fmtT(d.sunrise)],
+        [el('span.tlbl', icon('sunset', 'kv-ico ico-dusk'), t('sunset')), fmtT(d.sunset)],
       ].map(([k, v]) => el('span', null, el('b', null, k), v))),
     );
     const row = el('button.ten-row', {
@@ -380,7 +380,7 @@ function tenDayList(s, units, bd) {
       },
     },
       el('span.ten-day', null, `${star ? '⭐' : ''}${i === 0 ? t('today') : dayLabel(d.date, i)}`),
-      el('span.ten-icon', null, d.wx?.icon ?? '·'),
+      el('span.ten-icon', null, d.weather_code != null ? skyIcon(skyBucket(d.weather_code, true), 'wx-ico') : (d.wx?.icon ?? '·')),
       el('span.ten-pop', { class: (d.precip_prob_max ?? 0) >= 50 ? 'wet' : '', title: t('rain_simple') }, `${Math.round(d.precip_prob_max ?? 0)}%`),
       bar,
       el('span.ten-vals', null,
@@ -555,7 +555,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
       },
     },
       el('div.h-time', null, hourLabel(h.time, clock)),
-      el('div.h-icon', null, h.wx?.icon ?? '·'),
+      el('div.h-icon', null, h.weather_code != null ? skyIcon(skyBucket(h.weather_code, !h.night), 'wx-ico') : (h.wx?.icon ?? '·')),
       el('div.h-val', null, temp(h.temperature_2m, units)),
       el('div.h-sub', null, `${Math.round(h.precipitation_probability ?? 0)}%`),
     );
@@ -642,15 +642,18 @@ export function renderDashboard(root, snapshot, units, ctx) {
 
   const fmt = (iso) => (iso ? iso.slice(11, 16) : '—');
   const imd = s.bundle?.imd;
+  /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph
+     (same icon language as the hero) instead of raw emoji. */
+  const kvIco = (name, tint) => icon(name, `kv-ico ${tint}`);
   const sunCard = card(
     el('div.card-h', null, `${t('sec_sun')}${imd?.ok ? ' · IMD' : ''}`),
-    kvList([
-      [`🌅 ${t('sunrise')}`, fmt(sun?.sunrise)],
-      [`🌇 ${t('sunset')}`, fmt(sun?.sunset)],
-      [`⏳ ${t('day_length')}`, sun?.dayLength ?? '—'],
-      ...(imd?.ok && imd.obs?.moonrise ? [['🌙 ' + t('moonrise'), imd.obs.moonrise]] : []),
-      ...(imd?.ok && imd.obs?.moonset ? [['🌙 ' + t('moonset'), imd.obs.moonset]] : []),
-    ]),
+    el('div.kv-list',
+      el('div.kv-row', el('span.kv-label', kvIco('sunrise', 'ico-sun'), t('sunrise')), el('span.kv-value', null, fmt(sun?.sunrise))),
+      el('div.kv-row', el('span.kv-label', kvIco('sunset', 'ico-dusk'), t('sunset')), el('span.kv-value', null, fmt(sun?.sunset))),
+      el('div.kv-row', el('span.kv-label', kvIco('hourglass', 'ico-mut'), t('day_length')), el('span.kv-value', null, sun?.dayLength ?? '—')),
+      ...(imd?.ok && imd.obs?.moonrise ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonrise')), el('span.kv-value', null, imd.obs.moonrise))] : []),
+      ...(imd?.ok && imd.obs?.moonset ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonset')), el('span.kv-value', null, imd.obs.moonset))] : []),
+    ),
   );
   row.appendChild(sunCard);
   root.appendChild(row);

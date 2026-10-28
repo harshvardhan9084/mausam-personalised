@@ -943,7 +943,13 @@ textarea.chat-input {
   padding: 10px;
   box-shadow: var(--shadow);
 }
-.you-actions .btn { flex: 1; }
+.you-actions .btn { flex: 1; white-space: nowrap; }
+
+/* 390px phones: full-size .btn-lg padding pushed both labels to two lines —
+   compact the pair instead of wrapping (v0.8.9) */
+@media (max-width: 420px) {
+  .you-actions .btn-lg { padding: 12px 10px; font-size: 0.9rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .page.active, .tab-btn.active .tab-ico { animation: none; }

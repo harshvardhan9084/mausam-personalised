@@ -211,6 +211,7 @@ const dict = {
   you_gender:    ['Gender (optional — for clothing tips only)', 'लिंग (मर्ज़ी से — कपड़ों की सलाह के लिए)'],
   you_age:       ['Age group (optional)', 'उम्र दशा (मर्ज़ी से)'],
   you_schedule:  ['Your day shape (drives personal verdicts)', 'आपके दिन का ढाँचा (निजी सलाह इसी से)'],
+  you_sched_chip:['My daily times', 'मेरे दिन के समय'],
   you_wake:      ['Wake', 'उठना'],
   you_leave:     ['Leave', 'निकलना'],
   you_back:      ['Return', 'वापसी'],
