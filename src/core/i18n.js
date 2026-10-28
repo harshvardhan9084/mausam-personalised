@@ -374,6 +374,7 @@ const dict = {
   set_theme:     ['Theme', 'रंग-रूप'],
   set_accent:    ['Accent colour', 'रंग पसंद'],
   set_data:      ['Data & privacy', 'डेटा और निजता'],
+  set_backup:    ['Backup & erase', 'बैकअप और मिटाना'],
   set_datasaver: ['Data saver', 'डेटा सेवर'],
   set_datasaver_t: ['Fewer background refreshes and place probes only on demand. Good for limited data packs.', 'पीछे से रिफ़्रेश कम, जगहों की जाँच सिर्फ़ माँगने पर। सीमित डेटा के लिए ठीक।'],
   set_notif:     ['Rain & heat alerts', 'बारिश और गर्मी की चेतावनी'],

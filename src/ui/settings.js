@@ -112,7 +112,7 @@ function build() {
   ));
 
   /* ---------------- data & privacy ---------------- */
-  mount.appendChild(section(t('set_data'),
+  mount.appendChild(section(t('set_backup'),
     el('div.key-actions',
       el('button.btn', { type: 'button', onclick: exportData }, '⬇️ ' + t('set_export')),
       el('button.btn', { type: 'button', onclick: importData }, '⬆️ ' + t('set_import')),
@@ -125,7 +125,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.6'),
+      el('span.ver-badge', null, 'v0.8.7'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
