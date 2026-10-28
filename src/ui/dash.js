@@ -17,7 +17,7 @@ import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
-import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow } from './shared.js';
+import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, aqiPill, nowRow, skyBucket } from './shared.js';
 import { icon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
@@ -431,6 +431,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
     onclick: () => shareWeather(s, units, loc),
   }, icon('share'));
   const heroCard = card(
+    el('div.sky-deco', { 'aria-hidden': 'true' }),
     el('div.hero-now-top',
       el('div.hero-place', null, `${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
       shareBtn, // direct child: mobile grid places it beside the name, desktop flows it after the pills
@@ -443,6 +444,8 @@ export function renderDashboard(root, snapshot, units, ctx) {
           el('span', null, `L: ${s.days[0].temp_min != null ? temp(s.days[0].temp_min, units) : '—'}`))
       : null,
   );
+  heroCard.classList.add('sky');
+  heroCard.setAttribute('data-sky', skyBucket(s.now?.weather_code, s.now?.is_day));
   root.appendChild(el('div', { class: 'dash-hero' }, heroCard));
 
   /* ---------- your places rail ---------- */

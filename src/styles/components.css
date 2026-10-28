@@ -420,7 +420,7 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   min-height: 90px;
   margin-bottom: 20px;
 }
-.skeleton.hero-skeleton { min-height: 170px; }
+.skeleton.hero-skeleton { min-height: 210px; }
 
 .state-card {
   text-align: center;

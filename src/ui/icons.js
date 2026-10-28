@@ -33,6 +33,9 @@ const PATHS = {
   scale: S('<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>'),
   route: S('<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>'),
   listen: S('<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>'),
+  thermo: S('<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>'),
+  droplet: S('<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>'),
+  wind: S('<path d="M17.7 7.7A2.5 2.5 0 1 1 19.5 12H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>'),
 };
 
 /**
@@ -53,4 +56,48 @@ export function setIcon(node, name, cls = '') {
   if (!node) return;
   while (node.firstChild) node.removeChild(node.firstChild);
   node.appendChild(icon(name, cls));
+}
+
+/* ================================================================
+   SKY — hero weather glyphs (v0.8.8 "Living Sky" hero).
+   The dashboard hero is the product's face: emoji render wildly
+   differently across Android skins, so the hero uses the same
+   stroke-SVG language as chrome — crisp at any size, themeable
+   via currentColor, and animatable part-by-part (rays spin, drops
+   fall, bolts flicker — all in sky.css, off under reduced motion).
+   Small inline glyphs elsewhere (hour rows, week cells) stay emoji
+   by design — warmth where it helps, polish where it shows.
+   All strings below are static constants (never user input).
+================================================================ */
+
+const SKY = {
+  'clear-day':
+    S('<circle cx="12" cy="12" r="4"/><g class="sky-rays"><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></g>'),
+  'clear-night':
+    S('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  'cloudy':
+    S('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>'),
+  'partly-day':
+    S('<g class="sky-mini-rays"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/></g><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>'),
+  'partly-night':
+    S('<g transform="translate(9.2 -1.6) scale(0.5)" class="sky-moon-sm"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></g><path d="M12.4 22H7a5 5 0 1 1 4.9-6H12.4a3 3 0 0 1 0 6Z" transform="translate(-0.4 -0.2)"/>'),
+  fog:
+    S('<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M16 18H7"/><path d="M17 22H9"/>'),
+  drizzle:
+    S('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><g class="sky-drops"><path d="M8 18v1"/><path d="M12 18v1"/><path d="M16 18v1"/><path d="M8 21v1"/><path d="M12 21v1"/><path d="M16 21v1"/></g>'),
+  rain:
+    S('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><g class="sky-drops"><path d="M16 14v5"/><path d="M8 14v5"/><path d="M12 16v5"/></g>'),
+  snow:
+    S('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><g class="sky-flakes"><path d="M8 15h.01"/><path d="M8 19h.01"/><path d="M12 17h.01"/><path d="M12 21h.01"/><path d="M16 15h.01"/><path d="M16 19h.01"/></g>'),
+  storm:
+    S('<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path class="sky-bolt" d="m13 12-3 5h4l-3 5"/>'),
+};
+
+/** Hero weather glyph node (decorative; condition text carries meaning). */
+export function skyIcon(bucket, cls = '') {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = (SKY[bucket] ?? SKY.cloudy).trim();
+  const svg = tpl.content.firstElementChild;
+  if (cls) svg.setAttribute('class', cls);
+  return svg;
 }

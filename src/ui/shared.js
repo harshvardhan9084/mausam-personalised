@@ -5,6 +5,7 @@
 import { el } from '../utils/dom.js';
 import { temp, wind, hourLabel, dayLabel, dateLabel } from '../utils/format.js';
 import { t } from '../core/i18n.js';
+import { icon, skyIcon } from './icons.js';
 
 /** Hero block — the persona's headline card. */
 export function hero(labelText, bigNode, ...subNodes) {
@@ -137,16 +138,47 @@ export function errorCard(message, onRetry) {
   );
 }
 
-/** Build the hero "right now" row (icon, temp, meta). */
+/* ================================================================
+   SKY HERO — v0.8.8 "Living Sky".
+   skyBucket() folds WMO code + day/night into one of 9 visual
+   skies; sky.css themes the hero card (gradient, animated deco,
+   glyph) from the data-sky attribute. Falls back to a neutral
+   cloudy day when fields are missing — never throws.
+================================================================ */
+export function skyBucket(code, isDay) {
+  const c = Number(code);
+  const day = isDay !== false; // treat missing as day
+  if (c === 0 || c === 1) return day ? 'clear-day' : 'clear-night';
+  if (c === 2) return day ? 'partly-day' : 'partly-night';
+  if (c === 3) return 'cloudy';
+  if (c === 45 || c === 48) return 'fog';
+  if ((c >= 51 && c <= 57) || (c >= 80 && c <= 82)) return 'drizzle';
+  if (c >= 61 && c <= 67) return 'rain';
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow';
+  if (c >= 95) return 'storm';
+  return 'cloudy';
+}
+
+/** One translucent meta chip for the hero (icon + value). */
+const heroChip = (iconName, text) =>
+  el('span.hero-chip', null, icon(iconName, 'chip-ico'), el('span', null, text));
+
+/** Build the hero "right now" block (animated glyph, big temp, chips). */
 export function nowRow(snapshot, units) {
-  const n = snapshot.now;
-  return el('div.hero-now-row', null,
-    el('div.hero-now-icon', null, n.wx.icon),
-    el('div',
+  const n = snapshot.now ?? {};
+  const bucket = skyBucket(n.weather_code, n.is_day);
+  return el('div.hero-body',
+    { class: 'sky-' + bucket },
+    el('div.sky-glyph', { 'aria-hidden': 'true' }, skyIcon(bucket)),
+    el('div.hero-main',
       null,
       el('div.hero-now-temp', null, temp(n.temp, units, true)),
-      el('div.hero-now-meta', null,
-        `${n.wx.label} · ${t('feels_like')} ${temp(n.feels, units, true)} · 💧 ${Math.round(n.humidity ?? 0)}% · 🌬 ${wind(n.wind, units)}`
+      el('div.hero-cond', null, n.wx?.label ?? ''),
+      el('div.hero-chips',
+        null,
+        heroChip('thermo', `${t('feels_like')} ${temp(n.feels, units, true)}`),
+        heroChip('droplet', `${Math.round(n.humidity ?? 0)}%`),
+        heroChip('wind', wind(n.wind, units))
       )
     )
   );
