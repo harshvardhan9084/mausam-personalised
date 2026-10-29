@@ -271,7 +271,10 @@ function aqiDialSvg(aqi) {
   const value = document.createElementNS(NS, 'path');
   value.setAttribute('d', arc);
   value.setAttribute('class', 'aqi-dial-arc');
-  value.setAttribute('stroke', aqi?.color ?? 'var(--muted)');
+  /* v0.8.22 — inline style, not setAttribute('stroke'): band colors are now
+     CSS custom properties, and var() doesn't resolve inside SVG presentation
+     attributes (the 'Unknown' fallback silently rendered no arc at all). */
+  value.style.stroke = aqi?.color ?? 'var(--aqi-u)';
   value.setAttribute('stroke-dasharray', `${dash.toFixed(1)} ${half.toFixed(1)}`);
   svg.appendChild(value);
   /* draw-in: start empty, fill to value on the next frame */
@@ -366,7 +369,7 @@ function aqiCardV2(s) {
         },
       });
       bar.style.height = `${Math.max(3, Math.min(100, (h.aqi / 500) * 100))}%`;
-      bar.style.background = h.aqiFull?.color ?? 'var(--muted)';
+      bar.style.background = h.aqiFull?.color ?? 'var(--aqi-u)';
       bars.appendChild(bar);
       if (i % 8 === 0) {
         const lab = el('span', null, hourLabel(h.time, clock));

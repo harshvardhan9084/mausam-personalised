@@ -46,7 +46,7 @@ export function buildSnapshot(bundle) {
   const hours = enrichHours(bundle.hours, bundle.days);
   const nowHour = hours[0];
   const currentAqi = nowHour?.aqiFull ?? {
-    aqi: null, category: 'Unknown', color: '#8b8fa8', advice: '', dominant: null, subIndices: {},
+    aqi: null, category: 'Unknown', color: 'var(--aqi-u)', advice: '', dominant: null, subIndices: {},
   };
 
   const days = bundle.days.map((d, i) => ({

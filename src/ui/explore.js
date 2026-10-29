@@ -282,12 +282,17 @@ export function openCompare(ctx) {
   }
 }
 
+/* v0.8.22 — six CPCB band classes riding the shared --aqi-* tokens, matching
+   the dashboard dial and the chat card (the old 4-tone collapse painted the
+   same compare cell differently from the dial for the same city). */
 function aqiToneClass(aqi) {
   if (aqi == null) return '';
-  if (aqi <= 100) return 'aqi-ok';
-  if (aqi <= 200) return 'aqi-mid';
-  if (aqi <= 300) return 'aqi-bad';
-  return 'aqi-severe';
+  if (aqi <= 50) return 'aqi-b1';
+  if (aqi <= 100) return 'aqi-b2';
+  if (aqi <= 200) return 'aqi-b3';
+  if (aqi <= 300) return 'aqi-b4';
+  if (aqi <= 400) return 'aqi-b5';
+  return 'aqi-b6';
 }
 
 /* ================================================================

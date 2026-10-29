@@ -282,7 +282,11 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   inset: 0;
   background: rgba(4, 6, 12, 0.7);
   backdrop-filter: blur(3px);
-  z-index: 200;
+  /* v0.8.22 — 200 sat BELOW the fixed .tab-nav (z 300): every modal's scrim
+     left the tab bar undimmed and floating on top, and on phones bottom-docked
+     sheets hid their own bottom row (the history sheet's 'Clear all') behind
+     the nav. 320 puts the overlay above the nav, below the toast (400). */
+  z-index: 320;
   align-items: center;
   justify-content: center;
   padding: 16px;

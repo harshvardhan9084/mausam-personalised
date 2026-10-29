@@ -576,8 +576,22 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   vertical-align: -2px;
 }
 
-/* history sheet */
+/* history sheet — v0.8.22 joins the designed language: count chip in the
+   header, glyph-chip rows (placeRow geometry), relative-day meta, and a
+   jny-empty style designed empty state. */
 .chat-hist-box { max-width: 460px; width: min(92vw, 460px); }
+.chat-hist-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chat-hist-count {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .chat-hist-list { display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; padding: 4px 0; }
 .chat-hist-item {
   display: flex;
@@ -592,8 +606,8 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 11px;
   text-align: left;
   padding: 10px 12px;
   background: transparent;
@@ -602,6 +616,18 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   cursor: pointer;
 }
 .chat-hist-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chat-hist-glyph {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.chat-hist-glyph svg { width: 15px; height: 15px; }
+.chat-hist-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .chat-hist-title { font-weight: 600; font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-hist-meta { font-size: 0.7rem; color: var(--muted); }
 .chat-hist-del {
@@ -613,8 +639,38 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   font-size: 0.9rem;
 }
 .chat-hist-del:hover { color: var(--red); }
-.chat-hist-empty { padding: 22px 6px; color: var(--muted); font-size: 0.86rem; text-align: center; }
-.chat-hist-clear { display: flex; justify-content: flex-end; margin-top: 12px; }
+.chat-hist-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 16px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.chat-hist-empty b { color: var(--text); font-size: 0.92rem; }
+.chat-hist-ico {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.chat-hist-ico svg { width: 15px; height: 15px; }
+.chat-hist-clear { display: flex; justify-content: flex-end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.chat-hist-clear .btn {
+  color: var(--red);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
+  transition: background var(--t-fast);
+}
+.chat-hist-clear .btn:hover { background: color-mix(in srgb, var(--red) 10%, transparent); }
 
 /* ================================================================
    v0.6 — Compare + Journey (explore.js)
@@ -671,10 +727,15 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .cmp-cell { display: flex; flex-direction: column; align-items: flex-end; }
 .cmp-k { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .cmp-v { font-weight: 800; font-size: 0.92rem; }
-.cmp-v.aqi-ok { color: var(--green); }
-.cmp-v.aqi-mid { color: var(--yellow); }
-.cmp-v.aqi-bad { color: var(--orange); }
-.cmp-v.aqi-severe { color: var(--red); }
+/* v0.8.22 — compare cells ride the same --aqi-* band tokens as the dial and
+   the chat card: six CPCB bands instead of a collapsed 4-tone guess, so one
+   value paints the same colour on every surface in both themes. */
+.cmp-v.aqi-b1 { color: var(--aqi-1); }
+.cmp-v.aqi-b2 { color: var(--aqi-2); }
+.cmp-v.aqi-b3 { color: var(--aqi-3); }
+.cmp-v.aqi-b4 { color: var(--aqi-4); }
+.cmp-v.aqi-b5 { color: var(--aqi-5); }
+.cmp-v.aqi-b6 { color: var(--aqi-6); }
 .cmp-add-row { margin-top: 12px; }
 /* v0.8.20: provenance + reading guide — the modal's numbers are derived
    (peak hourly chance, CPCB-from-model PM), so say so, with fetch time. */

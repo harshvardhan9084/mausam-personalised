@@ -11,6 +11,7 @@ import { el } from '../utils/dom.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { icon, skyIcon, tipIcon } from '../ui/icons.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
+import { aqiBandColor } from '../core/aqi-cpcb.js';
 
 /* ================================================================
    v0.8.20 — the chat joins the glyph language. Cards used to render
@@ -421,9 +422,10 @@ const R = {
 
   'aqi-card'(p) {
     const cat = window.__mausamState?.snapshot?.currentAqi;
-    const color = p.d.aqi != null
-      ? (p.d.aqi <= 50 ? 'var(--green)' : p.d.aqi <= 100 ? '#9ccc65' : p.d.aqi <= 200 ? 'var(--yellow)' : p.d.aqi <= 300 ? 'var(--orange)' : p.d.aqi <= 400 ? 'var(--red)' : '#b04040')
-      : (cat?.color ?? 'var(--muted)');
+    /* v0.8.22 — one band vocabulary: aqiBandColor() (core) instead of this
+       card's own 6-way ternary that mixed tokens with two stray hexes and
+       could disagree with the dashboard dial for the same value. */
+    const color = p.d.aqi != null ? aqiBandColor(p.d.aqi) : (cat?.color ?? 'var(--aqi-u)');
     return el('div.aqi-card.card.mu-aqi',
       el('div.aqi-big', { style: { color } }, p.d.aqi != null ? String(Math.round(p.d.aqi)) : '—'),
       el('div',

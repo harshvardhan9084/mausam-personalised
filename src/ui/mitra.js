@@ -311,7 +311,21 @@ function newChat() {
   welcome();
 }
 
-/** 🕘 — the history sheet. */
+/** Relative day for a timestamp — Today / Yesterday / '26 Oct'. */
+function histRelDay(at) {
+  const d = new Date(at);
+  const now = new Date();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  const key = (x) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  if (key(d) === key(now)) return t('today');
+  if (key(d) === key(y)) return t('day_yesterday');
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+/** v0.8.22 — the history sheet joins the designed language: a count chip in
+ *  the header, placeRow-style glyph-chip rows with relative-day meta, a
+ *  jny-empty style designed empty state, and a quiet-danger clear-all.
+ *  (Was a bare list with a cryptic '· 2' count and a text-only empty.) */
 function openHistorySheet() {
   const state = loadChats();
   const overlay = el('div.modal-overlay.active', { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('mitra_history') });
@@ -325,24 +339,35 @@ function openHistorySheet() {
   document.addEventListener('keydown', onEsc);
   const box = el('div.modal-box.chat-hist-box',
     el('div.modal-header',
-      el('span.modal-title', null, t('mitra_history')),
+      el('div.chat-hist-head',
+        el('span.modal-title', null, t('mitra_history')),
+        state.list.length ? el('span.chat-hist-count', null, t('mitra_hist_count', { n: state.list.length })) : null,
+      ),
       el('button.modal-close', { type: 'button', 'aria-label': 'Close', onclick: close }, '✕'),
     ),
   );
 
   if (!state.list.length) {
-    box.appendChild(el('div.chat-hist-empty', null, t('mitra_hist_empty')));
+    box.appendChild(el('div.chat-hist-empty',
+      el('span.chat-hist-ico', null, icon('history')),
+      el('b', null, t('mitra_hist_empty_title')),
+      el('span', null, t('mitra_hist_empty')),
+    ));
   } else {
     const list = el('div.chat-hist-list');
     for (const c of state.list) {
-      const when = new Date(c.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      const when = new Date(c.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      const n = c.msgs?.length ?? 0;
       list.appendChild(el('div.chat-hist-item',
         el('button.chat-hist-open', {
           type: 'button',
           onclick: () => { close(); openChat(c.id); },
         },
-          el('span.chat-hist-title', null, c.title || t('mitra_title')),
-          el('span.chat-hist-meta', null, `${when} · ${c.msgs?.length ?? 0}`),
+          el('span.chat-hist-glyph', null, icon('chat')),
+          el('span.chat-hist-txt',
+            el('span.chat-hist-title', null, c.title || t('mitra_title')),
+            el('span.chat-hist-meta', null, `${histRelDay(c.at)} · ${when} · ${n === 1 ? t('mitra_hist_msg_1') : t('mitra_hist_msgs', { n })}`),
+          ),
         ),
         el('button.chat-hist-del', {
           type: 'button', 'aria-label': t('mitra_hist_del'), title: t('mitra_hist_del'),

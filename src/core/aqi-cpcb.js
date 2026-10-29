@@ -42,15 +42,27 @@ const BREAKPOINTS = {
   },
 };
 
-/** CPCB AQI category descriptors. */
+/** CPCB AQI category descriptors.
+ *  v0.8.22 — colors are CSS custom properties (--aqi-1..6, --aqi-u) defined
+ *  per theme in tokens.css: one band vocabulary for the dashboard dial +
+ *  48h bars, the chat aqi-card, and the compare cells (they used to be
+ *  hardcoded hexes here plus two divergent re-implementations elsewhere,
+ *  so the same AQI value painted different colours per surface/theme). */
 export const AQI_CATEGORIES = [
-  { max: 50,  label: 'Good',        color: '#4caf82', advice: 'Air is clean. Ideal for outdoor activity.' },
-  { max: 100, label: 'Satisfactory',color: '#9ccc65', advice: 'Minor breathing discomfort possible for sensitive people.' },
-  { max: 200, label: 'Moderate',    color: '#f7c44f', advice: 'Breathing discomfort for people with lung or heart disease, children and older adults.' },
-  { max: 300, label: 'Poor',        color: '#f7874f', advice: 'Breathing discomfort for most on prolonged exposure. Limit outdoor exertion.' },
-  { max: 400, label: 'Very Poor',   color: '#e05c5c', advice: 'Respiratory illness on prolonged exposure. Avoid outdoor activity.' },
-  { max: 500, label: 'Severe',      color: '#b04040', advice: 'Serious health impact even for healthy people. Stay indoors.' },
+  { max: 50,  label: 'Good',        color: 'var(--aqi-1)', advice: 'Air is clean. Ideal for outdoor activity.' },
+  { max: 100, label: 'Satisfactory',color: 'var(--aqi-2)', advice: 'Minor breathing discomfort possible for sensitive people.' },
+  { max: 200, label: 'Moderate',    color: 'var(--aqi-3)', advice: 'Breathing discomfort for people with lung or heart disease, children and older adults.' },
+  { max: 300, label: 'Poor',        color: 'var(--aqi-4)', advice: 'Breathing discomfort for most on prolonged exposure. Limit outdoor exertion.' },
+  { max: 400, label: 'Very Poor',   color: 'var(--aqi-5)', advice: 'Respiratory illness on prolonged exposure. Avoid outdoor activity.' },
+  { max: 500, label: 'Severe',      color: 'var(--aqi-6)', advice: 'Serious health impact even for healthy people. Stay indoors.' },
 ];
+
+/** Band color for an AQI value (or null → unknown), shared by every AQI surface. */
+export function aqiBandColor(aqi) {
+  if (aqi == null || Number.isNaN(Number(aqi))) return 'var(--aqi-u)';
+  const cat = AQI_CATEGORIES.find((c) => aqi <= c.max) ?? AQI_CATEGORIES[AQI_CATEGORIES.length - 1];
+  return cat.color;
+}
 
 /**
  * Linear sub-index for one pollutant value against the CPCB table.
@@ -82,7 +94,7 @@ export function computeCPCBAqi(conc) {
   }
   const entries = Object.entries(subIndices);
   if (entries.length === 0) {
-    return { aqi: null, category: 'Unknown', color: '#8b8fa8', advice: '', dominant: null, subIndices: {} };
+    return { aqi: null, category: 'Unknown', color: 'var(--aqi-u)', advice: '', dominant: null, subIndices: {} };
   }
   const [dominant, aqi] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
   const cat = AQI_CATEGORIES.find((c) => aqi <= c.max) ?? AQI_CATEGORIES[AQI_CATEGORIES.length - 1];

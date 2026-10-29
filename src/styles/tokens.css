@@ -20,6 +20,17 @@
   --blue:   #4f8ef7;
   --sky:    #6ab0e8;
 
+  /* CPCB AQI band scale — ONE vocabulary for every AQI surface
+     (dashboard dial + 48h bars, chat aqi-card, compare cells).
+     Dark values = the palette the bands were originally tuned against. */
+  --aqi-1: #4caf82;  /* Good        0–50   */
+  --aqi-2: #9ccc65;  /* Satisfactory 51–100 */
+  --aqi-3: #f7c44f;  /* Moderate   101–200 */
+  --aqi-4: #f7874f;  /* Poor       201–300 */
+  --aqi-5: #e05c5c;  /* Very Poor  301–400 */
+  --aqi-6: #b04040;  /* Severe     401–500 */
+  --aqi-u: #8b8fa8;  /* Unknown            */
+
   /* persona accents — theme-tuned (pink/purple/teal darker for contrast) */
   --pink:   #e0679a;
   --purple: #9b59f7;
@@ -60,6 +71,17 @@
   --red:    #c94040;
   --blue:   #2f6fd8;
   --sky:    #2b7cb8;
+
+  /* AQI bands, light-tuned: the dark limes/maroons wash out on white,
+     so the two extreme bands deepen while the middle bands adopt the
+     light theme's yellow/orange/red. */
+  --aqi-1: #2e8f66;  /* Good        0–50   */
+  --aqi-2: #669d31;  /* Satisfactory 51–100 */
+  --aqi-3: #b8860b;  /* Moderate   101–200 */
+  --aqi-4: #c96a2b;  /* Poor       201–300 */
+  --aqi-5: #c94040;  /* Very Poor  301–400 */
+  --aqi-6: #9c3131;  /* Severe     401–500 */
+  --aqi-u: #5d6579;  /* Unknown            */
 
   --pink:   #c2407a;
   --purple: #7d3fd8;

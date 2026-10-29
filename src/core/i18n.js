@@ -363,6 +363,11 @@ const dict = {
   /* ---------------- Mitra: history, voice, shortcuts ---------------- */
   mitra_history: ['Chat history', 'बातचीत का इतिहास'],
   mitra_hist_empty: ['No past conversations yet — start one!', 'अभी कोई पुरानी बात नहीं — शुरू करें!'],
+  mitra_hist_empty_title: ['No conversations yet', 'अभी कोई बात नहीं'],
+  mitra_hist_count: ['{n} saved', '{n} सहेजी गई'],
+  mitra_hist_msg_1: ['1 message', '1 संदेश'],
+  mitra_hist_msgs: ['{n} messages', '{n} संदेश'],
+  day_yesterday: ['Yesterday', 'कल'],
   mitra_hist_del:['Delete this conversation', 'यह बातचीत मिटाएँ'],
   mitra_hist_clear: ['Clear all history', 'पूरा इतिहास मिटाएँ'],
   mitra_scroll_down: ['Scroll to latest', 'नीचे ले जाएँ'],

@@ -221,7 +221,9 @@
 .wc-rain { font-size: 0.66rem; color: var(--muted); margin-top: 2px; }
 
 .aqi-card { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 15px 15px 15px 4px; }
-.aqi-big { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; }
+/* v0.8.22 — the big value used to wrap its own digits ('84' rendered as
+   '8' over '4') whenever the advice column squeezed the flex row. */
+.aqi-big { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; flex-shrink: 0; line-height: 1.1; }
 .aqi-cat { font-weight: 680; font-size: 0.9rem; }
 .aqi-note { color: var(--muted); font-size: 0.76rem; margin-top: 2px; line-height: 1.4; }
 
