@@ -676,6 +676,12 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .cmp-v.aqi-bad { color: var(--orange); }
 .cmp-v.aqi-severe { color: var(--red); }
 .cmp-add-row { margin-top: 12px; }
+/* v0.8.20: provenance + reading guide — the modal's numbers are derived
+   (peak hourly chance, CPCB-from-model PM), so say so, with fetch time. */
+.cmp-foot { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); display: grid; gap: 4px; }
+.cmp-src { display: flex; align-items: center; gap: 7px; font-size: 0.74rem; color: var(--muted); }
+.cmp-src-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); flex: 0 0 auto; }
+.cmp-read { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
 
 /* journey */
 .explore-from {
@@ -960,7 +966,19 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .ten-icon { font-size: 1.05rem; text-align: center; }
 .ten-pop { font-size: 0.72rem; color: var(--sky); font-variant-numeric: tabular-nums; text-align: right; }
 .ten-pop.wet { color: var(--blue); font-weight: 700; }
-.ten-track { position: relative; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--border) 55%, transparent); overflow: hidden; }
+.ten-track { position: relative; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--border) 55%, transparent); overflow: visible; }
+/* v0.8.20: the "now" tick — where the current temperature sits inside
+   today's range. Overflow visible so the 11px tick escapes the 5px track. */
+.ten-now {
+  position: absolute;
+  top: -3px;
+  width: 2.5px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 75%, transparent);
+  z-index: 1;
+}
 .ten-fill {
   position: relative;
   height: 100%;

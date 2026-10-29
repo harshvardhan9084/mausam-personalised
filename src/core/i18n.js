@@ -333,6 +333,11 @@ const dict = {
   cmp_verdict_cleaner:['Cleanest air: {c}', 'सबसे साफ़ हवा: {c}'],
   cmp_rain24:    ['Rain 24 h', 'बारिश 24 घं.'],
   cmp_aqi:       ['AQI', 'AQI'],
+  /* v0.8.20 — provenance + reading guide: derived numbers say what they are */
+  cmp_src:          ['Open-Meteo forecast + CAMS air · fetched {t}', 'Open-Meteo मौसम + CAMS वायु · {t} पर प्राप्त'],
+  cmp_read:         ['Rain % = peak hourly chance over the next 24 h · AQI = CPCB scale from model PM2.5/PM10', 'बारिश % = अगले 24 घं. में चरम प्रति-घंटा संभावना · AQI = मॉडल PM2.5/PM10 से CPCB पैमाना'],
+  cmp_rain24_title: ['Highest chance in any single hour of the next 24 hours', 'अगले 24 घंटों में किसी एक घंटे की सबसे ऊँची संभावना'],
+  cmp_aqi_title:    ['India CPCB scale, computed from CAMS satellite-model PM2.5 / PM10 — model estimates run coarse around cities', 'भारत CPCB पैमाना, CAMS मॉडल PM2.5 / PM10 से गणना — मॉडल अनुमान मोटे होते हैं'],
 
   /* ---------------- Journey planner ---------------- */
   jny_title:     ['Journey weather', 'सफ़र का मौसम'],
@@ -455,6 +460,10 @@ const dict = {
   mitra_listen_stop: ['Stop reading', 'पढ़ना बंद करें'],
   ten_hint:          ['Tap a day for details', 'विवरण के लिए किसी दिन पर टैप करें'],
   rain_simple:       ['Rain', 'बारिश'],
+  /* v0.8.20 — 10-day range bar legend + sparkline absence */
+  ten_legend:     ['Day range · coolest → warmest', 'दिन की रेंज · सबसे ठंडा → सबसे गर्म'],
+  ten_hourly_na:  ['Hour-by-hour detail appears as the day gets closer', 'दिन नज़दीक आने पर घंटेवार विवरण यहाँ दिखेगा'],
+  ten_spark_aria: ['{d}: temperature curve and rain chance', '{d}: तापमान वक्र और बारिश की संभावना'],
   day_feels:         ['Feels', 'महसूस'],
 };
 

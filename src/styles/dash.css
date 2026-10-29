@@ -496,6 +496,25 @@
   color: var(--muted);
 }
 .ten-row-wrap.expanded .ten-detail { max-height: 150px; opacity: 1; }
+/* v0.8.20: rows with a sparkline open taller; spark capped so desktop
+   aspect-scaling never balloons the panel */
+.ten-row-wrap.expanded.has-spark .ten-detail { max-height: 300px; }
+.ten-spark-wrap { margin: 4px 2px 8px; max-width: 480px; }
+.ten-spark { display: block; width: 100%; height: auto; }
+.ten-spark-dot { fill: var(--accent); }
+.ten-spark-dot.lo { fill: var(--muted); }
+.ten-spark-lbl { font-size: 9px; font-weight: 700; fill: var(--text); }
+.ten-spark-lbl.lo { fill: var(--muted); }
+.ten-hourly-na { margin: 2px 2px 8px; font-size: 0.74rem; color: var(--muted); }
+.ten-box { display: block; }
+.ten-legend { display: flex; align-items: center; gap: 9px; padding: 12px 2px 0; }
+.ten-legend-val { font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ten-legend-ramp { flex: 1; height: 5px; border-radius: 999px; }
+.ten-legend-cap { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.02em; white-space: nowrap; }
+@media (max-width: 400px) {
+  .ten-legend { gap: 7px; }
+  .ten-legend-cap { font-size: 0.62rem; }
+}
 .ten-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));

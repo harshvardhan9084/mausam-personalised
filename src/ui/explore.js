@@ -189,6 +189,13 @@ export function openCompare(ctx) {
   const added = []; // session-only extra places from search
   const listWrap = el('div.cmp-list');
   const verdict = el('div.cmp-verdict');
+  /* v0.8.20: provenance + reading guide — these numbers are live model
+   * data with derived semantics; showing source + fetch time + what each
+   * metric means is the difference between "data" and "trust". */
+  const srcFoot = el('div.cmp-foot',
+    el('div.cmp-src'),
+    el('div.cmp-read', null, t('cmp_read')),
+  );
   const units = ctx?.units ?? 'metric';
 
   function currentList() {
@@ -215,11 +222,11 @@ export function openCompare(ctx) {
         el('span.cmp-cond', null, `${cond?.icon ?? ''} ${cond?.label ?? ''}`.trim() || '—'),
         el('span.cmp-feels', null, wx?.feels != null ? `${t('feels_like')} ${fmtTemp(wx.feels, units)}` : ''),
       ),
-      el('div.cmp-cell',
+      el('div.cmp-cell', { title: t('cmp_rain24_title') },
         el('span.cmp-k', null, t('cmp_rain24')),
         el('span.cmp-v', null, wx?.popMax24 != null ? `${wx.popMax24}%` : '—'),
       ),
-      el('div.cmp-cell',
+      el('div.cmp-cell', { title: t('cmp_aqi_title') },
         el('span.cmp-k', null, t('cmp_aqi')),
         el('span.cmp-v', { class: aqiToneClass(data?.aqi) }, data?.aqi != null ? String(data.aqi) : '—'),
       ),
@@ -248,6 +255,11 @@ export function openCompare(ctx) {
         verdict.appendChild(el('span.cmp-verdict-pill', null, icon('wind', 'pill-ico'), ` ${t('cmp_verdict_cleaner', { c: clean.p.name })}`));
       }
     }
+
+    srcFoot.querySelector('.cmp-src')?.replaceChildren(
+      el('span.cmp-src-dot', { 'aria-hidden': 'true' }),
+      ` ${t('cmp_src', { t: new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) })}`,
+    );
   }
 
   box.appendChild(verdict);
@@ -255,6 +267,7 @@ export function openCompare(ctx) {
 
   const addRow = el('div.cmp-add-row');
   box.appendChild(addRow);
+  box.appendChild(srcFoot);
   searchRow(addRow, (h) => {
     added.push(normPlace(h));
     addRow.querySelector('.explore-results')?.replaceChildren();

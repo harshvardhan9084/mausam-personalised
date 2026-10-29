@@ -409,10 +409,143 @@ function dayTimelineCard(rows) {
   ));
 }
 
-/** 10-day list: day | icon | pop | range bar positioned over the period's
- *  min–max span | values. Rows expand on tap into a per-day detail panel
- *  (feels, rain, wind, UV, sun) — data is already in the bundle, zero
- *  extra API calls (v0.8). */
+/** Shared cold→warm ramp (v0.8.20): sample the live theme's --sky/--orange
+ *  so a range fill's colour at each end IS that temperature on one shared
+ *  scale — identical meaning in every row and in the legend under the list.
+ *  Fixes the "irregular progress bar" reading: the bar never was progress,
+ *  it is a min→max range, and now it also looks like one. */
+function tempRamp() {
+  try {
+    /* sample from body — theme overrides live on [data-theme] (body),
+       documentElement would only ever see the :root dark defaults */
+    const cs = getComputedStyle(document.body);
+    const read = (n, fb) => (cs.getPropertyValue(n) || fb).trim();
+    return [read('--sky', '#6ab0e8'), read('--orange', '#f7874f')];
+  } catch {
+    return ['#6ab0e8', '#f7874f'];
+  }
+}
+
+function mixHex(a, b, t) {
+  const pa = a.replace('#', ''), pb = b.replace('#', '');
+  const c = (p, i) => parseInt(p.slice(i, i + 2), 16) || 0;
+  const ch = (i) => Math.round(c(pa, i) + (c(pb, i) - c(pa, i)) * t);
+  return `rgb(${ch(0)}, ${ch(2)}, ${ch(4)})`;
+}
+
+const rampAt = (ramp, gMin, span, v) =>
+  mixHex(ramp[0], ramp[1], Math.max(0, Math.min(1, (v - gMin) / span)));
+
+/** Per-day sparkline for the expanded 10-day row (v0.8.20). The bundle
+ *  carries 48 h of hourly rows from "now", so today and tomorrow draw a
+ *  real temperature curve + rain bars; later days get the designed
+ *  "unlocks closer to the day" absence instead of an empty chart. */
+function daySpark(day, dayHours) {
+  const W = 320, H = 74, PADX = 10, PADT = 16;
+  const FLOOR = H - 22; // curve floor; rain bars live in the lane below
+  const n = dayHours.length;
+  const temps = dayHours.map((h) => h.temperature_2m).filter((v) => v != null);
+  if (n < 2 || temps.length < 2) return null;
+  const lo = Math.min(...temps), hi = Math.max(...temps);
+  const spanY = Math.max(hi - lo, 1);
+  const step = (W - PADX * 2) / (n - 1);
+  const x = (i) => PADX + i * step;
+  const y = (v) => PADT + (1 - (v - lo) / spanY) * (FLOOR - PADT);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('class', 'ten-spark');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', t('ten_spark_aria', { d: day.label ?? day.date ?? '' }));
+  const gradId = `tenSparkGrad-${day.date ?? n}`;
+
+  const defs = document.createElementNS(NS, 'defs');
+  const grad = document.createElementNS(NS, 'linearGradient');
+  grad.setAttribute('id', gradId);
+  grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0'); grad.setAttribute('x2', '0'); grad.setAttribute('y2', '1');
+  for (const [off, op] of [['0%', 0.2], ['100%', 0]]) {
+    const stop = document.createElementNS(NS, 'stop');
+    stop.setAttribute('offset', off);
+    stop.setAttribute('stop-color', 'var(--accent)');
+    stop.setAttribute('stop-opacity', op);
+    grad.appendChild(stop);
+  }
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+
+  // night shading behind the curve
+  dayHours.forEach((h, i) => {
+    if (h.night) {
+      const shade = document.createElementNS(NS, 'rect');
+      shade.setAttribute('x', (x(i) - step / 2).toFixed(1));
+      shade.setAttribute('y', 0);
+      shade.setAttribute('width', Math.max(step, 2).toFixed(1));
+      shade.setAttribute('height', FLOOR);
+      shade.setAttribute('fill', 'rgba(120,130,160,0.10)');
+      svg.appendChild(shade);
+    }
+  });
+
+  const line = dayHours.map((h, i) => `${x(i).toFixed(1)},${y(h.temperature_2m).toFixed(1)}`).join(' ');
+  const area = document.createElementNS(NS, 'polygon');
+  area.setAttribute('points', `${PADX},${FLOOR} ${line} ${(PADX + (n - 1) * step).toFixed(1)},${FLOOR}`);
+  area.setAttribute('fill', `url(#${gradId})`);
+  svg.appendChild(area);
+  const pl = document.createElementNS(NS, 'polyline');
+  pl.setAttribute('points', line);
+  pl.setAttribute('fill', 'none');
+  pl.setAttribute('stroke', 'var(--accent)');
+  pl.setAttribute('stroke-width', 2);
+  pl.setAttribute('stroke-linejoin', 'round');
+  pl.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(pl);
+
+  // hottest / coldest markers with their values — the sparkline's only text
+  const hiIdx = dayHours.findIndex((h) => h.temperature_2m === hi);
+  const loIdx = dayHours.findIndex((h) => h.temperature_2m === lo);
+  for (const [idx, v, cls, dy] of [[hiIdx, hi, 'hi', -6], [loIdx, lo, 'lo', 12]]) {
+    if (idx < 0) continue;
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('cx', x(idx).toFixed(1));
+    dot.setAttribute('cy', y(v).toFixed(1));
+    dot.setAttribute('r', 2.6);
+    dot.setAttribute('class', `ten-spark-dot ${cls}`);
+    svg.appendChild(dot);
+    const tx = document.createElementNS(NS, 'text');
+    tx.setAttribute('x', Math.min(Math.max(x(idx), 14), W - 16).toFixed(1));
+    tx.setAttribute('y', (y(v) + dy).toFixed(1));
+    tx.setAttribute('text-anchor', 'middle');
+    tx.setAttribute('class', `ten-spark-lbl ${cls}`);
+    tx.textContent = `${Math.round(v)}°`;
+    svg.appendChild(tx);
+  }
+
+  // rain chance bars in the bottom lane — same droplet language as the hero
+  dayHours.forEach((h, i) => {
+    const p = h.precipitation_probability ?? 0;
+    if (p < 10) return;
+    const bh = Math.max((p / 100) * 12, 2);
+    const bar = document.createElementNS(NS, 'rect');
+    bar.setAttribute('x', (x(i) - Math.min(step * 0.32, 3)).toFixed(1));
+    bar.setAttribute('y', (H - 2 - bh).toFixed(1));
+    bar.setAttribute('width', Math.min(step * 0.64, 6).toFixed(1));
+    bar.setAttribute('height', bh.toFixed(1));
+    bar.setAttribute('rx', 1.5);
+    bar.setAttribute('fill', 'var(--sky)');
+    bar.setAttribute('opacity', p >= 50 ? 0.95 : 0.45);
+    svg.appendChild(bar);
+  });
+
+  return el('div.ten-spark-wrap', svg);
+}
+
+/** 10-day list: day | icon | pop | temp range bar on the period's shared
+ *  scale — the fill is coloured by one cold→warm ramp sampled at the day's
+ *  absolute min/max, with the scale named by a legend under the list and a
+ *  "now" tick on today's row (v0.8.20). Rows expand into a per-day detail
+ *  panel: hourly sparkline while the 48 h horizon covers the day, then the
+ *  grid (feels, rain, wind, UV, sun). Data is already in the bundle — zero
+ *  extra API calls. */
 function tenDayList(s, units, bd) {
   const days = (s.days ?? []).slice(0, 10);
   if (!days.length) return null;
@@ -421,6 +554,7 @@ function tenDayList(s, units, bd) {
   const gMin = Math.min(...mins, ...maxs);
   const gMax = Math.max(...mins, ...maxs);
   const span = Math.max(gMax - gMin, 1);
+  const ramp = tempRamp();
   const list = el('div.ten-list', { role: 'list', 'aria-label': t('sec_10day') });
 
   days.forEach((d, i) => {
@@ -428,13 +562,24 @@ function tenDayList(s, units, bd) {
     const hi = d.temp_max ?? gMax;
     const left = ((lo - gMin) / span) * 100;
     const width = Math.max(((hi - lo) / span) * 100, 6);
-    const bar = el('div.ten-track', { 'aria-hidden': 'true' },
-      el('div.ten-fill', {
-        style: { marginLeft: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` },
-      }));
+    const fillStyle = { marginLeft: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` };
+    try {
+      fillStyle.background = `linear-gradient(90deg, ${rampAt(ramp, gMin, span, lo)}, ${rampAt(ramp, gMin, span, hi)})`;
+    } catch { /* CSS fallback gradient stays */ }
+    const bar = el('div.ten-track', { 'aria-hidden': 'true' }, el('div.ten-fill', { style: fillStyle }));
+    if (i === 0 && s.now?.temp != null) {
+      const nowPct = Math.max(0, Math.min(100, ((s.now.temp - gMin) / span) * 100));
+      const nowTick = el('div.ten-now');
+      nowTick.style.left = `calc(${nowPct.toFixed(1)}% - 1px)`;
+      bar.appendChild(nowTick);
+    }
     const detailId = `ten-detail-${i}`;
     const star = bd && bd.best && d.date === bd.best.date;
+    const dayHours = (s.hours ?? []).filter((h) => h.time.slice(0, 10) === d.date);
+    const spark = daySpark(d, dayHours);
     const detail = el('div.ten-detail', { id: detailId, role: 'region', 'aria-label': `${d.label ?? ''} ${d.date}` },
+      spark,
+      !spark && i > 0 ? el('div.ten-hourly-na', null, t('ten_hourly_na')) : null,
       el('div.ten-detail-grid', [
         [el('span.tlbl', icon('thermo', 'kv-ico ico-mut'), t('day_feels')), d.feels_max != null ? temp(d.feels_max, units) : '—'],
         [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('rain_simple')), `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
@@ -466,10 +611,22 @@ function tenDayList(s, units, bd) {
       icon('chevron', 'ten-chev'),
     );
     if (star) row.setAttribute('title', `${t('sec_bestday')} · ${d.label ?? ''}`);
-    const wrap = el('div.ten-row-wrap', { role: 'listitem', class: i === 0 ? 'today' : '' }, row, detail);
+    const wrap = el('div.ten-row-wrap', {
+      role: 'listitem',
+      class: [i === 0 ? 'today' : '', spark ? 'has-spark' : ''].filter(Boolean).join(' '),
+    }, row, detail);
     list.appendChild(wrap);
   });
-  return list;
+
+  /* legend: names the scale every range bar sits on — the axis the old
+     design never showed, which is why the bars read as random progress */
+  const legend = el('div.ten-legend', { 'aria-hidden': 'true' },
+    el('span.ten-legend-val', null, temp(gMin, units)),
+    el('span.ten-legend-ramp', { style: { background: `linear-gradient(90deg, ${ramp[0]}, ${ramp[1]})` } }),
+    el('span.ten-legend-val', null, temp(gMax, units)),
+    el('span.ten-legend-cap', null, t('ten_legend')),
+  );
+  return el('div.ten-box', list, legend);
 }
 
 /* ================================================================
