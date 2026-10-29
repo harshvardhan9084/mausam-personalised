@@ -157,6 +157,7 @@ function renderDynamic() {
         el('div.crop-advice-body',
           el('div.crop-advice-crop', null, `${a.crop.emoji} ${a.crop.name[langIdx()]}${statusChipText(a.status) ? ` · ${statusChipText(a.status)}` : ''}`),
           el('div.crop-advice-text', null, a.text),
+          a.more > 0 ? el('div.crop-advice-more', null, t('crop_more', { n: a.more })) : null,
         ),
       ));
     }
@@ -200,29 +201,67 @@ function cropCard(row, hasData) {
      "irregular progress" the user flagged on the 10-day bars. Now each
      stage is a NAMED segment sized by its share of the season: done
      stages fill green, the current stage fills accent by progress WITHIN
-     the stage, future stages stay hollow. Tooltips carry the names, the
-     meta line names the position, aria-label reads the whole state. */
+     the stage, future stages stay hollow.
+     v0.8.25 "the ladder stops whispering": tooltips are desktop-only —
+     a phone user could never see a stage name ON the ladder. A label row
+     mirrors the segments' flex proportions (long stage = long word slot,
+     so the irregular widths finally read as meaning, not noise); on
+     phones only the CURRENT stage's label is visible (visibility:hidden
+     keeps the others' layout slots, so the visible label still sits
+     exactly under its own segment). aria-label on the ladder still reads
+     the whole state. */
   let bar = null;
   if (row.status === 'growing' || row.status === 'harvest') {
     const at = Math.min(row.stageIdx, c.stages.length - 1);
-    bar = el('div.crop-ladder', {
-      role: 'img',
-      'aria-label': `${t('crop_stage_pos', { n: at + 1, m: c.stages.length })}: ${stageName}`,
-    },
-      ...c.stages.map((s, i) => {
-        const state = i < at ? 'done' : i === at ? 'now' : 'todo';
-        const within = row.status === 'harvest' ? 1
-          : Math.min(1, Math.max(0.04, row.stageFrac || 0));
-        return el(`span.crop-seg.crop-${state}`, {
+    bar = el('div.crop-ladder-wrap', null,
+      el('div.crop-ladder', {
+        role: 'img',
+        'aria-label': `${t('crop_stage_pos', { n: at + 1, m: c.stages.length })}: ${stageName}`,
+      },
+        ...c.stages.map((s, i) => {
+          const state = i < at ? 'done' : i === at ? 'now' : 'todo';
+          const within = row.status === 'harvest' ? 1
+            : Math.min(1, Math.max(0.04, row.stageFrac || 0));
+          return el(`span.crop-seg.crop-${state}`, {
+            style: { flexGrow: String(Math.max(s.f, 0.02)) },
+            title: `${s.n[langIdx()]} · ${Math.round(s.f * 100)}%`,
+          },
+            state === 'now'
+              ? el('span.crop-seg-fill', { style: { width: `${Math.round(within * 100)}%` } })
+              : null,
+          );
+        }),
+      ),
+      el('div.crop-ladder-labels', { 'aria-hidden': 'true' },
+        ...c.stages.map((s, i) => el(`span.crop-seg-label${i === at ? ' is-now' : ''}`, {
           style: { flexGrow: String(Math.max(s.f, 0.02)) },
-          title: `${s.n[langIdx()]} · ${Math.round(s.f * 100)}%`,
-        },
-          state === 'now'
-            ? el('span.crop-seg-fill', { style: { width: `${Math.round(within * 100)}%` } })
-            : null,
-        );
-      }),
+        }, s.n[langIdx()])),
+      ),
     );
+  }
+
+  /* v0.8.25 — the headline is the farmer's own question, answered in
+     days: "sow within how many?" / "harvest in how many?". The old meta
+     line gave only a calendar date (~15 Feb), which forced every reader
+     to do the subtraction themselves — the real meaning of "progress".
+     The date stays, demoted to a muted suffix. */
+  let count = null;
+  if (row.status === 'sowing') {
+    count = el('div.crop-count', null,
+      t('crop_sow_within', { n: row.sowLeftDays }));
+  } else if (row.status === 'growing') {
+    count = el('div.crop-count', null,
+      t('crop_harvest_in', { n: row.harvestLeftDays }),
+      el('span.crop-count-date', null, ` · ~${fmtD(row.harvestAt)}`));
+  } else if (row.status === 'harvest') {
+    count = el('div.crop-count', null,
+      row.harvestLeftDays <= 1
+        ? t('crop_harvest_final')
+        : t('crop_harvest_open', { n: row.harvestLeftDays }));
+  } else {
+    count = el('div.crop-count', null,
+      `${t('crop_next_sow')}: ${fmtD(row.sowStart)}`,
+      el('span.crop-count-date', null, ` · ${t('crop_in_days', { n: row.nextSowDays })}`));
   }
 
   const meta = [];
@@ -230,10 +269,9 @@ function cropCard(row, hasData) {
     meta.push(`${t('crop_sow_win')}: ${fmtD(row.sowStart)} – ${fmtD(row.sowEnd)}`);
     meta.push(`${t('crop_harvest_est')}: ~${fmtD(row.harvestAt)}`);
   } else if (row.status === 'growing' || row.status === 'harvest') {
-    meta.push(`${t('crop_stage_pos', { n: Math.min(row.stageIdx, c.stages.length - 1) + 1, m: c.stages.length })} · ${stageName}`);
-    meta.push(`${t('crop_harvest_est')}: ~${fmtD(row.harvestAt)}`);
-  } else {
-    meta.push(`${t('crop_next_sow')}: ${fmtD(row.sowStart)} (${t('crop_in_days', { n: row.nextSowDays })})`);
+    // stage NAME moved onto the ladder's label row (v0.8.25); the meta
+    // keeps only the position, which the labels can't show.
+    meta.push(t('crop_stage_pos', { n: Math.min(row.stageIdx, c.stages.length - 1) + 1, m: c.stages.length }));
   }
 
   const card = el('div.card.crop-card',
@@ -242,7 +280,8 @@ function cropCard(row, hasData) {
       el(`span.crop-badge.crop-${st.cls}`, null, statusChipText(row.status)),
     ),
     bar,
-    el('div.crop-meta', null, meta.map((m) => el('span.crop-meta-item', null, m))),
+    count,
+    meta.length ? el('div.crop-meta', null, meta.map((m) => el('span.crop-meta-item', null, m))) : null,
   );
 
   if (hasData && row.fit.length) {

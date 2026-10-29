@@ -266,6 +266,11 @@ export function cropCalendar(snapshot, selectedIds, today = new Date()) {
           sowStart, sowEnd, mid, harvestAt, harvestOpen,
           status, progress, stageIdx, stageFrac,
           nextSowDays: Math.ceil((sowStart - today) / 86400000),
+          // v0.8.25 — the farmer's numbers: days until the sowing window
+          // closes (sowing) and days until harvest (growing/harvest). The
+          // card renders these as its headline countdown.
+          sowLeftDays: Math.max(0, Math.ceil((sowEnd - today) / 86400000)),
+          harvestLeftDays: Math.max(0, Math.ceil((harvestAt - today) / 86400000)),
         };
 
         if (!best) { best = cand; continue; }
@@ -286,6 +291,8 @@ export function cropCalendar(snapshot, selectedIds, today = new Date()) {
       progress: best.progress,
       stageIdx: best.stageIdx,
       stageFrac: best.stageFrac,
+      sowLeftDays: best.sowLeftDays,
+      harvestLeftDays: best.harvestLeftDays,
       sowStart: best.sowStart,
       sowEnd: best.sowEnd,
       harvestAt: best.harvestAt,
@@ -503,21 +510,21 @@ export function weatherFit(crop, row, snapshot, today = new Date()) {
 }
 
 /** Top advisory lines across selected crops (for "this week on the farm"). */
+/* v0.8.25 — one card per CROP, not one card per advisory line. The old
+   version pooled every fit row and took the top 4, so one busy crop
+   crowded the strip with 3 near-identical cards ("CHICKPEA · SOWING NOW"
+   three times in a row) — exactly the "these are just additional" noise
+   the user flagged. Now each crop contributes its single most urgent
+   fit (lowest tone), and `more` tells the reader the rest live on the
+   crop's card below. */
 export function farmAdvisories(rows, limit = 4) {
   const rank = { bad: 0, warn: 1, good: 2, info: 3 };
-  const all = [];
+  const perCrop = [];
   for (const r of rows) {
-    for (const f of r.fit) all.push({ ...f, crop: r.crop, status: r.status });
+    if (!r.fit.length) continue;
+    const top = [...r.fit].sort((a, b) => rank[a.tone] - rank[b.tone])[0];
+    perCrop.push({ ...top, crop: r.crop, status: r.status, more: r.fit.length - 1 });
   }
-  all.sort((a, b) => rank[a.tone] - rank[b.tone]);
-  const seen = new Set();
-  const out = [];
-  for (const f of all) {
-    const key = f.text.slice(0, 24);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(f);
-    if (out.length >= limit) break;
-  }
-  return out;
+  perCrop.sort((a, b) => rank[a.tone] - rank[b.tone]);
+  return perCrop.slice(0, limit);
 }

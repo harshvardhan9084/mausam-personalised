@@ -328,6 +328,12 @@ const dict = {
   crop_stage_pos:['Stage {n} of {m}', 'स्तर {n} / {m}'],
   crop_next_sow: ['Next sowing', 'अगली बुवाई'],
   crop_in_days:  ['{n} days away', '{n} दिन बाद'],
+  /* v0.8.25 — the countdown headlines: the farmer's number in days. */
+  crop_sow_within: ['Sow within {n} days', '{n} दिनों के भीतर बुवाई करें'],
+  crop_harvest_in: ['Harvest in {n} days', 'कटाई में {n} दिन'],
+  crop_harvest_open: ['Harvest now — about {n} days left', 'अभी कटाई करें — लगभग {n} दिन शेष'],
+  crop_harvest_final: ['Final days — harvest now', 'आख़िरी दिन — अभी कटाई करें'],
+  crop_more: ['+{n} more', '+{n} और'],
   crop_disclaimer:['Pan-India guide — exact dates shift with variety, district and local practice. For big calls, your state agri university / Krishi Vigyan Kendra has the final word.', 'पूरे भारत के लिए सामान्य गाइड — किस्म, ज़िले और स्थानीय रीति से तारीख़ें बदलती हैं। बड़े फ़ैसलों के लिए राज्य कृषि विश्वविद्यालय / कृषि विज्ञान केंद्र की बात मानें।'],
 
   /* ---------------- Compare places ---------------- */

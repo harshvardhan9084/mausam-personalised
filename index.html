@@ -159,7 +159,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v0.8.24') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v0.8.25') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -169,15 +169,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v0.8.24') {
-            sessionStorage.setItem('mausam:swcheck', 'v0.8.24');
+          if (e && e.data && e.data.version === 'v0.8.25') {
+            sessionStorage.setItem('mausam:swcheck', 'v0.8.25');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v0.8.24');
+          sessionStorage.setItem('mausam:swcheck', 'v0.8.25');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {

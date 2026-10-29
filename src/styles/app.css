@@ -423,6 +423,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .crop-advice-ico { font-size: 1rem; line-height: 1.4; }
 .crop-advice-crop { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); }
 .crop-advice-text { font-size: 0.84rem; line-height: 1.5; }
+.crop-advice-more { margin-top: 3px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px; color: var(--muted); }
 
 .crop-card { margin-bottom: 10px; }
 .crop-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -449,8 +450,34 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   display: flex;
   gap: 3px;
   height: 9px;
-  margin: 12px 0 4px;
+  margin: 12px 0 0;
 }
+/* v0.8.25 "the ladder stops whispering" — a label row that mirrors the
+   segments' flex proportions, so every stage's NAME sits directly under
+   its own bar (tooltips never existed on touch). On phones only the
+   current stage's label is inked; visibility:hidden (not display:none)
+   keeps the hidden labels' flex slots, so the visible label still sits
+   under its own segment, not at the row's left edge. */
+.crop-ladder-wrap { margin: 0; }
+.crop-ladder-labels { display: flex; gap: 3px; margin-top: 5px; }
+.crop-seg-label {
+  font-size: 0.66rem;
+  line-height: 1.25;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.crop-seg-label.is-now { color: var(--text); font-weight: 700; }
+@media (max-width: 639px) {
+  .crop-seg-label:not(.is-now) { visibility: hidden; }
+}
+
+/* v0.8.25 — the countdown headline: the farmer's number in days, with
+   the calendar date demoted to a muted suffix beside it. */
+.crop-count { margin-top: 9px; font-size: 0.95rem; font-weight: 800; color: var(--text); letter-spacing: 0.1px; }
+.crop-count-date { font-weight: 600; color: var(--muted); }
 .crop-seg {
   position: relative;
   min-width: 8px;
