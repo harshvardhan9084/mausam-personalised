@@ -8,6 +8,7 @@ import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
+import { icon } from './icons.js';
 
 const GEO_TIMEOUT_MS = 10000;
 
@@ -58,13 +59,68 @@ export function wireHeader(refs, handlers) {
     }
   }
 
-  /* ---------- location search modal ---------- */
+  /* ---------- location search modal ----------
+     v0.8.18 "the search moment deserves design": opening the modal used to
+     show a dead empty area under the input. Now the idle state works — your
+     saved places (current one tagged) and one-tap popular-city chips — and
+     every state after it (searching / results / none) speaks the same
+     designed row language: glyph disc + stacked name/sub (+ Current tag). */
+  const POPULAR_CITIES = ['Delhi', 'Mumbai', 'Patna', 'Lucknow', 'Jaipur', 'Kolkata', 'Hyderabad', 'Chennai'];
   let searchFocus = null;
+
+  const pickPlace = (loc) => {
+    closeSearch();
+    handlers.onLocationPick?.({
+      name: loc.name, admin1: loc.admin1 ?? '', country: loc.country ?? '',
+      lat: loc.lat, lon: loc.lon, isGeo: false,
+    });
+  };
+
+  /** Glyph-disc + stacked texts row — shared by saved places and results. */
+  const placeRow = (loc, opts = {}) =>
+    el('button.search-result', {
+      type: 'button',
+      ...(opts.tag ? { 'data-current': '1' } : {}),
+      onclick: opts.onTap ?? (() => pickPlace(loc)),
+    },
+      el('span.result-disc', { 'aria-hidden': 'true' }, icon(opts.glyph ?? 'pin', 'result-ico')),
+      el('span.result-texts', null,
+        el('span.result-name', null, loc.name),
+        el('span.result-sub', null, [loc.admin1, loc.country].filter(Boolean).join(', '))),
+      opts.tag ? el('span.result-tag', null, opts.tag) : null,
+    );
+
+  /** Idle content: saved places (current first, tagged) + popular chips.
+   *  Current location comes from the live handler (main.js module state —
+   *  the store only persists after a user pick); destinations from the store. */
+  const renderSearchIdle = () => {
+    clear(searchResults);
+    const cur = handlers.getLocation?.() ?? store.location.get();
+    const dests = (store.destinations.get() ?? []).filter((d) =>
+      !(cur && d.lat === cur.lat && d.lon === cur.lon));
+    if (cur || dests.length) {
+      searchResults.appendChild(el('div.search-sec-label', null, t('search_yours')));
+      if (cur) searchResults.appendChild(placeRow(cur, { glyph: 'check', tag: t('search_current') }));
+      for (const d of dests) searchResults.appendChild(placeRow(d));
+    }
+    searchResults.appendChild(el('div.search-sec-label', null, t('search_popular')));
+    searchResults.appendChild(el('div.search-quick', null,
+      POPULAR_CITIES.map((c) => el('button.search-quick-chip', {
+        type: 'button',
+        onclick: () => { searchInput.value = c; runSearch(c); },
+      }, c))));
+  };
+
+  /** Three shimmer rows in the skeleton language (aria-labelled). */
+  const searchShimmer = () =>
+    el('div.search-sk', { role: 'status', 'aria-label': t('searching') },
+      Array.from({ length: 3 }, () => el('div.sk.search-sk-row')));
+
   const openSearch = () => {
     searchOverlay.classList.add('active');
-    clear(searchResults);
     searchInput.value = '';
     searchInput.placeholder = t('search_ph');
+    renderSearchIdle();
     searchFocus = trapFocus(searchOverlay);
     searchInput.focus();
   };
@@ -145,31 +201,26 @@ export function wireHeader(refs, handlers) {
     const controller = new AbortController();
     abortSearch = () => controller.abort();
 
-    if (q.trim().length < 2) { clear(searchResults); return; }
-    clear(searchResults).appendChild(el('div.search-empty', null, t('searching')));
+    if (q.trim().length < 2) { renderSearchIdle(); return; }
+    clear(searchResults).appendChild(searchShimmer());
     try {
       const results = await geocodeSearch(q, controller.signal);
       if (seq !== searchSeq) return; // stale
       clear(searchResults);
       if (!results.length) {
-        searchResults.appendChild(el('div.search-empty', null, t('no_results')));
+        searchResults.appendChild(el('div.search-none', null,
+          el('span.result-disc.result-disc-warn', { 'aria-hidden': 'true' }, icon('warn', 'result-ico')),
+          el('span.result-texts', null,
+            el('span.result-name', null, t('no_results')),
+            el('span.result-sub', null, t('no_results_hint')))));
         return;
       }
       for (const r of results) {
         searchResults.appendChild(
-          el('button.search-result', {
-            type: 'button',
-            onclick: () => {
-              closeSearch();
-              handlers.onLocationPick?.({
-                name: r.name, admin1: r.admin1, country: r.country,
-                lat: r.latitude, lon: r.longitude, isGeo: false,
-              });
-            },
-          },
-            el('span.result-name', null, r.name),
-            el('span.result-sub', null, [r.admin1, r.country].filter(Boolean).join(', ')),
-          ),
+          placeRow({
+            name: r.name, admin1: r.admin1, country: r.country,
+            lat: r.latitude, lon: r.longitude,
+          }),
         );
       }
     } catch (err) {

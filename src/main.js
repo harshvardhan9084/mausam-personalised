@@ -204,6 +204,10 @@ const header = wireHeader(
   {
     onLocationPick(loc) { applyLocation(loc); },
     onRefresh: () => loadWeather(true),
+    /* v0.8.18: the search modal's 'Your places' section reads the live
+       current location (module state, incl. the DEFAULT fallback) — the
+       store only persists after a user pick, so it can't be the source. */
+    getLocation: () => currentLocation,
   },
 );
 header.setLocation(currentLocation);
