@@ -341,6 +341,16 @@
   background: var(--accent);
   flex: 0 0 auto;
 }
+/* v0.8.23 "the quiet indicators learn to speak": the chip's leading slot
+   starts as the quiet dot and swaps to the place's LIVE sky glyph once the
+   probe resolves (shared .wx-ico[data-wx] tint). Fixed 15px box so the
+   swap never reflows the chip; the dot centers inside it while loading. */
+.place-wx {
+  width: 15px; height: 15px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+}
+.place-wx .wx-ico { width: 15px; height: 15px; }
 .place-name { font-weight: 600; }
 .place-temp { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.2em; text-align: right; }
 .place-forget {

@@ -318,7 +318,7 @@ const dict = {
   crop_wait_data:['Loading the sky — the weather-fit lines appear as soon as data lands.', 'आसमान लोड हो रहा है — डेटा आते ही मौसम-फ़िट लाइनें दिखेंगी।'],
   crop_sow_win:  ['Sowing window', 'बुवाई खिड़की'],
   crop_harvest_est:['Harvest around', 'कटाई लगभग'],
-  crop_stage:    ['Stage', 'अवस्था'],
+  crop_stage_pos:['Stage {n} of {m}', 'स्तर {n} / {m}'],
   crop_next_sow: ['Next sowing', 'अगली बुवाई'],
   crop_in_days:  ['{n} days away', '{n} दिन बाद'],
   crop_disclaimer:['Pan-India guide — exact dates shift with variety, district and local practice. For big calls, your state agri university / Krishi Vigyan Kendra has the final word.', 'पूरे भारत के लिए सामान्य गाइड — किस्म, ज़िले और स्थानीय रीति से तारीख़ें बदलती हैं। बड़े फ़ैसलों के लिए राज्य कृषि विश्वविद्यालय / कृषि विज्ञान केंद्र की बात मानें।'],

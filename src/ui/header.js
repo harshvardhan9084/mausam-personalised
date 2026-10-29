@@ -8,7 +8,9 @@ import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
-import { icon } from './icons.js';
+import { icon, wxGlyph } from './icons.js';
+import { skyBucket } from './shared.js';
+import { probePlace } from './places.js';
 
 const GEO_TIMEOUT_MS = 10000;
 
@@ -92,7 +94,11 @@ export function wireHeader(refs, handlers) {
 
   /** Idle content: saved places (current first, tagged) + popular chips.
    *  Current location comes from the live handler (main.js module state —
-   *  the store only persists after a user pick); destinations from the store. */
+   *  the store only persists after a user pick); destinations from the store.
+   *  v0.8.23: saved rows swap their pin disc for the place's LIVE sky glyph
+   *  once the shared probe resolves (same cache as the home rail) — the
+   *  switcher reads the sky before you commit the tap. The current row keeps
+   *  its check disc: there the meaning is "you are here", not the weather. */
   const renderSearchIdle = () => {
     clear(searchResults);
     const cur = handlers.getLocation?.() ?? store.location.get();
@@ -101,7 +107,17 @@ export function wireHeader(refs, handlers) {
     if (cur || dests.length) {
       searchResults.appendChild(el('div.search-sec-label', null, t('search_yours')));
       if (cur) searchResults.appendChild(placeRow(cur, { glyph: 'check', tag: t('search_current') }));
-      for (const d of dests) searchResults.appendChild(placeRow(d));
+      for (const d of dests) {
+        const row = placeRow(d);
+        searchResults.appendChild(row);
+        probePlace(d).then((r) => {
+          if (r == null || r.code == null) return; // probe failed → pin stays
+          const disc = row.querySelector('.result-disc');
+          if (!disc) return;
+          disc.textContent = '';
+          disc.appendChild(wxGlyph(skyBucket(r.code, r.isDay), 'wx-ico result-wx'));
+        });
+      }
     }
     searchResults.appendChild(el('div.search-sec-label', null, t('search_popular')));
     searchResults.appendChild(el('div.search-quick', null,

@@ -13,6 +13,8 @@ import { temp as fmtTemp } from '../utils/format.js';
 import { describeWeather } from '../api/wmo.js';
 import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
+import { wxGlyph } from './icons.js';
+import { skyBucket } from './shared.js';
 
 /* ---------------- live mini-temps (lazy + cached) ---------------- */
 
@@ -32,7 +34,13 @@ function getJSONMini(url) {
  * Kick off (or reuse) the probe for one place; returns a promise resolving
  * to {temp, code, isDay}. Literal commas in the list param — the forecast
  * API rejects %2C-encoded lists.
+ * v0.8.23: exported so the Change-location modal's saved-place rows can
+ * join the same live-sky language (one probe, one cache, every surface).
  */
+export function probePlace(place) {
+  return probe(place);
+}
+
 function probe(place) {
   const key = `${place.lat.toFixed(2)},${place.lon.toFixed(2)}`;
   const hit = cache.get(key);
@@ -77,6 +85,24 @@ export function rememberPlace(loc) {
 /* ---------------- the rail ---------------- */
 
 /**
+ * v0.8.23 "the quiet indicators learn to speak": the chip's decorative dot
+ * becomes a live sky slot. While the probe is in flight (or if it fails)
+ * a quiet dot holds the place; on resolve the slot swaps to the SAME
+ * stroke-SVG weather glyph the hour strip and 10-day rows use, tinted per
+ * sky by the shared .wx-ico[data-wx] rules. aria-hidden — name+temp carry
+ * the meaning, the glyph is the glance.
+ */
+function wxSlot() {
+  return el('span.place-wx', { 'aria-hidden': 'true' }, el('span.place-dot'));
+}
+
+function fillWx(slot, r) {
+  if (!slot || r == null || r.code == null) return; // probe failed → dot stays
+  slot.textContent = '';
+  slot.appendChild(wxGlyph(skyBucket(r.code, r.isDay), 'wx-ico place-wx-ico'));
+}
+
+/**
  * Render the places rail into `mount`.
  * @param {HTMLElement} mount
  * @param {Object} ctx {current, units, onSelect(loc), onAdd(), onForget(i), isCurrent(place)}
@@ -90,18 +116,20 @@ export function renderPlaces(mount, ctx) {
 
   // current place chip first
   const cur = ctx.current;
+  const curWx = wxSlot();
   const curChip = el('button.place-chip.place-current', {
     type: 'button', role: 'listitem',
     title: [cur?.admin1, cur?.country].filter(Boolean).join(', '),
     onclick: () => {}, // already there
   },
-    el('span.place-dot', { 'aria-hidden': 'true' }),
+    curWx,
     el('span.place-name', null, cur?.name ?? '—'),
     el('span.place-temp', { 'data-keep': '1' }, '…'),
   );
   rail.appendChild(curChip);
   if (cur) {
     probe(cur).then((r) => {
+      fillWx(curWx, r);
       const t = curChip.querySelector('.place-temp');
       if (t && r.temp != null) t.textContent = fmtTemp(r.temp, ctx.units);
       else if (t) t.textContent = '';
@@ -111,12 +139,14 @@ export function renderPlaces(mount, ctx) {
   saved.forEach((p, i) => {
     const isCurrent = Math.abs(p.lat - (cur?.lat ?? 999)) < 0.05 && Math.abs(p.lon - (cur?.lon ?? 999)) < 0.05;
     if (isCurrent) return;
+    const wx = wxSlot();
     const chip = el('div.place-chip-wrap', { role: 'listitem' },
       el('button.place-chip', {
         type: 'button',
         title: [p.admin1, p.country].filter(Boolean).join(', '),
         onclick: () => ctx.onSelect?.(p),
       },
+        wx,
         el('span.place-name', null, p.name),
         el('span.place-temp', null, '…'),
       ),
@@ -127,6 +157,7 @@ export function renderPlaces(mount, ctx) {
     );
     rail.appendChild(chip);
     probe(p).then((r) => {
+      fillWx(wx, r);
       const t = chip.querySelector('.place-temp');
       if (t && r.temp != null) {
         t.textContent = fmtTemp(r.temp, ctx.units);

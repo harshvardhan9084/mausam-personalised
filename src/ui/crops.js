@@ -195,15 +195,33 @@ function cropCard(row, hasData) {
     ? c.stages[Math.min(row.stageIdx, c.stages.length - 1)]?.n?.[langIdx()] ?? ''
     : '';
 
-  /* stage progress bar */
+  /* stage ladder (v0.8.23 "the quiet indicators learn to speak"): the old
+     .crop-bar was a single fill + unlabeled ticks — exactly the family of
+     "irregular progress" the user flagged on the 10-day bars. Now each
+     stage is a NAMED segment sized by its share of the season: done
+     stages fill green, the current stage fills accent by progress WITHIN
+     the stage, future stages stay hollow. Tooltips carry the names, the
+     meta line names the position, aria-label reads the whole state. */
   let bar = null;
   if (row.status === 'growing' || row.status === 'harvest') {
-    bar = el('div.crop-bar',
-      el('div.crop-bar-fill', { style: { width: `${Math.max(3, Math.round(row.progress * 100))}%` } }),
-      ...c.stages.map((s, i) => el('span.crop-bar-tick', {
-        style: { left: `${Math.round(c.stages.slice(0, i).reduce((a, x) => a + x.f, 0) * 100)}%` },
-        title: s.n[langIdx()],
-      })),
+    const at = Math.min(row.stageIdx, c.stages.length - 1);
+    bar = el('div.crop-ladder', {
+      role: 'img',
+      'aria-label': `${t('crop_stage_pos', { n: at + 1, m: c.stages.length })}: ${stageName}`,
+    },
+      ...c.stages.map((s, i) => {
+        const state = i < at ? 'done' : i === at ? 'now' : 'todo';
+        const within = row.status === 'harvest' ? 1
+          : Math.min(1, Math.max(0.04, row.stageFrac || 0));
+        return el(`span.crop-seg.crop-${state}`, {
+          style: { flexGrow: String(Math.max(s.f, 0.02)) },
+          title: `${s.n[langIdx()]} · ${Math.round(s.f * 100)}%`,
+        },
+          state === 'now'
+            ? el('span.crop-seg-fill', { style: { width: `${Math.round(within * 100)}%` } })
+            : null,
+        );
+      }),
     );
   }
 
@@ -212,7 +230,7 @@ function cropCard(row, hasData) {
     meta.push(`${t('crop_sow_win')}: ${fmtD(row.sowStart)} – ${fmtD(row.sowEnd)}`);
     meta.push(`${t('crop_harvest_est')}: ~${fmtD(row.harvestAt)}`);
   } else if (row.status === 'growing' || row.status === 'harvest') {
-    meta.push(`${t('crop_stage')}: ${stageName}`);
+    meta.push(`${t('crop_stage_pos', { n: Math.min(row.stageIdx, c.stages.length - 1) + 1, m: c.stages.length })} · ${stageName}`);
     meta.push(`${t('crop_harvest_est')}: ~${fmtD(row.harvestAt)}`);
   } else {
     meta.push(`${t('crop_next_sow')}: ${fmtD(row.sowStart)} (${t('crop_in_days', { n: row.nextSowDays })})`);

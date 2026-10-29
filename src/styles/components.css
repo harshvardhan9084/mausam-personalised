@@ -370,6 +370,10 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   color: var(--accent);
 }
 .result-ico { width: 15px; height: 15px; }
+/* v0.8.23: a saved place's disc carries its LIVE sky (probe swap) — the
+   glyph rides the shared .wx-ico[data-wx] tint, so the switcher reads the
+   sky before the tap. Probe failure keeps the pin. */
+.result-wx { width: 16px; height: 16px; }
 .result-texts { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .result-texts .result-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .result-tag {

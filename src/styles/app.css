@@ -440,27 +440,33 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
 .crop-badge.crop-warn  { background: color-mix(in srgb, var(--yellow) 20%, transparent); color: var(--yellow); }
 .crop-badge.crop-muted { background: color-mix(in srgb, var(--muted) 15%, transparent); color: var(--muted); }
 
-.crop-bar {
-  position: relative;
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border) 60%, transparent);
+/* v0.8.23 stage ladder — replaces .crop-bar (one anonymous fill + unlabeled
+   ticks, the family of "irregular progress" the user flagged). One segment
+   per named stage, sized by its share of the season; done = green, now =
+   accent track with an inner fill for progress WITHIN the stage, todo =
+   hollow. Names live in the per-segment tooltip + the meta line below. */
+.crop-ladder {
+  display: flex;
+  gap: 3px;
+  height: 9px;
   margin: 12px 0 4px;
-  overflow: visible;
 }
-.crop-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--green), var(--accent));
+.crop-seg {
+  position: relative;
   min-width: 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 38%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 55%, transparent);
 }
-.crop-bar-tick {
+.crop-seg.crop-done { background: color-mix(in srgb, var(--green) 62%, transparent); box-shadow: none; }
+.crop-seg.crop-now { background: color-mix(in srgb, var(--accent) 24%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.crop-seg-fill {
   position: absolute;
-  top: -2px;
-  width: 2px;
-  height: 12px;
-  background: var(--border);
-  transform: translateX(-1px);
+  top: 0; left: 0; bottom: 0;
+  min-width: 6px; /* visible position nub even at the first day of a stage */
+  border-radius: 3px;
+  background: var(--accent);
 }
 
 .crop-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
