@@ -240,7 +240,23 @@
   }
   .insight-grid::-webkit-scrollbar { display: none; }
   .insight-card { flex: 0 0 252px; scroll-snap-align: start; }
-  .foryou-rail { grid-template-columns: 1fr; }
+  /* v0.8.19 — For You joins the digest rhythm: the exact MAUSAM SAYS strip
+     geometry (252px cards, snap, next-card peek, right-edge fade) so the
+     app's two insight sections scroll with one thumb motion on phones.
+     ≥641px keeps the auto-fit grid. */
+  .foryou-rail {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    margin-inline: -14px;
+    padding: 2px 30px 8px 14px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  }
+  .foryou-rail::-webkit-scrollbar { display: none; }
+  .foryou-card { flex: 0 0 252px; scroll-snap-align: start; }
   .dash-hero .hero-now-temp { font-size: 2.2rem; }
 }
 
@@ -348,6 +364,21 @@
 .place-chip-wrap:hover .place-forget, .place-forget:focus-visible { display: inline-flex; }
 .place-forget:hover { color: var(--red); border-color: var(--red); }
 .place-add { color: var(--accent); border-style: dashed; }
+
+/* v0.8.19 — the places cluster joins the desktop composition: the chips strip
+   owns the left column, Compare/Journey anchor the right edge — one composed
+   row under the hero instead of two left-hugging fragment rows. The strip
+   keeps its horizontal scroll inside col 1 when places outgrow it.
+   Mobile (<900px) keeps the stacked flow (strip, then tools row). */
+@media (min-width: 900px) {
+  #page-home .home-placebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 18px;
+    align-items: center;
+  }
+  #page-home .home-placebar .places-tools { justify-self: end; margin-top: 0; }
+}
 
 /* ---------- nowcast ---------- */
 .nowcast-head { display: flex; flex-direction: column; gap: 12px; }

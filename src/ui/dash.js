@@ -525,29 +525,37 @@ export function renderDashboard(root, snapshot, units, ctx) {
   heroCard.setAttribute('data-sky', skyBucket(s.now?.weather_code, s.now?.is_day));
   root.appendChild(el('div', { class: 'dash-hero' }, heroCard));
 
-  /* ---------- your places rail ---------- */
-  const placesMount = el('div.places-mount');
-  root.appendChild(placesMount);
-  renderPlaces(placesMount, {
-    current: loc,
-    units,
-    onSelect: (p) => ctx.pickLocation?.(p),
-    onAdd: () => ctx.openSearch?.(),
-    onForget: (i) => {
-      store.destinations.removeAt(i);
-      ctx.rerender?.();
-      toast(t('place_removed'));
-    },
-  });
-  if (ctx.openCompare || ctx.openJourney) {
-    root.appendChild(el('div.places-tools', { role: 'group', 'aria-label': 'Place tools' },
-      ctx.openCompare
-        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openCompare?.() }, icon('scale', 'chip-ico'), ' ', t('cmp_open'))
-        : null,
-      ctx.openJourney
-        ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openJourney?.() }, icon('route', 'chip-ico'), ' ', t('jny_open'))
-        : null,
-    ));
+  /* ---------- your places — labelled, one composed bar (v0.8.19) ----------
+     The last unlabelled home section joins the uppercase micro-label voice,
+     and the two fragment rows (chips strip, Compare/Journey tools) render
+     into one .home-placebar so desktop can compose them as a single row
+     (chips left, tools anchored right). Mobile keeps the stacked flow. */
+  if (loc || store.destinations.get().length) {
+    root.appendChild(sectionTitle(t('sec_places')));
+    const placesMount = el('div.places-mount');
+    const placebar = el('div.home-placebar', null, placesMount);
+    if (ctx.openCompare || ctx.openJourney) {
+      placebar.appendChild(el('div.places-tools', { role: 'group', 'aria-label': 'Place tools' },
+        ctx.openCompare
+          ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openCompare?.() }, icon('scale', 'chip-ico'), ' ', t('cmp_open'))
+          : null,
+        ctx.openJourney
+          ? el('button.btn.btn-sm', { type: 'button', onclick: () => ctx.openJourney?.() }, icon('route', 'chip-ico'), ' ', t('jny_open'))
+          : null,
+      ));
+    }
+    root.appendChild(placebar);
+    renderPlaces(placesMount, {
+      current: loc,
+      units,
+      onSelect: (p) => ctx.pickLocation?.(p),
+      onAdd: () => ctx.openSearch?.(),
+      onForget: (i) => {
+        store.destinations.removeAt(i);
+        ctx.rerender?.();
+        toast(t('place_removed'));
+      },
+    });
   }
 
   /* ---------- alerts (stacked, dismissible, dismissal sticky for the session) ---------- */
