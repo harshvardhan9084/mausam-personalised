@@ -9,7 +9,45 @@
 
 import { el } from '../utils/dom.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
+import { icon, skyIcon, tipIcon } from '../ui/icons.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
+
+/* ================================================================
+   v0.8.20 — the chat joins the glyph language. Cards used to render
+   raw emoji (💧 🌬 📍 🌅 from the static renderers, weather-code emoji
+   from wmo.js, freeform emoji from the LLM) — every Android skin draws
+   those differently, and chat was the last "generated vs designed"
+   surface after the v0.8.13 migration covered the dashboard. muGlyph()
+   folds whatever a payload carries into the SAME stroke-SVG language:
+   sky-bucket keys (clear-day…storm), tip keys (umbrella, shirt…), or
+   the legacy emoji set (mapped below). Unmapped → null, so callers
+   fall back to a designed neutral — never a broken empty chip.
+================================================================ */
+const KEY_WX = {
+  'clear-day': 'clear-day', 'clear-night': 'clear-night', 'partly-day': 'partly-day',
+  'partly-night': 'partly-night', cloudy: 'cloudy', fog: 'fog', drizzle: 'drizzle',
+  rain: 'rain', snow: 'snow', storm: 'storm',
+  sun: 'clear-day', moon: 'clear-night', cloud: 'cloudy', partly: 'partly-day',
+};
+const EMOJI_WX = {
+  '☀️': 'clear-day', '🌤️': 'partly-day', '⛅': 'partly-day', '🌝': 'clear-day', '🌞': 'clear-day',
+  '☁️': 'cloudy', '🌙': 'clear-night', '🌦️': 'drizzle', '🌧️': 'rain', '⛈️': 'storm',
+  '🌩️': 'storm', '🌫️': 'fog', '❄️': 'snow', '🌨️': 'snow',
+  '☂️': 'rain', '☔': 'rain',
+};
+const EMOJI_TIP = {
+  '💧': 'droplet', '🌬': 'wind', '💨': 'wind', '🧭': 'compass', '🌡️': 'thermo',
+  '☂️': 'umbrella', '☔': 'umbrella', '🧥': 'shirt', '👕': 'shirt', '🧣': 'shirt',
+  '🧢': 'sun', '🕶️': 'sun', '🧴': 'sun', '😎': 'sun', '😷': 'haze', '✅': 'check', ' ✔': 'check',
+};
+function muGlyph(key, cls = 'mu-ico') {
+  if (typeof key !== 'string' || !key) return null;
+  const k = key.trim();
+  if (!k) return null;
+  const bucket = KEY_WX[k.toLowerCase()] ?? EMOJI_WX[k];
+  if (bucket) return skyIcon(bucket, cls);
+  return tipIcon(k, cls) ?? (EMOJI_TIP[k] ? icon(EMOJI_TIP[k], cls) : null);
+}
 
 /* ---------------- text helpers ---------------- */
 
@@ -245,19 +283,19 @@ const R = {
     const unit = window.__mausamState?.units ?? 'metric';
     return el('div.mu-now.card',
       el('div.mu-now-main',
-        el('div.mu-now-icon', { 'aria-hidden': 'true' }, d.icon || '🌤️'),
+        el('div.mu-now-icon', { 'aria-hidden': 'true' }, muGlyph(d.icon) ?? skyIcon('cloudy', 'mu-ico')),
         el('div',
           el('div.mu-now-temp', null, d.temp != null ? `${fmtTemp(d.temp, unit, true)}` : '—'),
           el('div.mu-now-cond', null, d.cond || '—')
         )
       ),
       el('div.mu-now-side',
-        d.feels != null ? el('div', null, `Feels ${fmtTemp(d.feels, unit, true)}`) : null,
-        d.humidity != null ? el('div', null, `💧 ${Math.round(d.humidity)}%`) : null,
-        d.wind != null ? el('div', null, `🌬 ${fmtWind(d.wind, unit)}`) : null,
+        d.feels != null ? el('div', null, icon('thermo', 'mu-side-ico'), ` Feels ${fmtTemp(d.feels, unit, true)}`) : null,
+        d.humidity != null ? el('div', null, icon('droplet', 'mu-side-ico'), ` ${Math.round(d.humidity)}%`) : null,
+        d.wind != null ? el('div', null, icon('wind', 'mu-side-ico'), ` ${fmtWind(d.wind, unit)}`) : null,
         d.hi != null && d.lo != null ? el('div', null, `H ${fmtTemp(d.hi, unit)} · L ${fmtTemp(d.lo, unit)}`) : null
       ),
-      d.place ? el('div.mu-now-place', null, `📍 ${d.place}`) : null
+      d.place ? el('div.mu-now-place', null, icon('pin', 'mu-side-ico'), ` ${d.place}`) : null
     );
   },
 
@@ -267,7 +305,7 @@ const R = {
       { role: 'list' },
       p.d.hours.map((h) => el('div.mu-hour', { role: 'listitem', class: (h.pop ?? 0) >= 50 ? 'wet' : '' },
         el('div.mu-hour-t', null, h.time || '—'),
-        el('div.mu-hour-i', null, h.icon || '·'),
+        el('div.mu-hour-i', null, muGlyph(h.icon) ?? skyIcon('cloudy', 'mu-ico')),
         el('div.mu-hour-v', null, h.temp != null ? fmtTemp(h.temp, unit) : '—'),
         h.pop != null ? el('div.mu-hour-p', null, `${Math.round(h.pop)}%`) : null
       ))
@@ -283,6 +321,23 @@ const R = {
   },
 
   'rain-bars'(p) {
+    /* v0.8.20 — dry-window honesty: when the whole chart peaks below 15%,
+       the bars collapse to the 3-5px sliver floor and the card reads as a
+       broken empty box (real-world regression seen on a 6%-peak day).
+       A designed dry strip says what the bars can't: no rain, and when
+       the tiny peak is. ≥15% keeps the real bars — the chart earns it. */
+    const pops = Array.isArray(p.d?.pops) ? p.d.pops.map((x) => Number(x) || 0) : [];
+    const peak = pops.length ? Math.max(...pops) : 0;
+    if (pops.length && peak < 15) {
+      const i = pops.indexOf(peak);
+      const at = p.d.labels?.[i];
+      return el('div.mu-dry',
+        skyIcon('clear-day', 'mu-dry-ico'),
+        el('div.mu-dry-text',
+          el('b', null, 'No rain in this window'),
+          el('span', null, `Peak chance ${Math.round(peak)}%${at ? ` around ${at}` : ''} — stay dry.`))
+      );
+    }
     const svg = rainBarsSVG(p.d);
     return el('div.mu-chart', svg);
   },
@@ -296,7 +351,7 @@ const R = {
     return el('div.mu-days',
       p.d.days.map((d) => el('div.mu-day',
         el('span.mu-day-l', null, d.label || d.date || '—'),
-        el('span.mu-day-i', { title: d.cond || '' }, d.icon || '·'),
+        el('span.mu-day-i', { title: d.cond || '' }, muGlyph(d.icon) ?? skyIcon('cloudy', 'mu-ico')),
         el('div.mu-day-bar',
           el('div.mu-day-fill', {
             style: {
@@ -312,27 +367,31 @@ const R = {
   },
 
   'metrics-grid'(p) {
-    return el('div.mu-metrics', p.d.items.map((m) =>
-      el('div.mu-metric',
-        el('div.mu-metric-v', null, (m.icon ? `${m.icon} ` : '') + m.value),
+    return el('div.mu-metrics', p.d.items.map((m) => {
+      const g = muGlyph(m.icon);
+      return el('div.mu-metric',
+        el('div.mu-metric-v', null, g, m.value ? el('span', null, ` ${m.value}`) : null),
         el('div.mu-metric-l', null, m.label)
-      )
-    ));
+      );
+    }));
   },
 
   'advice'(p) {
     return el(`div.mu-advice.mu-tone-${p.d.tone}`,
       p.d.title ? el('div.mu-advice-t', null, p.d.title) : null,
-      el('div.mu-advice-list', p.d.items.map((i) =>
-        el('div.mu-advice-row', null, i.icon ? el('span', null, i.icon) : null, el('span', null, i.text))
-      ))
+      el('div.mu-advice-list', p.d.items.map((i) => {
+        const g = muGlyph(i.icon);
+        return el('div.mu-advice-row', null, g ? el('span.mu-advice-ico', null, g) : null, el('span', null, i.text));
+      }))
     );
   },
 
   'alert'(p) {
-    const icon = { info: 'ℹ️', warn: '⚠️', danger: '🚨' }[p.d.severity] ?? '⚠️';
+    /* severity → the dashboard's alert language: same .alert tone classes,
+       stroke glyphs instead of ℹ️/⚠️/🚨 (colors come from rich.css). */
+    const sev = p.d.severity === 'danger' ? 'danger' : p.d.severity === 'warn' ? 'warn' : 'info';
     return el(`div.alert.alert-${p.d.severity === 'info' ? 'info' : p.d.severity === 'danger' ? 'danger' : 'warn'}.mu-alert`,
-      el('div.alert-title', null, `${icon} ${p.d.title || 'Alert'}`),
+      el('div.alert-title', null, icon(sev === 'info' ? 'bell' : 'warn', 'alert-ico'), el('span', null, p.d.title || 'Alert')),
       p.d.text ? el('div', null, p.d.text) : null,
       p.d.source ? el('div.mu-alert-src', null, p.d.source) : null
     );
@@ -379,11 +438,11 @@ const R = {
   'sun-card'(p) {
     const d = p.d;
     return el('div.sun-card.card',
-      d.sunrise ? el('div.sun-row', null, '🌅 ', el('b', null, d.sunrise), ' sunrise') : null,
-      d.sunset ? el('div.sun-row', null, '🌇 ', el('b', null, d.sunset), ' sunset') : null,
-      d.dayLength ? el('div.sun-row', null, '⏳ ', el('b', null, d.dayLength), ' of daylight') : null,
+      d.sunrise ? el('div.sun-row', null, icon('sunrise', 'sun-row-ico'), el('b', null, d.sunrise), ' sunrise') : null,
+      d.sunset ? el('div.sun-row', null, icon('sunset', 'sun-row-ico'), el('b', null, d.sunset), ' sunset') : null,
+      d.dayLength ? el('div.sun-row', null, icon('hourglass', 'sun-row-ico'), el('b', null, d.dayLength), ' of daylight') : null,
       d.moonrise || d.moonset
-        ? el('div.sun-row.sun-moon', null, `🌙 ${d.moonrise || '—'} ↑ · ${d.moonset || '—'} ↓`)
+        ? el('div.sun-row.sun-moon', null, icon('moon', 'sun-row-ico'), ` ${d.moonrise || '—'} ↑ · ${d.moonset || '—'} ↓`)
         : null,
       d.source ? el('div.sun-src', null, `via ${d.source} official data`) : null
     );
@@ -392,7 +451,7 @@ const R = {
   'wear-list'(p) {
     return el('div.wear-list', p.d.items.map((i) =>
       el('div.wear-row',
-        el('span.wear-icon', null, i.icon),
+        el('span.wear-icon', null, muGlyph(i.icon) ?? icon('shirt', 'mu-ico')),
         el('div', null,
           el('div.wear-name', null, i.name),
           i.why ? el('div.wear-why', null, i.why) : null
@@ -445,7 +504,7 @@ export function renderPayload(payload, handlers) {
 export function renderFallback(rawJSON, reason) {
   const salvage = salvageReadable(rawJSON);
   return el('div.mu-fallback',
-    el('div.mu-fallback-head', null, '🧩 Couldn’t draw that card'),
+    el('div.mu-fallback-head', null, icon('warn', 'mu-fallback-ico'), ' Couldn’t draw that card'),
     reason ? el('div.mu-fallback-why', null, humanReason(reason)) : null,
     salvage
       ? el('div.mu-fallback-body',
@@ -511,7 +570,7 @@ function fallbackNode(title, reason, d) {
   }
   return el('div.mu-fallback',
     title ? el('div.mu-title', null, title) : null,
-    el('div.mu-fallback-head', null, `🧩 ${reason}`),
+    el('div.mu-fallback-head', null, icon('warn', 'mu-fallback-ico'), ` ${reason}`),
     rows.length
       ? el('div.mu-fallback-body', rows.map(([k, v]) =>
           el('div.mu-fallback-row', null, el('span', null, k), el('b', null, v))))

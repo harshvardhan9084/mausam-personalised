@@ -107,6 +107,55 @@
 
 .mu-alert { margin: 0; }
 .mu-alert-src { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+/* v0.8.20 — chat alerts reuse the dashboard's alert language: stroke glyph
+   in the title, tone color from the same severity classes. */
+.mu-alert .alert-title { display: flex; align-items: center; gap: 7px; font-weight: 700; margin-bottom: 2px; }
+.mu-alert .alert-ico { width: 16px; height: 16px; flex: 0 0 16px; }
+.mu-alert.alert-warn .alert-ico { color: var(--yellow); }
+.mu-alert.alert-danger .alert-ico { color: var(--red); }
+.mu-alert.alert-info .alert-ico { color: var(--blue); }
+
+/* ---------- glyph language (v0.8.20) ----------
+   Every card icon renders the app's stroke-SVG set via muGlyph(). The
+   svgs size to the local font (1em) so each slot keeps its emoji-era
+   scale: mu-now-icon 2.1rem, hour/day cells 1rem, side rows 12px. */
+.mu-ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; }
+.mu-side-ico { width: 12px; height: 12px; flex: 0 0 12px; display: inline-block; vertical-align: -1.5px; }
+.sun-row-ico { width: 14px; height: 14px; flex: 0 0 14px; display: inline-block; vertical-align: -2px; margin-right: 2px; }
+.sun-row { display: inline-flex; align-items: center; gap: 5px; }
+.sun-row b { margin-right: 2px; }
+.mu-fallback-ico { width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
+.wear-icon { display: inline-flex; align-items: center; justify-content: center; }
+.wear-icon .mu-ico { width: 19px; height: 19px; color: var(--accent); }
+.mu-advice-ico { display: inline-flex; flex: 0 0 auto; }
+.mu-advice-ico .mu-ico { width: 14px; height: 14px; vertical-align: 0; margin-top: 2px; }
+.mu-hour-i .mu-ico { width: 1.05rem; height: 1.05rem; vertical-align: 0; }
+.mu-day-i .mu-ico { width: 1rem; height: 1rem; vertical-align: 0; }
+.mu-metric-v { display: flex; align-items: center; gap: 5px; }
+.mu-metric-v .mu-ico { width: 13px; height: 13px; flex: 0 0 13px; color: var(--muted); }
+
+/* ---------- dry-window strip (v0.8.20) ----------
+   rain-bars with a <15% peak used to render near-invisible sliver bars in
+   an empty box — the designed state says what the chart can't. */
+.mu-dry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--green) 7%, var(--surface));
+  border: 1px dashed color-mix(in srgb, var(--green) 38%, var(--border));
+  border-radius: 15px 15px 15px 4px;
+  padding: 12px 14px;
+}
+.mu-dry-ico {
+  width: 30px; height: 30px; flex: 0 0 30px;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  border-radius: 50%;
+  padding: 6px;
+}
+.mu-dry-text { display: flex; flex-direction: column; gap: 1px; font-size: 0.84rem; }
+.mu-dry-text b { font-weight: 680; }
+.mu-dry-text span { color: var(--muted); font-size: 0.78rem; }
 
 /* ---------- compare table ---------- */
 .mu-tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 15px 15px 15px 4px; padding: 4px 8px; }

@@ -765,7 +765,7 @@ function welcome() {
     ? [hint.slice(0, slash), el('kbd.kbd', null, '/'), hint.slice(slash + 1)]
     : [hint];
   turn.cards.appendChild(el('div.chat-welcome',
-    el('div.chat-welcome-title', null, `${t('mitra_welcome_hi')}${name ? ` ${name}` : ''}! 👋`),
+    el('div.chat-welcome-title', null, `${t('mitra_welcome_hi')}${name ? ` ${name}` : ''}!`),
     el('div.chat-welcome-text', null,
       t(n ? 'mitra_welcome_t' : 'mitra_welcome_t_nocity', { city: s?.location?.name ?? '' })),
     el('div.chat-welcome-tip', null, tipKids),

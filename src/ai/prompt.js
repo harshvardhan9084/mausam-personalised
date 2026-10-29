@@ -10,6 +10,7 @@
 import { CONTRACT_VERSION } from './contract.js';
 import { profileForAI } from '../core/profile.js';
 import { store } from '../core/storage.js';
+import { skyBucket } from '../ui/shared.js';
 
 const round = (v, d = 0) => (v == null || !Number.isFinite(v) ? null : Number(v.toFixed(d)));
 const hhmm = (iso) => (iso ? iso.slice(11, 16) : null);
@@ -42,7 +43,7 @@ export function compactSnapshot(state) {
       tempC: round(s.now.temp, 1),
       feelsC: round(s.now.feels, 1),
       condition: s.now.wx?.label,
-      icon: s.now.wx?.icon,
+      sky: s.now.weather_code != null ? skyBucket(s.now.weather_code, s.now.is_day) : undefined,
       humidity: round(s.now.humidity),
       windKmh: round(s.now.wind),
       windDir: s.now.wind_dir,
@@ -82,7 +83,7 @@ export function compactSnapshot(state) {
     next10days: s.days.map((d) => ({
       day: d.label,
       date: d.date,
-      icon: d.wx?.icon,
+      sky: d.weather_code != null ? skyBucket(d.weather_code, true) : undefined,
       cond: d.wx?.label,
       maxC: round(d.temp_max),
       minC: round(d.temp_min),
@@ -190,22 +191,22 @@ To emit a card, drop this fenced block anywhere between your sentences:
 {"v":${CONTRACT_VERSION},"c":"<type>","t":"<optional card title>","d":{ }}
 \`\`\`
 
-Rules: valid JSON only (no comments, no trailing commas); one component per fence; ≤3 cards per reply; numbers must come from DATA/tools. Use EXACTLY the field names shown below — e.g. rain-bars takes "labels"+"pops" (never "hours"/"values"), temp-chart takes "labels"+"temps"+"feels".
+Rules: valid JSON only (no comments, no trailing commas); one component per fence; ≤3 cards per reply; numbers must come from DATA/tools. Use EXACTLY the field names shown below — e.g. rain-bars takes "labels"+"pops" (never "hours"/"values"), temp-chart takes "labels"+"temps"+"feels". Icon fields take a glyph KEY, never emoji — weather: clear-day | clear-night | partly-day | cloudy | fog | drizzle | rain | snow | storm; objects: umbrella | shirt | droplet | wind | compass | thermo | sun | haze | check | clock.
 
 Component types — EXACT payload shapes (field names matter, follow them precisely):
-- now-card — d:{"place":"Mumbai","temp":29,"feels":31,"cond":"Moderate rain","icon":"🌧️","hi":31,"lo":24,"humidity":88,"wind":12}
-- hourly-timeline — d:{"hours":[{"time":"1 PM","temp":29,"pop":35,"icon":"🌦️"}]} (3–12 items)
+- now-card — d:{"place":"Mumbai","temp":29,"feels":31,"cond":"Moderate rain","icon":"rain","hi":31,"lo":24,"humidity":88,"wind":12}
+- hourly-timeline — d:{"hours":[{"time":"1 PM","temp":29,"pop":35,"icon":"drizzle"}]} (3–12 items)
 - temp-chart — d:{"labels":["12 AM","9 AM","6 PM"],"temps":[24,31,28],"feels":[23,33,29],"unit":"°C"} (labels/temps/feels same length)
 - rain-bars — d:{"labels":["1 PM","2 PM","3 PM"],"pops":[35,69,21]} (pops = 0–100 rain probability)
-- daily-list — d:{"days":[{"label":"Today","icon":"🌧️","hi":31,"lo":24,"pop":78}]} (≤7)
-- metrics-grid — d:{"items":[{"label":"Humidity","value":"88%","icon":"💧"}]} (≤8)
+- daily-list — d:{"days":[{"label":"Today","icon":"rain","hi":31,"lo":24,"pop":78}]} (≤7)
+- metrics-grid — d:{"items":[{"label":"Humidity","value":"88%","icon":"droplet"}]} (≤8)
 - advice — d:{"tone":"warn","title":"Quick takes","items":["Carry an umbrella","Leave early"]} (tone: good|info|warn|danger)
 - alert — d:{"severity":"warn","title":"Heavy rain expected","text":"Around 5 PM…"} (severity: info|warn|danger)
 - compare-table — d:{"columns":["","Delhi","Mumbai"],"rows":[["Now","29°C","27°C"],["Rain","78%","12%"]]}
 - window-card — d:{"verdict":"…","windows":[{"slot":"6 AM – 8 AM","rating":"Good","reason":"12% rain · AQI 90"}]} (rating: Good|Fair|Poor)
 - aqi-card — d:{"aqi":164,"category":"Moderate","dominant":"PM10","advice":"…"}
 - sun-card — d:{"sunrise":"06:22","sunset":"17:48","dayLength":"11h 26m"}
-- wear-list — d:{"items":[{"icon":"☂️","name":"Umbrella","why":"78% rain at 6 PM"}]} (≤5)
+- wear-list — d:{"items":[{"icon":"umbrella","name":"Umbrella","why":"78% rain at 6 PM"}]} (≤5)
 - chips — d:{"items":["Hourly forecast","What to wear?"]} (≤3 follow-up options)
 - note — d:{"text":"small print…"}
 

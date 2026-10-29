@@ -155,14 +155,14 @@ function wearItems(state) {
   const aqi = s.currentAqi?.aqi;
   const uv = s.now.uv;
   const hi = s.now.hi ?? s.now.feels;
-  if (maxPop >= 40) items.push({ icon: '☂️', name: maxPop >= 70 ? 'Umbrella — carry it for sure' : 'Compact umbrella or light raincoat', why: `${Math.round(maxPop)}% rain chance in the next 12 hours` });
-  if (hi >= 36) items.push({ icon: '🧴', name: 'Sunscreen + light cottons', why: `Feels like ${t(hi, true)} — loose, breathable fabrics` });
-  if (hi >= 40) items.push({ icon: '🧢', name: 'Cap / shade', why: 'Heat index is high around midday' });
-  if ((s.now.temp ?? 30) <= 12) items.push({ icon: '🧥', name: 'Warm layer or jacket', why: `${t(s.now.temp, true)} right now — mornings colder` });
-  else if ((s.days?.[1]?.temp_min ?? 99) <= 10) items.push({ icon: '🧥', name: 'Light jacket for evening', why: `Tomorrow dips to ${t(s.days[1].temp_min, true)}` });
-  if (aqi != null && aqi >= 150) items.push({ icon: '😷', name: 'N95/FFP2 mask', why: `CPCB AQI ${aqi} (${s.currentAqi.category})` });
-  if (uv != null && uv >= 6) items.push({ icon: '🕶️', name: 'Sunglasses', why: `UV index ${Math.round(uv)} — ${s.uvNow?.label ?? 'high'}` });
-  if (!items.length) items.push({ icon: '✅', name: 'Nothing special', why: 'Regular day — normal clothes work fine' });
+  if (maxPop >= 40) items.push({ icon: 'umbrella', name: maxPop >= 70 ? 'Umbrella — carry it for sure' : 'Compact umbrella or light raincoat', why: `${Math.round(maxPop)}% rain chance in the next 12 hours` });
+  if (hi >= 36) items.push({ icon: 'sun', name: 'Sunscreen + light cottons', why: `Feels like ${t(hi, true)} — loose, breathable fabrics` });
+  if (hi >= 40) items.push({ icon: 'sun', name: 'Cap / shade', why: 'Heat index is high around midday' });
+  if ((s.now.temp ?? 30) <= 12) items.push({ icon: 'shirt', name: 'Warm layer or jacket', why: `${t(s.now.temp, true)} right now — mornings colder` });
+  else if ((s.days?.[1]?.temp_min ?? 99) <= 10) items.push({ icon: 'shirt', name: 'Light jacket for evening', why: `Tomorrow dips to ${t(s.days[1].temp_min, true)}` });
+  if (aqi != null && aqi >= 150) items.push({ icon: 'haze', name: 'N95/FFP2 mask', why: `CPCB AQI ${aqi} (${s.currentAqi.category})` });
+  if (uv != null && uv >= 6) items.push({ icon: 'sun', name: 'Sunglasses', why: `UV index ${Math.round(uv)} — ${s.uvNow?.label ?? 'high'}` });
+  if (!items.length) items.push({ icon: 'check', name: 'Nothing special', why: 'Regular day — normal clothes work fine' });
   return items.slice(0, 5);
 }
 
@@ -476,10 +476,10 @@ function buildWind(state) {
   return {
     text: `Wind is **${w(s.now.wind)}** from the ${compass || '—'}${s.now.gusts ? `, gusting to **${w(s.now.gusts)}**` : ''}. Humidity **${Math.round(s.now.humidity ?? 0)}%** — ${(s.now.humidity ?? 0) > 70 ? 'that sticky, muggy feel' : (s.now.humidity ?? 0) < 30 ? 'quite dry air' : 'comfortable range'}.`,
     comps: [fence('metrics-grid', { items: [
-      { label: 'Wind', value: w(s.now.wind), icon: '🌬' },
-      { label: 'Gusts', value: s.now.gusts ? w(s.now.gusts) : '—', icon: '💨' },
-      { label: 'Humidity', value: `${Math.round(s.now.humidity ?? 0)}%`, icon: '💧' },
-      { label: 'Pressure', value: s.now.pressure ? `${Math.round(s.now.pressure)} hPa` : '—', icon: '🧭' },
+      { label: 'Wind', value: w(s.now.wind), icon: 'wind' },
+      { label: 'Gusts', value: s.now.gusts ? w(s.now.gusts) : '—', icon: 'wind' },
+      { label: 'Humidity', value: `${Math.round(s.now.humidity ?? 0)}%`, icon: 'droplet' },
+      { label: 'Pressure', value: s.now.pressure ? `${Math.round(s.now.pressure)} hPa` : '—', icon: 'compass' },
     ] }, 'Conditions detail')],
   };
 }
