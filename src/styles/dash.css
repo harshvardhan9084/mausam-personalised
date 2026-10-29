@@ -137,6 +137,36 @@
 
 .aqi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .aqi-head .card-h { margin-bottom: 0; }
+/* v0.8.24 model-estimate honesty: the header tag names what the number IS
+   (scale + estimation method), and the seasonal note says how far the CAMS
+   model can sit below official stations — warn tone, same grammar as the
+   insight/crop advice cards. */
+.aqi-src-tag {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.aqi-est-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 35%, var(--border));
+  background: color-mix(in srgb, var(--yellow) 9%, transparent);
+}
+.aqi-est-ico { flex: 0 0 auto; width: 16px; height: 16px; color: var(--yellow); margin-top: 1px; }
+.aqi-est-body { display: grid; gap: 5px; font-size: 0.76rem; line-height: 1.45; color: var(--tx); }
+.aqi-est-body b { font-size: 0.78rem; }
+.aqi-est-link { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 /* AQI dial (v0.8.10) — the CPCB number gets a real face: semicircular
    gauge on the absolute 0–500 scale, arc in the category colour, big
    numeral, category label. Advice + chips anchor to its right. */

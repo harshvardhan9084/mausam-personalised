@@ -23,6 +23,7 @@ import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
 import { t } from '../core/i18n.js';
+import { aqiNeedsSeasonNotice, stationAqiUrl } from '../core/aqi-cpcb.js';
 
 /** Clock-aware time-of-day formatter — every surface honors the Clock setting
  *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
@@ -182,7 +183,7 @@ function shareWeather(s, units, loc) {
   const lines = [
     `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${n.wx?.label ?? ''}`,
     today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
-    aqi?.aqi != null ? `AQI ${aqi.aqi} (${aqi.category})` : null,
+    aqi?.aqi != null ? `AQI ${aqi.aqi} est. (${aqi.category})` : null,
     '— Mausam',
   ].filter(Boolean);
   const text = lines.join('\n');
@@ -288,11 +289,19 @@ function aqiDialSvg(aqi) {
   return svg;
 }
 
-function aqiCardV2(s) {
+function aqiCardV2(s, loc = null) {
   const aqi = s.currentAqi;
   const nowAir = s.hours[0]?.air ?? {};
   const trend = s.hours.slice(0, 48).filter((h) => h.aqi != null);
-  const head = el('div.aqi-head', el('div.card-h', null, t('sec_aqi')));
+  /* v0.8.24: the title no longer claims the source — "(CPCB)" read as
+     official station data while the number is a CAMS model estimate.
+     The scale + estimation method now live on a visible tag, and during
+     the pollution season a designed notice says how far the model can
+     sit below the real stations (and links to them). */
+  const head = el('div.aqi-head',
+    el('div.card-h', null, t('sec_aqi')),
+    el('span.aqi-src-tag', { 'aria-label': t('aqi_model_tag') }, t('aqi_model_tag')),
+  );
 
   const cardBody = card(head);
 
@@ -392,6 +401,22 @@ function aqiCardV2(s) {
     cardBody.appendChild(wrap);
   }
   if (aqi?.dominant) cardBody.appendChild(el('div.aqi-dominant', null, `${t('aqi_dominant')}: ${aqi.dominant}`));
+
+  /* v0.8.24 pollution-season honesty: a low model number in the Oct–Feb
+     haze belt is the one case where this card could genuinely mislead —
+     say so, in the card, with a one-tap path to real station readings. */
+  if (aqiNeedsSeasonNotice(aqi?.aqi, loc?.lat, loc?.lon)) {
+    cardBody.appendChild(el('div.aqi-est-note', { role: 'note' },
+      icon('warn', 'aqi-est-ico'),
+      el('div.aqi-est-body',
+        el('b', null, t('aqi_est_note_title')),
+        el('span', null, t('aqi_est_note_body')),
+        el('a.aqi-est-link', {
+          href: stationAqiUrl(loc?.name), target: '_blank', rel: 'noopener noreferrer',
+        }, t('aqi_est_link')),
+      ),
+    ));
+  }
   return cardBody;
 }
 
@@ -886,7 +911,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- AQI + sun row ---------- */
   const sun = s.sun;
   const row = el('div.row-2');
-  row.appendChild(aqiCardV2(s));
+  row.appendChild(aqiCardV2(s, ctx.location));
 
   const imd = s.bundle?.imd;
   /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph

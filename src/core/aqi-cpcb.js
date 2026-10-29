@@ -64,6 +64,42 @@ export function aqiBandColor(aqi) {
   return cat.color;
 }
 
+/* ================================================================
+   MODEL-ESTIMATE HONESTY (v0.8.24) — the AQI this app computes comes from
+   the CAMS satellite model behind Open-Meteo (≈11 km grid, no street-level
+   emissions, no crop-burning plumes). Around Indian cities it is documented
+   to run FAR below official CPCB stations during the Oct–Feb pollution
+   season — Delhi has shown model ~20-40 vs stations 200-400 the same hour.
+   A number that low, shown as plain "Air quality (CPCB)", can talk someone
+   out of a mask. These helpers let every surface say what the number IS
+   and when the gap is dangerous.
+================================================================ */
+
+/** India's pollution season: October through February (0-based months). */
+export function isPollutionSeason(d = new Date()) {
+  const m = d.getMonth();
+  return m >= 9 || m <= 1;
+}
+
+/** Indo-Gangetic plain + NW haze belt — Punjab → West Bengal, where the
+ *  model-vs-station gap is extreme every winter (stubble smoke, haze inversions). */
+export function isInHazeBelt(lat, lon) {
+  return lat != null && lon != null
+    && lat >= 21.5 && lat <= 32.5 && lon >= 72 && lon <= 88.5;
+}
+
+/** The dangerous case: the estimate is low enough to look "safe" while
+ *  official stations in the belt typically read Poor+ in this season. */
+export function aqiNeedsSeasonNotice(aqi, lat, lon, d = new Date()) {
+  return aqi != null && aqi < 100 && isPollutionSeason(d) && isInHazeBelt(lat, lon);
+}
+
+/** Live station readings for this place (CPCB data republished, mobile-friendly). */
+export function stationAqiUrl(name) {
+  const slug = String(name ?? '').toLowerCase().trim().replace(/\s+/g, '-');
+  return slug ? `https://aqicn.org/city/${encodeURIComponent(slug)}/` : 'https://aqicn.org/';
+}
+
 /**
  * Linear sub-index for one pollutant value against the CPCB table.
  * @param {number} value pollutant concentration

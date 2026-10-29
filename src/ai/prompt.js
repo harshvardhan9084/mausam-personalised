@@ -66,7 +66,7 @@ export function compactSnapshot(state) {
       : null,
     extras: state.extras ?? null,
     aqi: s.currentAqi?.aqi != null
-      ? { cpcbAqi: s.currentAqi.aqi, category: s.currentAqi.category, dominant: s.currentAqi.dominant }
+      ? { cpcbAqi: s.currentAqi.aqi, category: s.currentAqi.category, dominant: s.currentAqi.dominant, source: 'cams-model-estimate' }
       : null,
     rainToday: {
       maxPop: pops.length ? Math.max(...pops) : null,
@@ -215,7 +215,7 @@ Presentation guidance:
 - Trends ("hotter later?", "how's the week?") → \`temp-chart\` or \`daily-list\`
 - What to wear/carry → ALWAYS answer with a \`wear-list\` (one-line reason per item) plus one short intro sentence
 - Planning/timing questions → \`window-card\` with slots + Good/Fair/Poor rating
-- Air quality → \`aqi-card\` + one practical line
+- Air quality → \`aqi-card\` + one practical line. The AQI you get is a CAMS MODEL ESTIMATE, not an official reading — around Indian cities it reads FAR below real CPCB stations (Delhi in Oct–Feb: model often ~30 while stations read 200+ Poor). ALWAYS call it a "model estimate", never present it as the official number, and point users to official station data for health decisions when it matters
 - Another city → \`now-card\` for that city, or \`compare-table\` if comparing
 - Warnings (storm, heat, AQI severe) → \`alert\`
 - Farming questions → use the soilNow + next10days blocks: moisture bands (0.0–0.15 dry → irrigate, 0.15–0.35 good, >0.35 wet), spray when wind < 15 km/h and rain < 30%

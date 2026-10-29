@@ -12,6 +12,7 @@ import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { icon, skyIcon, tipIcon } from '../ui/icons.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
 import { aqiBandColor } from '../core/aqi-cpcb.js';
+import { t } from '../core/i18n.js';
 
 /* ================================================================
    v0.8.20 — the chat joins the glyph language. Cards used to render
@@ -426,10 +427,13 @@ const R = {
        card's own 6-way ternary that mixed tokens with two stray hexes and
        could disagree with the dashboard dial for the same value. */
     const color = p.d.aqi != null ? aqiBandColor(p.d.aqi) : (cat?.color ?? 'var(--aqi-u)');
+    /* v0.8.24 — the card carries the same honesty tag as the dashboard dial:
+       this number is a CAMS model estimate, not an official station reading. */
     return el('div.aqi-card.card.mu-aqi',
       el('div.aqi-big', { style: { color } }, p.d.aqi != null ? String(Math.round(p.d.aqi)) : '—'),
       el('div',
         el('div.aqi-cat', { style: { color } }, p.d.category || 'Unknown'),
+        el('div.aqi-src', null, t('aqi_model_tag')),
         el('div.aqi-note', null,
           p.d.advice || (p.d.dominant ? `Dominant pollutant: ${p.d.dominant}` : 'Air quality summary')
         )

@@ -13,6 +13,7 @@
 
 import { temp as fmtTemp, wind as fmtWind, hourLabel } from '../utils/format.js';
 import { runScore, eventScore, driveScore, dayScore, bestWindows, band } from '../core/scoring.js';
+import { isPollutionSeason } from '../core/aqi-cpcb.js';
 import { runTool, fetchCitySnapshot } from './tools.js';
 
 /* ---------------- tiny utils ---------------- */
@@ -410,10 +411,14 @@ function buildAqi(state) {
   const advice = [];
   if (a.aqi >= 200) advice.push('Limit outdoor exertion — indoor gym beats a run today');
   if (a.aqi >= 300) advice.push('N95 mask outdoors, air purifier indoors if you have one');
-  if (a.aqi < 100) advice.push('Air is fine for outdoor activity');
+  if (a.aqi < 100) advice.push('Air is fine for outdoor activity — by the model’s lights');
+  /* v0.8.24: name the estimate for what it is. Oct–Feb, the CAMS model runs
+     far below official CPCB stations around Indian cities — say so whenever
+     it matters (any low-ish reading in the season), not as a footnote. */
+  if (a.aqi < 150 && isPollutionSeason()) advice.push('This is a model estimate and it reads LOW around Indian cities — official CPCB stations can be far worse right now; check them before health calls');
   advice.push(`Dominant pollutant: ${a.dominant ?? '—'}`);
   return {
-    text: `CPCB AQI for ${placeName(state)} is **${a.aqi} — ${a.category}**.`,
+    text: `Model-estimated AQI (CPCB scale) for ${placeName(state)} is **${a.aqi} — ${a.category}**.`,
     comps: [fence('aqi-card', { aqi: a.aqi, category: a.category, dominant: a.dominant, advice: a.advice }, 'Air quality'),
             fence('advice', { tone: a.aqi >= 250 ? 'danger' : a.aqi >= 150 ? 'warn' : 'good', items: advice }),
             fence('chips', { items: ['Best time to run?', 'What should I wear?'] })],

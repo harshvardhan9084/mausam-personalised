@@ -45,7 +45,14 @@ const dict = {
   sec_10day:     ['10-day outlook', '10 दिन का हाल'],
   sec_says:      ['Mausam says', 'मौसम कहता है'],
   sec_detail:    ['Right now in detail', 'अभी — पूरी जानकारी'],
-  sec_aqi:       ['Air quality (CPCB)', 'हवा की गुणवत्ता (CPCB)'],
+  sec_aqi:       ['Air quality', 'हवा की गुणवत्ता'],
+  /* v0.8.24 — the number is a CAMS satellite-model estimate, NOT official
+     station data: every AQI surface says so, and the seasonal note says
+     how far the model can sit below real CPCB stations around cities. */
+  aqi_model_tag: ['CPCB scale · model estimate', 'CPCB पैमाना · मॉडल अनुमान'],
+  aqi_est_note_title: ['Model estimate — and it reads low here', 'मॉडल अनुमान — और यहाँ यह कम बता रहा है'],
+  aqi_est_note_body: ['This number comes from a satellite model (CAMS) that runs far below official sensors around Indian cities — in this season, Delhi-area CPCB stations often read Poor (200+) while models say Good. For health calls, trust station data:', 'यह संख्या सैटेलाइट मॉडल (CAMS) से है, जो भारतीय शहरों में सरकारी सेंसर से बहुत नीचे रहती है — इस मौसम में दिल्ली-क्षेत्र के CPCB स्टेशन अक्सर 200+ (ख़राब) दिखाते हैं जब मॉडल अच्छी हवा बताता है। सेहत के फ़ैसलों के लिए स्टेशन डेटा पर भरोसा करें:'],
+  aqi_est_link:  ['Check official station AQI', 'सरकारी स्टेशन AQI देखें'],
   sec_sun:       ['Sun & moon', 'सूरज और चाँद'],
   sec_imd:       ['IMD official forecast', 'IMD सरकारी पूर्वानुमान'],
   sec_foryou:    ['For you', 'आपके लिए'],
@@ -332,12 +339,12 @@ const dict = {
   cmp_verdict_drier:  ['Driest next 24 h: {c}', 'अगले 24 घंटे सबसे सूखा: {c}'],
   cmp_verdict_cleaner:['Cleanest air: {c}', 'सबसे साफ़ हवा: {c}'],
   cmp_rain24:    ['Rain 24 h', 'बारिश 24 घं.'],
-  cmp_aqi:       ['AQI', 'AQI'],
+  cmp_aqi:       ['AQI (model)', 'AQI (मॉडल)'],
   /* v0.8.20 — provenance + reading guide: derived numbers say what they are */
   cmp_src:          ['Open-Meteo forecast + CAMS air · fetched {t}', 'Open-Meteo मौसम + CAMS वायु · {t} पर प्राप्त'],
-  cmp_read:         ['Rain % = peak hourly chance over the next 24 h · AQI = CPCB scale from model PM2.5/PM10', 'बारिश % = अगले 24 घं. में चरम प्रति-घंटा संभावना · AQI = मॉडल PM2.5/PM10 से CPCB पैमाना'],
+  cmp_read:         ['Rain % = peak hourly chance over the next 24 h · AQI = CPCB scale from CAMS model PM — reads low around Indian cities', 'बारिश % = अगले 24 घं. में चरम प्रति-घंटा संभावना · AQI = CAMS मॉडल PM से CPCB पैमाना — भारतीय शहरों में कम पढ़ता है'],
   cmp_rain24_title: ['Highest chance in any single hour of the next 24 hours', 'अगले 24 घंटों में किसी एक घंटे की सबसे ऊँची संभावना'],
-  cmp_aqi_title:    ['India CPCB scale, computed from CAMS satellite-model PM2.5 / PM10 — model estimates run coarse around cities', 'भारत CPCB पैमाना, CAMS मॉडल PM2.5 / PM10 से गणना — मॉडल अनुमान मोटे होते हैं'],
+  cmp_aqi_title:    ['India CPCB scale computed from the CAMS satellite model — around Indian cities it reads FAR below official CPCB stations (Delhi Oct–Feb: model ~30 vs stations 200+)', 'भारत CPCB पैमाना, CAMS सैटेलाइट मॉडल से — भारतीय शहरों में यह सरकारी CPCB स्टेशनों से बहुत नीचे रहता है (दिल्ली अक्टू–फ़र: मॉडल ~30 बनाम स्टेशन 200+)'],
 
   /* ---------------- Journey planner ---------------- */
   jny_title:     ['Journey weather', 'सफ़र का मौसम'],
