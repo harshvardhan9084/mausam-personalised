@@ -472,7 +472,12 @@ function showSnackbar(text, btnLabel, onBtn) {
   const btn = $('snackbar-btn');
   if (!bar || !txt || !btn) return;
   txt.textContent = text;
-  btn.textContent = btnLabel;
+  if (btnLabel == null) {
+    btn.hidden = true; // label-less snackbars (afterinstall) render text only
+  } else {
+    btn.hidden = false;
+    btn.textContent = btnLabel;
+  }
   btn.onclick = () => { hideSnackbar(); onBtn?.(); };
   bar.hidden = false;
   requestAnimationFrame(() => bar.classList.add('show'));
@@ -491,7 +496,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   window.__mausamInstallEvt = e; // settings.js renders the Install button from this
 });
-window.addEventListener('appinstalled', () => { window.__mausamInstallEvt = null; });
+window.addEventListener('appinstalled', () => {
+  window.__mausamInstallEvt = null;
+  /* v0.8.17 "the install moment deserves design": installing was silent —
+     the event only cleared an internal flag. Now the moment lands: a
+     snackbar tells the user what they just got. The enduring state lives in
+     Settings as a green tone-card (buildInstallSection). */
+  showSnackbar(t('inst_celebrate'));
+});
 
 /* ================= pull-to-refresh (home, touch) ================= */
 const PTR_TRIGGER = 72;   // px of pull before refresh fires

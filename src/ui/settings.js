@@ -126,7 +126,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.16'),
+      el('span.ver-badge', null, 'v0.8.17'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -142,7 +142,14 @@ function section(title, ...children) {
 function buildInstallSection() {
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
   if (standalone) {
-    mount.appendChild(section(t('inst_row'), el('div.set-help', null, icon('check', 'chip-ico'), ' ', t('inst_done'))));
+    /* v0.8.17 "the install moment deserves design": the installed state stops
+       being a plain text row and wears the v0.8.12 tone-card language
+       (green tint, check glyph, what-installing-means body). */
+    mount.appendChild(section(t('inst_row'),
+      el('div.notif-flow.notif-flow-done', { role: 'status' },
+        el('div.notif-flow-head', null, icon('check', 'notif-flow-ico'),
+          el('b', null, t('inst_done'))),
+        el('div.notif-flow-body', null, t('inst_done_b')))));
     return;
   }
   const kids = [el('div.set-help', null, t('inst_row_t'))];

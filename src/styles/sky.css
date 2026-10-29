@@ -250,6 +250,48 @@
   .hero-body { gap: 26px; }
 }
 
+/* v0.8.17 "the hero earns the frame": >=900px the hero stops being a
+   stretched phone column and composes into two columns — glyph, temp,
+   condition and the detail chips hold the left zone (chips lift out of the
+   temp stack into their own column of the hero-main grid); H/L anchors the
+   right edge behind a hairline divider instead of dangling under a top
+   border. Mobile <900px untouched. */
+@media (min-width: 900px) {
+  .card.sky {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 30px;
+  }
+  .card.sky .hero-now-top { grid-column: 1 / -1; grid-row: 1; align-self: start; }
+  .card.sky .hero-body { grid-column: 1; grid-row: 2; align-self: center; }
+  .card.sky .hero-main {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 28px;
+    align-items: center;
+  }
+  .card.sky .hero-now-temp { grid-column: 1; grid-row: 1; }
+  .card.sky .hero-cond { grid-column: 1; grid-row: 2; }
+  .card.sky .hero-chips {
+    grid-column: 2; grid-row: 1 / span 2;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 0;
+  }
+  .card.sky .hero-hl {
+    grid-column: 2; grid-row: 2; align-self: center;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 0;
+    padding-top: 0;
+    padding-left: 28px;
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card.sky,
   .page.active,

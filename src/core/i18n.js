@@ -368,6 +368,8 @@ const dict = {
   inst_btn:      ['Install', 'इंस्टॉल'],
   inst_ios_hint: ['On iPhone: tap Share, then “Add to Home Screen”.', 'आईफ़ोन पर: Share दबाएँ, फिर “Add to Home Screen”।'],
   inst_done:     ['Mausam is installed ✓', 'मौसम इंस्टॉल हो गया ✓'],
+  inst_done_b:   ['It opens full-screen, works offline, and your data never leaves this device.', 'फुल-स्क्रीन खुलता है, ऑफ़लाइन चलता है, और आपका डेटा इसी डिवाइस पर रहता है।'],
+  inst_celebrate:['Mausam is on your home screen — full-screen and offline-ready.', 'मौसम होम स्क्रीन पर है — फुल-स्क्रीन और ऑफ़लाइन तैयार।'],
 
   /* ---------------- Settings ---------------- */
   set_title:     ['Settings', 'सेटिंग'],
