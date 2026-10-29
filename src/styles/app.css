@@ -801,6 +801,17 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   .explore-box.is-journey .jny-out  { grid-column: 2; grid-row: 2; }
 }
 
+/* v0.8.16 — home joins the desktop data frame: the dashboard stops reading as
+   a floating phone column and takes the same min(94vw, 940px) frame as the
+   crops page and the explore sheets, so every DATA surface shares one desktop
+   geometry (hero, curve, 10-day bars, insight trio, kv tiles, AQI/sun pair all
+   breathe). Input surfaces keep the reading measure on purpose: you/settings
+   (forms) and mitra (chat) stay at 760px — wide text fields and chat lines
+   scan badly past ~740px. Mobile (<900px) untouched. */
+@media (min-width: 900px) {
+  #page-home .page-scroll { max-width: min(94vw, 940px); }
+}
+
 /* v0.8.15 — crops joins the desktop: the selection cluster becomes a sticky
    rail on the left, the calendar content owns the main column. Width mirrors
    the explore sheets (940px) so every desktop surface shares one frame.

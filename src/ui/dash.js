@@ -24,6 +24,18 @@ import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
 import { t } from '../core/i18n.js';
 
+/** Clock-aware time-of-day formatter — every surface honors the Clock setting
+ *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
+ *  moon card previously hardcoded iso.slice(11,16) and ignored the setting.) */
+const fmtClock = (iso) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: store.clock.get() !== '24' }) : '—');
+
+/** Atomic detail cell: bold label + nowrap value piece(s). Values arrive as a
+ *  string (one atomic piece) or an array (pre-split atomic pieces that may
+ *  wrap BETWEEN pieces, never inside one — "8 km/h ·" / "Gusts 19 km/h"
+ *  instead of "Gusts 19" / "km/h"). (v0.8.16) */
+const detailCell = (k, v) => el('span', null, el('b', null, k),
+  ...(Array.isArray(v) ? v : [v]).map((x) => (typeof x === 'string' ? el('span.v', null, x) : x)));
+
 /** Transient toast (share copied, etc.). */
 function toast(msg) {
   const tEl = el('div.mausam-toast', { role: 'status' }, msg);
@@ -72,7 +84,11 @@ function rainMm(mm, units) {
 
 /** 24h SVG temperature curve with rain bars underneath. */
 function tempCurve(hours) {
-  const W = 340, H = 120, PADX = 10, PADT = 16, PADB = 22;
+  /* v0.8.16: viewBox width tracks the container so the curve keeps a ~210px
+   * height identity at every frame width — mobile 340 (unchanged), the 940px
+   * desktop frame gets 560 instead of stretching 340 into a 310px-tall band. */
+  const cwNow = document.getElementById('home-scroll')?.clientWidth ?? 0;
+  const W = Math.min(560, Math.max(340, Math.round((cwNow || 732) * 120 / 210))), H = 120, PADX = 10, PADT = 16, PADB = 22;
   const temps = hours.map((h) => h.temperature_2m).filter((v) => v != null);
   if (temps.length < 4) return null;
   let min = Math.min(...temps), max = Math.max(...temps);
@@ -189,11 +205,7 @@ function nowcastCard(s, units) {
   const steps = m.mm.slice(0, 8);
   const total = steps.reduce((a, b) => a + (b ?? 0), 0);
   const firstWet = steps.findIndex((v) => (v ?? 0) > 0.03);
-  const fmtT = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: store.clock.get() !== '24' });
-  };
-  const startLabel = fmtT(m.start);
+  const startLabel = fmtClock(m.start);
 
   const head = el('div.nowcast-head');
   let verdict;
@@ -202,7 +214,7 @@ function nowcastCard(s, units) {
   } else if (firstWet === 0) {
     verdict = el('div.nowcast-verdict.wet', null, icon('umbrella', 'verdict-ico'), t('nowcast_wet', { t: startLabel }));
   } else {
-    const at = fmtT(new Date(new Date(m.start).getTime() + firstWet * 15 * 60000));
+    const at = fmtClock(new Date(new Date(m.start).getTime() + firstWet * 15 * 60000));
     verdict = el('div.nowcast-verdict', null, icon('umbrella', 'verdict-ico'), t('nowcast_soon', { t: at }));
   }
   head.appendChild(verdict);
@@ -226,7 +238,7 @@ function nowcastCard(s, units) {
     if ((v ?? 0) > 0.03) bar.classList.add('wet');
     col.appendChild(bar);
     if (i % 2 === 0) {
-      col.appendChild(el('span.nowcast-lbl', null, fmtT(new Date(new Date(m.start).getTime() + i * 15 * 60000))));
+      col.appendChild(el('span.nowcast-lbl', null, fmtClock(new Date(new Date(m.start).getTime() + i * 15 * 60000))));
     }
     bars.appendChild(col);
   });
@@ -349,7 +361,7 @@ function aqiCardV2(s) {
               ...(air.ozone != null ? [['O₃', `${Math.round(air.ozone)}`]] : []),
               ...(air.dust != null && air.dust >= 5 ? [['Dust', `${Math.round(air.dust)}`]] : []),
               ...(h.aqiFull?.dominant ? [[t('aqi_dominant'), h.aqiFull.dominant]] : []),
-            ].map(([k, v]) => el('span', null, el('b', null, k), v))));
+            ].map(([k, v]) => detailCell(k, v))));
           }
         },
       });
@@ -411,8 +423,6 @@ function tenDayList(s, units, bd) {
   const span = Math.max(gMax - gMin, 1);
   const list = el('div.ten-list', { role: 'list', 'aria-label': t('sec_10day') });
 
-  const fmtT = (iso) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: store.clock.get() !== '24' }) : '—');
-
   days.forEach((d, i) => {
     const lo = d.temp_min ?? gMin;
     const hi = d.temp_max ?? gMax;
@@ -428,11 +438,14 @@ function tenDayList(s, units, bd) {
       el('div.ten-detail-grid', [
         [el('span.tlbl', icon('thermo', 'kv-ico ico-mut'), t('day_feels')), d.feels_max != null ? temp(d.feels_max, units) : '—'],
         [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('rain_simple')), `${Math.round(d.precip_prob_max ?? 0)}% · ${rainMm(d.precipitation_sum, units)}`],
-        [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')), `${d.wind_max != null ? wind(d.wind_max, units) : '—'}${d.gusts_max != null ? ` · ${t('gusts')} ${wind(d.gusts_max, units)}` : ''}`],
+        [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')),
+          d.gusts_max != null
+            ? [`${d.wind_max != null ? wind(d.wind_max, units) : '—'} ·`, `${t('gusts')} ${wind(d.gusts_max, units)}`]
+            : (d.wind_max != null ? wind(d.wind_max, units) : '—')],
         [el('span.tlbl', icon('sun', 'kv-ico ico-sun'), t('uv')), d.uv_max != null ? `${Math.round(d.uv_max * 10) / 10}` : '—'],
-        [el('span.tlbl', icon('sunrise', 'kv-ico ico-sun'), t('sunrise')), fmtT(d.sunrise)],
-        [el('span.tlbl', icon('sunset', 'kv-ico ico-dusk'), t('sunset')), fmtT(d.sunset)],
-      ].map(([k, v]) => el('span', null, el('b', null, k), v))),
+        [el('span.tlbl', icon('sunrise', 'kv-ico ico-sun'), t('sunrise')), fmtClock(d.sunrise)],
+        [el('span.tlbl', icon('sunset', 'kv-ico ico-dusk'), t('sunset')), fmtClock(d.sunset)],
+      ].map(([k, v]) => detailCell(k, v))),
     );
     const row = el('button.ten-row', {
       type: 'button',
@@ -610,11 +623,14 @@ export function renderDashboard(root, snapshot, units, ctx) {
           hourDetail.replaceChildren(el('div.ten-detail-grid', [
             [el('span.tlbl', icon('thermo', 'kv-ico ico-mut'), t('day_feels')), h.apparent_temperature != null ? temp(h.apparent_temperature, units) : '—'],
             [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('rain_simple')), `${Math.round(h.precipitation_probability ?? 0)}% · ${rainMm(h.precipitation, units)}`],
-            [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')), `${h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—'}${h.wind_gusts_10m != null ? ` · ${t('gusts')} ${wind(h.wind_gusts_10m, units)}` : ''}`],
+            [el('span.tlbl', icon('wind', 'kv-ico ico-mut'), t('wind')),
+              h.wind_gusts_10m != null
+                ? [`${h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—'} ·`, `${t('gusts')} ${wind(h.wind_gusts_10m, units)}`]
+                : (h.wind_speed_10m != null ? wind(h.wind_speed_10m, units) : '—')],
             [el('span.tlbl', icon('droplet', 'kv-ico ico-sky'), t('humidity')), h.relative_humidity_2m != null ? `${Math.round(h.relative_humidity_2m)}%` : '—'],
             [el('span.tlbl', icon('droplet', 'kv-ico ico-mut'), t('dew_point')), h.dew_point_2m != null ? temp(h.dew_point_2m, units) : '—'],
             [el('span.tlbl', icon('sun', 'kv-ico ico-sun'), t('uv')), h.uv_index != null ? `${Math.round(h.uv_index * 10) / 10}` : '—'],
-          ].map(([k, v]) => el('span', null, el('b', null, k), v))));
+          ].map(([k, v]) => detailCell(k, v))));
         }
       },
     },
@@ -704,7 +720,6 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const row = el('div.row-2');
   row.appendChild(aqiCardV2(s));
 
-  const fmt = (iso) => (iso ? iso.slice(11, 16) : '—');
   const imd = s.bundle?.imd;
   /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph
      (same icon language as the hero) instead of raw emoji. */
@@ -712,8 +727,8 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const sunCard = card(
     el('div.card-h', null, `${t('sec_sun')}${imd?.ok ? ' · IMD' : ''}`),
     el('div.kv-list',
-      el('div.kv-row', el('span.kv-label', kvIco('sunrise', 'ico-sun'), t('sunrise')), el('span.kv-value', null, fmt(sun?.sunrise))),
-      el('div.kv-row', el('span.kv-label', kvIco('sunset', 'ico-dusk'), t('sunset')), el('span.kv-value', null, fmt(sun?.sunset))),
+      el('div.kv-row', el('span.kv-label', kvIco('sunrise', 'ico-sun'), t('sunrise')), el('span.kv-value', null, fmtClock(sun?.sunrise))),
+      el('div.kv-row', el('span.kv-label', kvIco('sunset', 'ico-dusk'), t('sunset')), el('span.kv-value', null, fmtClock(sun?.sunset))),
       el('div.kv-row', el('span.kv-label', kvIco('hourglass', 'ico-mut'), t('day_length')), el('span.kv-value', null, sun?.dayLength ?? '—')),
       ...(imd?.ok && imd.obs?.moonrise ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonrise')), el('span.kv-value', null, imd.obs.moonrise))] : []),
       ...(imd?.ok && imd.obs?.moonset ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonset')), el('span.kv-value', null, imd.obs.moonset))] : []),

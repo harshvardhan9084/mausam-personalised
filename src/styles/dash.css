@@ -222,7 +222,25 @@
 @media (max-width: 640px) {
   .you-btn-label { display: none; }
   .you-btn { padding: 4px 10px; }
-  .insight-grid, .foryou-rail { grid-template-columns: 1fr; }
+  /* v0.8.16 — MAUSAM SAYS becomes a digest strip on phones: one card in focus,
+     the next peeking, snap-scrolling under the thumb with a right-edge fade
+     signaling more. Saves ~200px of scroll vs the 3-card stack and gives the
+     section a mobile-native digest rhythm. ≥641px keeps the auto-fit grid. */
+  .insight-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    margin-inline: -14px;           /* bleed to the screen edge… */
+    padding: 2px 30px 8px 14px;     /* …but card 1 aligns with page padding; 30px right pad
+                                       keeps content clear of the 24px fade zone at scroll-end */
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  }
+  .insight-grid::-webkit-scrollbar { display: none; }
+  .insight-card { flex: 0 0 252px; scroll-snap-align: start; }
+  .foryou-rail { grid-template-columns: 1fr; }
   .dash-hero .hero-now-temp { font-size: 2.2rem; }
 }
 
@@ -455,7 +473,11 @@
   margin-left: 4px;
 }
 .ten-detail-grid span b { color: var(--text); font-weight: 650; white-space: nowrap; }
-.ten-detail-grid span { display: flex; gap: 5px; align-items: baseline; min-width: 0; }
+.ten-detail-grid span { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; min-width: 0; }
+/* v0.8.16: values are atomic pieces — "5:42 PM", "0 mm" and "Gusts 19 km/h"
+   hold their line; wind arrives pre-split so it may break BETWEEN "8 km/h ·"
+   and "Gusts 19 km/h", never inside a unit. */
+.ten-detail-grid .v { white-space: nowrap; }
 
 /* ---------- nowcast: dry state reads as intentional ---------- */
 .nowcast-dry {
