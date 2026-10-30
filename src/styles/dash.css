@@ -600,6 +600,16 @@
    At 640–899px the two columns are equal and only AQI + sun pair off —
    replicating the old .row-2 behaviour; from 900px the main column
    widens (1.5fr vs 1fr) and the full two-column dashboard engages.
+
+   v0.8.30 — the columns learn to pack. Sparse auto-placement never moves
+   the cursor backwards, so side-column sections (which all sit late in the
+   DOM) chained themselves to whichever main row the cursor had reached:
+   the first three rows had an empty right rail, and a tall side card
+   (your-day) dragged its whole row tall, punching a hole in the MAIN
+   column. `dense` lets column-locked sections search from the top, so the
+   rail fills alongside the data (nowcast+says, 48h+sun, curve+nudge
+   without a profile; a fully paired board with one). Tablet band is a
+   no-op (everything is full-width there) and mobile never sees it.
 ================================================================ */
 .dash-sec { display: contents; }
 @media (min-width: 640px) {
@@ -608,6 +618,7 @@
     grid-template-columns: 1fr 1fr;
     column-gap: 14px;
     align-items: start;
+    grid-auto-flow: dense;
   }
   #home-scroll > * { grid-column: 1 / -1; min-width: 0; }
   #home-scroll .dash-sec { display: block; }
@@ -621,4 +632,9 @@
   }
   #home-scroll .dc-m { grid-column: 1; }
   #home-scroll .dc-s { grid-column: 2; }
+  /* v0.8.30 — the hourly strip lives in a 534px column here, where 68px
+     cells showed only ~7 of 48 hours. 54px cells (slimmer side padding to
+     keep "10 PM" on one line) show ~9 — the next density step up without
+     touching the tap targets below 900px. */
+  .hour-card { min-width: 54px; padding: 10px 6px; }
 }
