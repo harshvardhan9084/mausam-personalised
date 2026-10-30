@@ -93,9 +93,16 @@ export function buildSnapshot(bundle) {
       uv: nowHour?.uv_index ?? null,
       uvLabel: uvLabel(nowHour?.uv_index),
       visibility: nowHour?.visibility ?? null,
-      pressure: bundle.current?.pressure_msl ?? null,
+      /* v0.8.36 fix: these two read the RAW api names (pressure_msl /
+         cloud_cover) that no longer exist on the transformed bundle.current
+         (fetchWeatherBundle renames them to pressure / cloud) — the lookup
+         was always undefined, the ?? null clobbered the value the spread
+         above had already brought in, and the Pressure + Cloud cover tiles,
+         Mitra's cloudPct context and the offline pressure card rendered "—"
+         for every user since the current block shipped. */
+      pressure: bundle.current?.pressure ?? null,
       dew: nowHour?.dew_point_2m ?? nowHour?.dew_point ?? null,
-      cloud: bundle.current?.cloud_cover ?? null,
+      cloud: bundle.current?.cloud ?? null,
     },
     currentAqi, // CPCB AQI at the current hour
     uvNow: { value: nowHour?.uv_index ?? null, label: uvLabel(nowHour?.uv_index) },

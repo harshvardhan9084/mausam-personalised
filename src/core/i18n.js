@@ -77,6 +77,9 @@ const dict = {
   mp_last:       ['Last quarter', 'घटता आधा चाँद'],
   mp_wan_cres:   ['Waning crescent', 'अमावस्या की ओर'],
   mp_lit:        ['{n}% lit', '{n}% रोशन'],
+  /* v0.8.36 — the sky calendar: same lunar vocabulary the phase row speaks */
+  mp_next_full:  ['Next full moon', 'अगली पूर्णिमा'],
+  mp_next_new:   ['Next new moon', 'अगली अमावस्या'],
   /* v0.8.34 — UV band vocabulary follows the reader too (uvLabel() stays
      EN for engine internals; the two dashboard surfaces go through these). */
   uv_low:        ['Low', 'निम्न'],

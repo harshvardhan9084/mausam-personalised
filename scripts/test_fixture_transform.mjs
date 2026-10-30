@@ -61,6 +61,12 @@ check('fixture: farm tiles all resolve (no “—” tile in demo)', ['soil_mois
 check('snapshot: AQI computed from stub air', snap.currentAqi?.aqi != null, JSON.stringify(snap.currentAqi));
 check('snapshot: yesterday delta', snap.yesterday?.deltaMax != null, JSON.stringify(snap.yesterday));
 check('snapshot: now label', snap.now?.wx?.label != null);
+/* v0.8.36 guard: the transformed bundle.current renames pressure_msl/cloud_cover
+   to pressure/cloud — the snapshot must carry REAL values (a rename mismatch
+   here silently "—"ed two tiles, Mitra's cloudPct and the offline pressure
+   card for every user). */
+check('snapshot: now.pressure is the fixture hPa', Math.round(snap.now?.pressure) === Math.round(fixture.current.pressure_msl), String(snap.now?.pressure));
+check('snapshot: now.cloud is the fixture %', Math.round(snap.now?.cloud) === Math.round(fixture.current.cloud_cover), String(snap.now?.cloud));
 
 /* ---- v0.8.28: query-aware geo fixture (scripts/geo_fixture.mjs) ---- */
 const { geoResponse } = await import('./geo_fixture.mjs');

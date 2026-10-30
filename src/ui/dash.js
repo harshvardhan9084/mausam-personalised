@@ -114,6 +114,29 @@ function moonDiscSvg(p) {
   return tpl.content.firstElementChild;
 }
 
+/** Sky-calendar disc for the EXACT target phases (full = lit disc, new =
+ *  dark disc) — the elliptical terminator is degenerate at p=0/0.5, so the
+ *  calendar rows get dedicated unambiguous glyphs instead. */
+function skyMoonDisc(cls) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = `<svg class="moon-disc" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" class="${cls}"/></svg>`;
+  return tpl.content.firstElementChild;
+}
+
+/** Next occurrence of a target phase (0.5 = full, 0 = new) as a date ISO,
+ *  from the same synodic model as moonPhaseFrac — the honest on-device
+ *  sky calendar (Indian festival dates ride the lunar cycle). Returns
+ *  whole days ahead; an event a few hours past still rolls to next month. */
+function nextMoonISO(target, now = new Date()) {
+  const synodic = 29.530588853;
+  const p = moonPhaseFrac(now);
+  const ahead = (((target - p) % 1) + 1) % 1 * synodic; // 0..29.53 days
+  const d = new Date(now.getTime() + ahead * 86400000);
+  // local-calendar date (the app renders every date in the reader's clock —
+  // toISOString would give IST late evenings yesterday's UTC date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /** The day's arc: horizon, the sun/moon glyph at its honest position,
  *  dawn-to-dusk tint under the arc (night: dashed arc, dimmed fill).
  *  Positions are parametric along the drawn quadratic — a designed
@@ -1058,6 +1081,16 @@ export function renderDashboard(root, snapshot, units, ctx) {
           `${t(phaseKey(mP))} · ${t('mp_lit', { n: mIllum })}`)),
       ...(imd?.ok && imd.obs?.moonrise ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonrise')), el('span.kv-value', null, imd.obs.moonrise))] : []),
       ...(imd?.ok && imd.obs?.moonset ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonset')), el('span.kv-value', null, imd.obs.moonset))] : []),
+      /* v0.8.36: the sky calendar — next full / new moon from the same
+         on-device synodic model. Indian festival dates ride the lunar
+         cycle (पूर्णिमा/अमावस्या), so these two rows are glanceable
+         truth, not decoration. */
+      el('div.kv-row',
+        el('span.kv-label', skyMoonDisc('moon-lit'), t('mp_next_full')),
+        el('span.kv-value', null, dateLabel(nextMoonISO(0.5)))),
+      el('div.kv-row',
+        el('span.kv-label', skyMoonDisc('moon-dark'), t('mp_next_new')),
+        el('span.kv-value', null, dateLabel(nextMoonISO(0)))),
     ),
   );
   root.appendChild(dsec('dc-s sec-sun', sunCard));
