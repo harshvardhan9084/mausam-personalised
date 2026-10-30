@@ -205,6 +205,11 @@ const dict = {
   fy_farm_soil_wet: ['Top soil at {v}% — nicely wet, hold irrigation.', 'ऊपरी मिट्टी {v}% — अच्छी गई है, सिंचाई टालें।'],
   fy_farm_rain7: ['7-day rain total', '7 दिन की बारिश'],
   fy_farm_rain7_t: ['About **{n} mm** expected this week ({p}% peak day chance).', 'इस हफ़्ते लगभग **{n} mm** बारिश (सबसे ऊँचे दिन {p}% संभावना)।'],
+  /* v0.8.35: farm tile labels — were hardcoded EN, gluing Latin into hi */
+  farm_soil01:   ['Soil 0–1 cm', 'मिट्टी 0–1 सेमी'],
+  farm_soil39:   ['Soil 3–9 cm', 'मिट्टी 3–9 सेमी'],
+  farm_stemp:    ['Soil temp', 'मिट्टी तापमान'],
+  farm_et0:      ['Evapo‑transpiration', 'वाष्पोत्सर्जन'],
 
   /* events / wedding */
   fy_event:      ['Wedding & events', 'शादी और कार्यक्रम'],

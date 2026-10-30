@@ -132,6 +132,27 @@
 .insight-card.insight-warn   { border-color: color-mix(in srgb, var(--yellow) 40%, var(--border)); }
 .insight-card.insight-danger { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
 
+/* ---------- v0.8.35: the farm desk ---------- */
+/* One card, advisory rows — the kv rhythm the sun/records cards already
+   speak, replacing a ~500px stack of three separate text cards that
+   monopolised the rail beside the 200px temperature curve. */
+.farm-desk { padding: 2px 14px; }
+.farm-desk .farm-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.farm-desk .farm-row:last-child { border-bottom: none; }
+.farm-desk .farm-rowbody { min-width: 0; flex: 1; }
+.farm-desk .farm-rowtitle { font-weight: 700; font-size: 0.86rem; }
+.farm-desk .farm-rowtext { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-top: 1px; }
+.farm-desk .farm-rowtext strong { color: var(--text); font-weight: 650; }
+.farm-desk .insight-icon { margin-top: 1px; }
+/* tone tints ride on the row's tone class — same mixes the insight cards use */
+.farm-row.insight-good .insight-icon   { background: color-mix(in srgb, var(--green) 13%, transparent);  color: var(--green); }
+.farm-row.insight-warn .insight-icon   { background: color-mix(in srgb, var(--yellow) 17%, transparent); color: var(--yellow); }
+.farm-row.insight-danger .insight-icon { background: color-mix(in srgb, var(--red) 13%, transparent);    color: var(--red); }
+
 /* ---------- details ---------- */
 .card-h { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
 

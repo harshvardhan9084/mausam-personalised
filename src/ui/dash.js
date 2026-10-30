@@ -980,21 +980,26 @@ export function renderDashboard(root, snapshot, units, ctx) {
     const farmCards = computeFarmCards(s);
     if (farmCards.length) {
       const farmSec = [sectionTitle(t('sec_farm'), false, 'crops')];
-      const grid = el('div.insight-grid');
+      /* v0.8.35: the farm DESK — advisories as rows in one card, the same
+         kv-row language the Sun & moon / Today's records cards speak, instead
+         of a 500px stack of three separate text cards beside a 200px curve. */
+      const desk = el('div.card.farm-desk');
       for (const c of farmCards) {
-        grid.appendChild(el(`div.card.insight-card.${toneClass(c.tone)}`,
-          el('div.insight-head', el('span.insight-icon', null, tipContent(c.icon)), el('span', null, c.title)),
-          el('div.insight-text', null, rich(c.text)),
+        desk.appendChild(el(`div.farm-row.${toneClass(c.tone)}`,
+          el('span.insight-icon', null, tipContent(c.icon)),
+          el('div.farm-rowbody',
+            el('div.farm-rowtitle', null, c.title),
+            el('div.farm-rowtext', null, rich(c.text))),
         ));
       }
-      farmSec.push(grid);
+      farmSec.push(desk);
       /* extra stat tiles: soil + ET0 */
       const h0 = s.hours[0] ?? {};
       farmSec.push(statTiles([
-        [h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—', 'Soil 0–1 cm'],
-        [h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—', 'Soil 3–9 cm'],
-        [h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—', 'Soil temp'],
-        [h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—', 'Evapo‑transpiration'],
+        [h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—', t('farm_soil01')],
+        [h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—', t('farm_soil39')],
+        [h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—', t('farm_stemp')],
+        [h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—', t('farm_et0')],
       ]));
       root.appendChild(dsec('dc-s', ...farmSec));
     }

@@ -326,10 +326,10 @@ export function computeForYou(s, p) {
     });
   }
 
-  /* farming cards (only if not already full) */
-  if (p.interests.includes('farming')) {
-    for (const c of computeFarmCards(s).slice(0, 2)) push(c);
-  }
+  /* farming: NOT here — v0.8.35 gave the farm its own "farm desk" section on
+     the board, and the same two cards appearing twice on one screen (For you
+     + Farm weather) was a duplication smell. For-you keeps schedule and
+     lifestyle insights; the farm section is the single farm home. */
 
   /* fishing (needs marine extras) */
   if (p.interests.includes('fishing') && s.extras?.marine?.now?.waveHeightM != null) {

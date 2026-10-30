@@ -53,6 +53,11 @@ check('transform: days[0] is TODAY not yesterday', bundle.days[0].date === fixtu
 check('transform: minutely mapped', bundle.minutely?.mm?.length === 8, JSON.stringify(bundle.minutely));
 check('transform: hours sliced from now', bundle.hours.length >= 40 && bundle.hours.length <= 49, String(bundle.hours.length));
 check('transform: dew field preserved', bundle.hours.some((h) => h.dew_point_2m != null));
+/* v0.8.35: the demo fixture carries the farm-tile fields the real API returns */
+check('transform: soil 3–9cm preserved', bundle.hours.some((h) => h.soil_moisture_3_to_9cm != null));
+check('transform: soil temp preserved', bundle.hours.some((h) => h.soil_temperature_0_to_7cm != null));
+check('transform: ET0 preserved', bundle.hours.some((h) => h.et0_fao_evapotranspiration != null));
+check('fixture: farm tiles all resolve (no “—” tile in demo)', ['soil_moisture_0_to_1cm', 'soil_moisture_3_to_9cm', 'soil_temperature_0_to_7cm', 'et0_fao_evapotranspiration'].every((k) => bundle.hours[0]?.[k] != null), JSON.stringify(bundle.hours[0] ? Object.keys(bundle.hours[0]).filter((k) => k.includes('soil') || k.includes('et0')) : null));
 check('snapshot: AQI computed from stub air', snap.currentAqi?.aqi != null, JSON.stringify(snap.currentAqi));
 check('snapshot: yesterday delta', snap.yesterday?.deltaMax != null, JSON.stringify(snap.yesterday));
 check('snapshot: now label', snap.now?.wx?.label != null);
