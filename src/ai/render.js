@@ -11,8 +11,8 @@ import { el } from '../utils/dom.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { icon, skyIcon, tipIcon } from '../ui/icons.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
-import { aqiBandColor } from '../core/aqi-cpcb.js';
-import { t } from '../core/i18n.js';
+import { aqiBandColor, aqiCat, aqiAdvice } from '../core/aqi-cpcb.js';
+import { t, getLang } from '../core/i18n.js';
 
 /* ================================================================
    v0.8.20 — the chat joins the glyph language. Cards used to render
@@ -432,10 +432,10 @@ const R = {
     return el('div.aqi-card.card.mu-aqi',
       el('div.aqi-big', { style: { color } }, p.d.aqi != null ? String(Math.round(p.d.aqi)) : '—'),
       el('div',
-        el('div.aqi-cat', { style: { color } }, p.d.category || 'Unknown'),
+        el('div.aqi-cat', { style: { color } }, p.d.aqi != null ? aqiCat(p.d.aqi, getLang()) : (p.d.category || aqiCat(null, getLang()))),
         el('div.aqi-src', null, t('aqi_model_tag')),
         el('div.aqi-note', null,
-          p.d.advice || (p.d.dominant ? `Dominant pollutant: ${p.d.dominant}` : 'Air quality summary')
+          (p.d.aqi != null ? aqiAdvice(p.d.aqi, getLang()) : '') || p.d.advice || (p.d.dominant ? `${t('aqi_dominant')}: ${p.d.dominant}` : t('aqi_summary'))
         )
       )
     );

@@ -208,7 +208,7 @@ export function openCompare(ctx) {
 
   function rowFor(p, data, isCurrent) {
     const wx = data?.wx;
-    const cond = wx ? describeWeather(wx.code, !wx.isDay) : null;
+    const cond = wx ? describeWeather(wx.code, !wx.isDay, getLang()) : null;
     return el('div.cmp-row',
       el('div.cmp-place',
         el('span.cmp-dot', { class: isCurrent ? 'is-current' : '' }),
@@ -434,7 +434,7 @@ export function openJourney(ctx) {
 
     const rows = el('div.jny-rows');
     for (const p of probes) {
-      const cond = describeWeather(p.code, false);
+      const cond = describeWeather(p.code, false, getLang());
       const mark = p.f === 0 ? '🚩' : p.f === 1 ? '🏁' : '📍';
       rows.appendChild(el('div.jny-row',
         el('span.jny-mark', null, mark),

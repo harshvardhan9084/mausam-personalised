@@ -12,7 +12,7 @@
 
 import { el, clear } from '../utils/dom.js';
 import { temp, wind, hourLabel, relativeTime, visibility, dateLabel, dayLabel } from '../utils/format.js';
-import { compass } from '../api/wmo.js';
+import { compass, wxText } from '../api/wmo.js';
 import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
@@ -22,8 +22,8 @@ import { icon, skyIcon, tipIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
-import { t } from '../core/i18n.js';
-import { aqiNeedsSeasonNotice, stationAqiUrl } from '../core/aqi-cpcb.js';
+import { t, getLang } from '../core/i18n.js';
+import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice } from '../core/aqi-cpcb.js';
 
 /** Clock-aware time-of-day formatter — every surface honors the Clock setting
  *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
@@ -181,9 +181,9 @@ function shareWeather(s, units, loc) {
   const aqi = s.currentAqi;
   const locale = dateLocale();
   const lines = [
-    `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${n.wx?.label ?? ''}`,
+    `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${wxText(n.wx, getLang())}`,
     today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
-    aqi?.aqi != null ? `AQI ${aqi.aqi} est. (${aqi.category})` : null,
+    aqi?.aqi != null ? `AQI ${aqi.aqi} est. (${aqiCat(aqi.aqi, getLang())})` : null,
     '— Mausam',
   ].filter(Boolean);
   const text = lines.join('\n');
@@ -316,20 +316,20 @@ function aqiCardV2(s, loc = null) {
      advice + chips anchored to its right, instead of a lone pill. */
   const dial = el('div.aqi-dial', {
     role: 'img',
-    'aria-label': aqi?.aqi != null ? `AQI ${aqi.aqi} · ${aqi.category ?? ''}` : t('aqi_unavail'),
+    'aria-label': aqi?.aqi != null ? `AQI ${aqi.aqi} · ${aqiCat(aqi.aqi, getLang())}` : t('aqi_unavail'),
   });
   if (aqi?.aqi != null) {
     const wrap = el('div.aqi-dial-svgwrap', aqiDialSvg(aqi));
     wrap.appendChild(el('div.aqi-dial-num', null, String(aqi.aqi)));
     dial.appendChild(wrap);
-    dial.appendChild(el('div.aqi-dial-cat', { style: { color: aqi.color } }, aqi.category ?? ''));
+    dial.appendChild(el('div.aqi-dial-cat', { style: { color: aqi.color } }, aqiCat(aqi.aqi, getLang())));
   } else {
     dial.classList.add('empty');
     dial.appendChild(el('div.aqi-dial-none', null, t('aqi_unavail')));
   }
   cardBody.appendChild(el('div.aqi-top', dial,
     el('div.aqi-side',
-      aqi?.advice ? el('div.aqi-advice', null, aqi.advice) : null,
+      aqi?.aqi != null && aqiAdvice(aqi.aqi, getLang()) ? el('div.aqi-advice', null, aqiAdvice(aqi.aqi, getLang())) : null,
       chips.length ? el('div.aqi-chips',
         chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))) : null,
     ),
@@ -354,7 +354,7 @@ function aqiCardV2(s, loc = null) {
     trend.forEach((h, i) => {
       const bar = el('button.aqi-trend-bar', {
         type: 'button',
-        title: `${hourLabel(h.time, clock)} · AQI ${h.aqi} · ${h.aqiFull?.category ?? ''}`,
+        title: `${hourLabel(h.time, clock)} · AQI ${h.aqi} · ${aqiCat(h.aqi ?? h.aqiFull?.aqi, getLang())}`,
         'aria-expanded': 'false',
         'aria-controls': 'aqi-hour-detail',
         onclick: () => {
@@ -367,7 +367,7 @@ function aqiCardV2(s, loc = null) {
           else {
             const air = h.air ?? {};
             aqiDetail.replaceChildren(el('div.ten-detail-grid', [
-              ['AQI', `${h.aqi} · ${h.aqiFull?.category ?? ''}`],
+              ['AQI', `${h.aqi} · ${aqiCat(h.aqi ?? h.aqiFull?.aqi, getLang())}`],
               ['PM2.5', air.pm2_5 != null ? `${Math.round(air.pm2_5)}` : '—'],
               ['PM10', air.pm10 != null ? `${Math.round(air.pm10)}` : '—'],
               ...(air.ozone != null ? [['O₃', `${Math.round(air.ozone)}`]] : []),

@@ -69,6 +69,7 @@ const dict = {
   cooler_than_yesterday: ['cooler than yesterday', 'कल से ठंडा'],
   feels_like:    ['feels', 'लगता है'],
   aqi_dominant:  ['Dominant pollutant', 'मुख्य प्रदूषक'],
+  aqi_summary:   ['Air quality summary', 'हवा की गुणवत्ता का सार'],
   aqi_outlook_h: ['48-hour air outlook', '48 घंटे की हवा का हाल'],
   aqi_worst:     ['Worst {t}: AQI {a}', 'सबसे ख़राब {t}: AQI {a}'],
   aqi_best:      ['Best {t}: AQI {a}', 'सबसे साफ़ {t}: AQI {a}'],

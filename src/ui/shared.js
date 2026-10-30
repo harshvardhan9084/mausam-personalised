@@ -4,7 +4,8 @@
 
 import { el } from '../utils/dom.js';
 import { temp, wind, hourLabel, dayLabel, dateLabel } from '../utils/format.js';
-import { t } from '../core/i18n.js';
+import { t, getLang } from '../core/i18n.js';
+import { wxText } from '../api/wmo.js';
 import { icon, skyIcon } from './icons.js';
 
 /** Hero block — the persona's headline card. */
@@ -179,7 +180,7 @@ export function nowRow(snapshot, units) {
     el('div.hero-main',
       null,
       el('div.hero-now-temp', null, temp(n.temp, units, true)),
-      el('div.hero-cond', null, n.wx?.label ?? ''),
+      el('div.hero-cond', null, wxText(n.wx, getLang())),
       el('div.hero-chips',
         null,
         heroChip('thermo', `${t('feels_like')} ${temp(n.feels, units, true)}`),

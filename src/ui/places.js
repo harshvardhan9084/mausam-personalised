@@ -12,7 +12,7 @@ import { el, clear } from '../utils/dom.js';
 import { temp as fmtTemp } from '../utils/format.js';
 import { describeWeather } from '../api/wmo.js';
 import { store } from '../core/storage.js';
-import { t } from '../core/i18n.js';
+import { t, getLang } from '../core/i18n.js';
 import { wxGlyph } from './icons.js';
 import { skyBucket } from './shared.js';
 
@@ -161,7 +161,7 @@ export function renderPlaces(mount, ctx) {
       const t = chip.querySelector('.place-temp');
       if (t && r.temp != null) {
         t.textContent = fmtTemp(r.temp, ctx.units);
-        t.title = describeWeather(r.code, !r.isDay)?.label ?? '';
+        t.title = describeWeather(r.code, !r.isDay, getLang())?.label ?? '';
       } else if (t) t.textContent = '';
     });
   });

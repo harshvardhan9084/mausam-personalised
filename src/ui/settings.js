@@ -126,7 +126,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.25'),
+      el('span.ver-badge', null, 'v0.8.26'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),

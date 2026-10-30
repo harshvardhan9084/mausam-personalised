@@ -14,7 +14,8 @@
 
 import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel } from '../utils/format.js';
 import { runScore, eventScore, driveScore, dayScore, bestWindows, band } from './scoring.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
+import { aqiCat, aqiAdvice } from './aqi-cpcb.js';
 
 const hh = (iso) => Number(iso?.slice(11, 13));
 const clampRound = (v) => Math.round(Math.max(0, Math.min(100, v ?? 0)));
@@ -123,7 +124,7 @@ export function computeInsights(s) {
   /* AQI */
   const aqi = s.currentAqi?.aqi;
   if (aqi != null) {
-    if (aqi >= 150) out.push({ icon: 'fog', tone: aqi >= 300 ? 'danger' : 'warn', title: t('ins_aqi_bad', { n: aqi, c: s.currentAqi.category }), text: `${s.currentAqi.advice} ${t('aqi_dominant')}: ${s.currentAqi.dominant ?? '—'}.` });
+    if (aqi >= 150) out.push({ icon: 'fog', tone: aqi >= 300 ? 'danger' : 'warn', title: t('ins_aqi_bad', { n: aqi, c: aqiCat(s.currentAqi.aqi, getLang()) }), text: `${aqiAdvice(aqi, getLang())} ${t('aqi_dominant')}: ${s.currentAqi.dominant ?? '—'}.` });
     else if (aqi <= 60) out.push({ icon: 'crops', tone: 'good', title: t('ins_clean_air', { n: aqi }), text: t('ins_clean_air_t') });
   }
 

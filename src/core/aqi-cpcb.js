@@ -49,13 +49,32 @@ const BREAKPOINTS = {
  *  hardcoded hexes here plus two divergent re-implementations elsewhere,
  *  so the same AQI value painted different colours per surface/theme). */
 export const AQI_CATEGORIES = [
-  { max: 50,  label: 'Good',        color: 'var(--aqi-1)', advice: 'Air is clean. Ideal for outdoor activity.' },
-  { max: 100, label: 'Satisfactory',color: 'var(--aqi-2)', advice: 'Minor breathing discomfort possible for sensitive people.' },
-  { max: 200, label: 'Moderate',    color: 'var(--aqi-3)', advice: 'Breathing discomfort for people with lung or heart disease, children and older adults.' },
-  { max: 300, label: 'Poor',        color: 'var(--aqi-4)', advice: 'Breathing discomfort for most on prolonged exposure. Limit outdoor exertion.' },
-  { max: 400, label: 'Very Poor',   color: 'var(--aqi-5)', advice: 'Respiratory illness on prolonged exposure. Avoid outdoor activity.' },
-  { max: 500, label: 'Severe',      color: 'var(--aqi-6)', advice: 'Serious health impact even for healthy people. Stay indoors.' },
+  { max: 50,  label: ['Good', 'अच्छा'],          color: 'var(--aqi-1)', advice: ['Air is clean. Ideal for outdoor activity.', 'हवा साफ़ है — बाहर के लिए बेहतरीन समय।'] },
+  { max: 100, label: ['Satisfactory', 'संतोषजनक'], color: 'var(--aqi-2)', advice: ['Minor breathing discomfort possible for sensitive people.', 'संवेदनशील लोगों को हल्की सांस की परेशानी हो सकती है।'] },
+  { max: 200, label: ['Moderate', 'मध्यम'],       color: 'var(--aqi-3)', advice: ['Breathing discomfort for people with lung or heart disease, children and older adults.', 'फेफड़ों या दिल की बीमारी वाले लोगों, बच्चों और बुज़ुर्गों को सांस में परेशानी हो सकती है।'] },
+  { max: 300, label: ['Poor', 'ख़राब'],           color: 'var(--aqi-4)', advice: ['Breathing discomfort for most on prolonged exposure. Limit outdoor exertion.', 'लंबे समय बाहर रहने पर ज़्यादातर लोगों को सांस में परेशानी हो सकती है। बाहर श्रम सीमित करें।'] },
+  { max: 400, label: ['Very Poor', 'बहुत ख़राब'],  color: 'var(--aqi-5)', advice: ['Respiratory illness on prolonged exposure. Avoid outdoor activity.', 'लंबे समय बाहर रहने पर सांस की बीमारी का ख़तरा। बाहर की गतिविधियाँ टालें।'] },
+  { max: 500, label: ['Severe', 'गंभीर'],         color: 'var(--aqi-6)', advice: ['Serious health impact even for healthy people. Stay indoors.', 'सेहतमंद लोगों पर भी गंभीर असर। घर के अंदर रहें।'] },
 ];
+
+/* v0.8.26 — the air speaks the UI's language. The engine bakes the EN
+   category/advice (stable for tests + the English offline prose); every
+   DISPLAY surface resolves at render time with aqiCat()/aqiAdvice(), so a
+   mid-session language switch reads correctly from the cached snapshot. */
+const bandFor = (aqi) => AQI_CATEGORIES.find((c) => aqi <= c.max) ?? AQI_CATEGORIES[AQI_CATEGORIES.length - 1];
+const pick = (pair, lang) => (lang === 'hi' ? pair[1] : pair[0]);
+
+/** Band name for an AQI value in the requested language (null → Unknown/अज्ञात). */
+export function aqiCat(aqi, lang = 'en') {
+  if (aqi == null || Number.isNaN(Number(aqi))) return lang === 'hi' ? 'अज्ञात' : 'Unknown';
+  return pick(bandFor(Number(aqi)).label, lang);
+}
+
+/** Band advice line for an AQI value in the requested language (null → ''). */
+export function aqiAdvice(aqi, lang = 'en') {
+  if (aqi == null || Number.isNaN(Number(aqi))) return '';
+  return pick(bandFor(Number(aqi)).advice, lang);
+}
 
 /** Band color for an AQI value (or null → unknown), shared by every AQI surface. */
 export function aqiBandColor(aqi) {
@@ -133,8 +152,9 @@ export function computeCPCBAqi(conc) {
     return { aqi: null, category: 'Unknown', color: 'var(--aqi-u)', advice: '', dominant: null, subIndices: {} };
   }
   const [dominant, aqi] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
-  const cat = AQI_CATEGORIES.find((c) => aqi <= c.max) ?? AQI_CATEGORIES[AQI_CATEGORIES.length - 1];
-  return { aqi, category: cat.label, color: cat.color, advice: cat.advice, dominant, subIndices };
+  const cat = bandFor(aqi);
+  // EN bake — display surfaces resolve language at render time (aqiCat/aqiAdvice).
+  return { aqi, category: cat.label[0], color: cat.color, advice: cat.advice[0], dominant, subIndices };
 }
 
 /** UV index → label. */
