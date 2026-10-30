@@ -585,3 +585,40 @@
   border-radius: 2px;
   background: color-mix(in srgb, var(--green) 34%, var(--border));
 }
+
+/* ================================================================
+   v0.8.29 — desktop two-column dashboard.
+   Every dashboard section is one <section.dash-sec> wrapping its
+   micro-label + card(s). Below 640px the wrapper is display:contents —
+   the flow is pixel-identical to the old flat render (same order, same
+   margins, title and card as direct layout children). From 640px the
+   page becomes a grid and sections become real items:
+     dc-m — main data column (nowcast, 48h, curve, 10-day, details, AQI)
+     dc-s — personal & insight side column (your day, for-you, farm,
+            Mausam says, sun & moon, nudge)
+     dc-f — full-width surfaces (hero, places, alerts, coast/flood/IMD)
+   At 640–899px the two columns are equal and only AQI + sun pair off —
+   replicating the old .row-2 behaviour; from 900px the main column
+   widens (1.5fr vs 1fr) and the full two-column dashboard engages.
+================================================================ */
+.dash-sec { display: contents; }
+@media (min-width: 640px) {
+  #home-scroll {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 14px;
+    align-items: start;
+  }
+  #home-scroll > * { grid-column: 1 / -1; min-width: 0; }
+  #home-scroll .dash-sec { display: block; }
+  #home-scroll .sec-aqi { grid-column: 1; }
+  #home-scroll .sec-sun { grid-column: 2; }
+}
+@media (min-width: 900px) {
+  #home-scroll {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: 22px;
+  }
+  #home-scroll .dc-m { grid-column: 1; }
+  #home-scroll .dc-s { grid-column: 2; }
+}

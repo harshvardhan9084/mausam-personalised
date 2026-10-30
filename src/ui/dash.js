@@ -661,6 +661,14 @@ function tenDayList(s, units, bd) {
    MAIN RENDER
 ================================================================ */
 
+/* v0.8.29 — desktop two-column dashboard building blocks.
+   Every [section title + content] pair is wrapped in ONE <section.dash-sec>.
+   Mobile keeps `display: contents` (the flow is pixel-identical to the old
+   flat render); from 640px up #page-home becomes a grid and the sections
+   become real items: dc-m = main data column, dc-s = personal/insight side
+   column, dc-f = full-width surfaces (hero, places, alerts, rare extras). */
+const dsec = (cls, ...kids) => el('section', { class: `dash-sec ${cls}` }, ...kids);
+
 export function renderDashboard(root, snapshot, units, ctx) {
   const s = snapshot;
   const loc = ctx.location;
@@ -765,21 +773,18 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- rain nowcast ---------- */
   const nowcast = nowcastCard(s, units);
   if (nowcast) {
-    root.appendChild(sectionTitle(t('sec_nowcast')));
-    root.appendChild(nowcast);
+    root.appendChild(dsec('dc-m', sectionTitle(t('sec_nowcast')), nowcast));
   }
 
   /* ---------- day timeline (profile-driven, additive) ---------- */
   const timeline = computeDayTimeline(s, profile);
   if (timeline) {
-    root.appendChild(sectionTitle(t('sec_yourday')));
-    root.appendChild(dayTimelineCard(timeline));
+    root.appendChild(dsec('dc-s', sectionTitle(t('sec_yourday')), dayTimelineCard(timeline)));
   }
 
   /* ---------- For You ---------- */
   const forYou = computeForYou(s, profile);
   if (forYou && forYou.cards.length) {
-    root.appendChild(sectionTitle(`${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`, false, 'sparkles'));
     const rail = el('div.foryou-rail');
     for (const c of forYou.cards) {
       rail.appendChild(el(`div.card.foryou-card.${toneClass(c.tone)}`,
@@ -787,11 +792,10 @@ export function renderDashboard(root, snapshot, units, ctx) {
         el('div.foryou-text', null, rich(c.text)),
       ));
     }
-    root.appendChild(rail);
+    root.appendChild(dsec('dc-s', sectionTitle(`${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`, false, 'sparkles'), rail));
   }
 
   /* ---------- hourly strip ---------- */
-  root.appendChild(sectionTitle(t('sec_48h')));
   const h48 = s.hours.slice(0, 48);
   const clock = store.clock.get() === '24' ? 'h24' : 'h12';
   /* Tappable hour detail — title tooltips never show on touch screens, so a
@@ -834,33 +838,32 @@ export function renderDashboard(root, snapshot, units, ctx) {
     );
     return card;
   });
-  root.appendChild(strip);
-  root.appendChild(hourDetail);
+  root.appendChild(dsec('dc-m', sectionTitle(t('sec_48h')), strip, hourDetail));
 
   /* ---------- temp curve ---------- */
   const curve = tempCurve(h48.slice(0, 24));
   if (curve) {
-    root.appendChild(sectionTitle(t('sec_curve')));
-    root.appendChild(card(curve));
+    root.appendChild(dsec('dc-m', sectionTitle(t('sec_curve')), card(curve)));
   }
 
   /* ---------- 10-day ---------- */
-  root.appendChild(sectionTitle(t('sec_10day')));
-  const bd = computeBestDays(s);
-  const tenList = tenDayList(s, units, bd);
-  if (tenList) {
-    const tenWrap = el('div', null, tenList);
-    tenWrap.appendChild(el('div.ten-hint', null, t('ten_hint')));
-    root.appendChild(tenWrap);
-  } else {
-    root.appendChild(weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units)));
+  {
+    const bd = computeBestDays(s);
+    const tenList = tenDayList(s, units, bd);
+    if (tenList) {
+      const tenWrap = el('div', null, tenList);
+      tenWrap.appendChild(el('div.ten-hint', null, t('ten_hint')));
+      root.appendChild(dsec('dc-m', sectionTitle(t('sec_10day')), tenWrap));
+    } else {
+      root.appendChild(dsec('dc-m', sectionTitle(t('sec_10day')), weekGrid(s.days, (d, i) => simpleWeekCell(d, i, units))));
+    }
   }
 
   /* ---------- farm weather (interest-gated, additive) ---------- */
   if (profile?.interests?.includes('farming')) {
     const farmCards = computeFarmCards(s);
     if (farmCards.length) {
-      root.appendChild(sectionTitle(t('sec_farm'), false, 'crops'));
+      const farmSec = [sectionTitle(t('sec_farm'), false, 'crops')];
       const grid = el('div.insight-grid');
       for (const c of farmCards) {
         grid.appendChild(el(`div.card.insight-card.${toneClass(c.tone)}`,
@@ -868,22 +871,22 @@ export function renderDashboard(root, snapshot, units, ctx) {
           el('div.insight-text', null, rich(c.text)),
         ));
       }
-      root.appendChild(grid);
+      farmSec.push(grid);
       /* extra stat tiles: soil + ET0 */
       const h0 = s.hours[0] ?? {};
-      root.appendChild(statTiles([
+      farmSec.push(statTiles([
         [h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—', 'Soil 0–1 cm'],
         [h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—', 'Soil 3–9 cm'],
         [h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—', 'Soil temp'],
         [h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—', 'Evapo‑transpiration'],
       ]));
+      root.appendChild(dsec('dc-s', ...farmSec));
     }
   }
 
   /* ---------- Mausam says ---------- */
   const insights = computeInsights(s);
   if (insights.length) {
-    root.appendChild(sectionTitle(t('sec_says')));
     const grid = el('div.insight-grid');
     for (const ins of insights) {
       grid.appendChild(el(`div.card.insight-card.${toneClass(ins.tone)}`,
@@ -891,13 +894,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
         el('div.insight-text', null, rich(ins.text)),
       ));
     }
-    root.appendChild(grid);
+    root.appendChild(dsec('dc-s', sectionTitle(t('sec_says')), grid));
   }
 
   /* ---------- details grid ---------- */
   const n = s.now;
-  root.appendChild(sectionTitle(t('sec_detail')));
-  root.appendChild(statTiles([
+  const detailTiles = statTiles([
     [`${Math.round(n.humidity ?? 0)}%`, t('humidity')],
     [wind(n.wind, units), `${t('wind')} ${n.wind_dir != null ? compass(n.wind_dir) : ''}`],
     [n.gusts != null ? wind(n.gusts, units) : '—', t('gusts')],
@@ -906,12 +908,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
     [n.pressure != null ? `${Math.round(n.pressure)} hPa` : '—', t('pressure')],
     [n.dew != null ? temp(n.dew) : '—', t('dew_point')],
     [`${n.cloud != null ? Math.round(n.cloud) : '—'}%`, t('cloud_cover')],
-  ]));
+  ]);
+  root.appendChild(dsec('dc-m', sectionTitle(t('sec_detail')), detailTiles));
 
-  /* ---------- AQI + sun row ---------- */
+  /* ---------- AQI (main column) + sun (side column) ---------- */
   const sun = s.sun;
-  const row = el('div.row-2');
-  row.appendChild(aqiCardV2(s, ctx.location));
+  root.appendChild(dsec('dc-m sec-aqi', aqiCardV2(s, ctx.location)));
 
   const imd = s.bundle?.imd;
   /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph
@@ -927,15 +929,13 @@ export function renderDashboard(root, snapshot, units, ctx) {
       ...(imd?.ok && imd.obs?.moonset ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonset')), el('span.kv-value', null, imd.obs.moonset))] : []),
     ),
   );
-  row.appendChild(sunCard);
-  root.appendChild(row);
+  root.appendChild(dsec('dc-s sec-sun', sunCard));
 
   /* ---------- sea & coast (only where marine data exists) ---------- */
   const marine = s.extras?.marine;
   if (marine?.now?.waveHeightM != null) {
-    root.appendChild(sectionTitle(t('sec_coast'), false, 'waves'));
     const wave = marine.now.waveHeightM;
-    root.appendChild(card(
+    root.appendChild(dsec('dc-f', sectionTitle(t('sec_coast'), false, 'waves'), card(
       el('div.kv-list',
         el('div.kv-row', el('span.kv-label', null, icon('waves', 'chip-ico'), ' Waves now'), el('span.kv-value', null, `${Math.round(wave * 10) / 10} m · ${Math.round(marine.now.wavePeriodS ?? 0)} s`)),
         ...marine.days.slice(0, 3).map((d) =>
@@ -943,25 +943,24 @@ export function renderDashboard(root, snapshot, units, ctx) {
             el('span.kv-label', null, dateLabel(d.date)),
             el('span.kv-value', null, d.waveMaxM != null ? `max ${Math.round(d.waveMaxM * 10) / 10} m` : '—'))),
       ),
-    ));
+    )));
   }
 
   /* ---------- river watch (only when abnormal) ---------- */
   const flood = s.extras?.flood;
   if (flood?.peak && flood.peak.ratio >= 1.5) {
-    root.appendChild(sectionTitle(t('sec_flood'), false, 'droplet'));
     const ratio = Math.round(flood.peak.ratio * 10) / 10;
-    root.appendChild(el(`div.alert.alert-${flood.peak.ratio >= 3 ? 'danger' : 'warn'}.dash-alert`,
+    root.appendChild(dsec('dc-f', sectionTitle(t('sec_flood'), false, 'droplet'),
+      el(`div.alert.alert-${flood.peak.ratio >= 3 ? 'danger' : 'warn'}.dash-alert`,
       { role: 'alert' },
       el('div.alert-title', null, alertIcon('wind'), el('span', null, `River flow ${ratio}× normal`)),
       el('div', null, `Peak around ${dateLabel(flood.peak.date)} — ${Math.round(flood.peak.discharge)} m³/s vs usual ${Math.round(flood.peak.mean)} m³/s. People near the river: stay alert, follow local administration.`),
-    ));
+    )));
   }
 
   /* ---------- IMD enrichment ---------- */
   if (imd?.ok) {
-    root.appendChild(sectionTitle(t('sec_imd')));
-    root.appendChild(card(
+    root.appendChild(dsec('dc-f', sectionTitle(t('sec_imd')), card(
       el('div.imd-note', null, t('imd_note', {
         s: imd.station?.name ?? '—', d: imd.station?.distanceKm ?? '—',
         r: imd.obs?.rain24 ?? '—', h1: imd.obs?.rh0830 ?? '—', h2: imd.obs?.rh1730 ?? '—',
@@ -973,12 +972,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
           el('div.imd-day-temp', null, d.max != null ? `${Math.round(d.max)}° / ${d.min != null ? Math.round(d.min) + '°' : '—'}` : '—'),
         )),
       ),
-    ));
+    )));
   }
 
   /* ---------- personalisation nudge ---------- */
   if (!profile && !store.flags.get('nudgeDismissed')) {
-    root.appendChild(el('div.card.nudge-card',
+    root.appendChild(dsec('dc-s', el('div.card.nudge-card',
       el('div.nudge-text',
         el('div.nudge-title', null, icon('sparkles', 'chip-ico'), ' ', t('nudge_title')),
         el('div.nudge-sub', null, t('nudge_sub')),
@@ -987,7 +986,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
         el('button.btn.btn-primary', { onclick: () => ctx.openYou?.() }, t('nudge_cta')),
         el('button.btn', { onclick: () => { store.flags.set('nudgeDismissed', true); ctx.rerender?.(); } }, t('nudge_skip')),
       ),
-    ));
+    )));
   }
 }
 
