@@ -23,6 +23,7 @@ import { runTool, fetchCitySnapshot } from './tools.js';
    and the dashboard keep their stable English; only generated CHAT text and
    card titles localize. */
 import { t as tr, getLang, dateLocale } from '../core/i18n.js';
+import { pickName } from '../core/placename.js';
 
 /* ---------------- tiny utils ---------------- */
 
@@ -32,7 +33,9 @@ const t = (c, w = false) => fmtTemp(c, unit(), w);
 const w = (k) => fmtWind(k, unit());
 
 function placeName(state) {
-  return state?.location?.name ?? tr('mt_place_fallback');
+  // v0.8.32: the reader's script — a place saved in one language still
+  // greets correctly after a switch (lazy alt-name resolution).
+  return pickName(state?.location) || tr('mt_place_fallback');
 }
 
 /** Language of this conversation turn (the engine is on-demand, so this is

@@ -108,3 +108,35 @@ export function geoResponse(q) {
   const results = [row(hit, lang)];
   return { results, generationtime_ms: 0.14 };
 }
+
+/**
+ * Shape a /fx/reverse.json response — the BigDataCloud reverse-geocode
+ * fixture (v0.8.32). The client's placename resolver and the GPS path both
+ * read `city || locality || principalSubdivision` (+ `countryName`), asked
+ * with `localityLanguage`. Nearest table city within ~0.5° wins; unknown
+ * coordinates return the service's minimal empty-ish shape so both the
+ * resolver (keeps the primary name) and the GPS fallback ("My location")
+ * behave like they do against the live API.
+ * @param {URLSearchParams} q request params (latitude, longitude, localityLanguage)
+ */
+export function reverseResponse(q) {
+  const lat = Number(q?.get('latitude'));
+  const lon = Number(q?.get('longitude'));
+  const lang = q?.get('localityLanguage') === 'hi' ? 'hi' : 'en';
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return {};
+  let best = null;
+  let bestD = Infinity;
+  for (const c of CITIES) {
+    const d = Math.abs(c.latitude - lat) + Math.abs(c.longitude - lon);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  if (!best || bestD > 0.5) return {};
+  const n = best[lang] ?? best.en;
+  return {
+    city: n.name,
+    locality: n.name,
+    principalSubdivision: n.admin1,
+    countryName: n.country,
+    localityInfo: { administrative: [], informative: [] },
+  };
+}

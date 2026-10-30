@@ -20,7 +20,7 @@ import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { geoResponse } from './scripts/geo_fixture.mjs';
+import { geoResponse, reverseResponse } from './scripts/geo_fixture.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
@@ -158,6 +158,10 @@ const FX_PATCH = `/* dev-only fetch patch: redirect Open-Meteo hosts to local fi
     [/api\\.open-meteo\\.com\\/v1\\/forecast/, '/fx/forecast.json'],
     [/air-quality-api\\.open-meteo\\.com/, '/fx/air.json'],
     [/geocoding-api\\.open-meteo\\.com/, '/fx/geo.json'],
+    // v0.8.32: the placename resolver (and the GPS path) ask BigDataCloud's
+    // keyless reverse endpoint — fixture it so name-language probes are
+    // deterministic in dev mode.
+    [/api\\.bigdatacloud\\.net/, '/fx/reverse.json'],
   ];
   const of = window.fetch.bind(window);
   window.fetch = function (input, init) {
@@ -197,6 +201,14 @@ const server = http.createServer(async (req, res) => {
         if (q.has('name')) {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
           return res.end(JSON.stringify(geoResponse(q)));
+        }
+      }
+      // v0.8.32: query-aware BigDataCloud reverse fixture (lat/lon/localityLanguage)
+      if (name === 'reverse.json') {
+        const q = new URL(req.url ?? '/', 'http://x').searchParams;
+        if (q.has('latitude') && q.has('longitude')) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          return res.end(JSON.stringify(reverseResponse(q)));
         }
       }
       const data = await fs.readFile(path.join(FX_DIR, name));

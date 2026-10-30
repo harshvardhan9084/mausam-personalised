@@ -18,6 +18,7 @@ import { geocodeSearch } from '../api/open-meteo.js';
 import { describeWeather } from '../api/wmo.js';
 import { computeCPCBAqi } from '../core/aqi-cpcb.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
+import { pickName, pickAdmin1, pickCountry } from '../core/placename.js';
 import { t, getLang } from '../core/i18n.js';
 import { icon, tipIcon } from './icons.js';
 
@@ -213,8 +214,8 @@ export function openCompare(ctx) {
       el('div.cmp-place',
         el('span.cmp-dot', { class: isCurrent ? 'is-current' : '' }),
         el('div.cmp-names',
-          el('span.cmp-name', null, p.name),
-          el('span.cmp-sub', null, [p.admin1, p.country].filter(Boolean).join(', ')),
+          el('span.cmp-name', null, pickName(p)),
+          el('span.cmp-sub', null, [pickAdmin1(p), pickCountry(p)].filter(Boolean).join(', ')),
         ),
       ),
       el('div.cmp-temp', null,
@@ -245,14 +246,14 @@ export function openCompare(ctx) {
     const withData = list.map((p, i) => ({ p, d: datas[i] })).filter((x) => x.d?.wx?.temp != null);
     if (withData.length >= 2) {
       const coolest = withData.reduce((a, b) => (b.d.wx.temp < a.d.wx.temp ? b : a));
-      verdict.appendChild(el('span.cmp-verdict-pill', null, icon('thermo', 'pill-ico'), ` ${t('cmp_verdict_cooler', { c: coolest.p.name })}`));
+      verdict.appendChild(el('span.cmp-verdict-pill', null, icon('thermo', 'pill-ico'), ` ${t('cmp_verdict_cooler', { c: pickName(coolest.p) })}`));
       const driest = withData.filter((x) => x.d.wx.popMax24 != null).reduce((a, b) => ((b.d.wx.popMax24 ?? 100) < (a.d.wx.popMax24 ?? 100) ? b : a), withData[0]);
       if (driest?.d?.wx?.popMax24 != null) {
-        verdict.appendChild(el('span.cmp-verdict-pill', null, tipIcon('sun', 'pill-ico'), ` ${t('cmp_verdict_drier', { c: driest.p.name })}`));
+        verdict.appendChild(el('span.cmp-verdict-pill', null, tipIcon('sun', 'pill-ico'), ` ${t('cmp_verdict_drier', { c: pickName(driest.p) })}`));
       }
       const clean = withData.filter((x) => x.d?.aqi != null).reduce((a, b) => (b.d.aqi < a.d.aqi ? b : a), withData.find((x) => x.d?.aqi != null));
       if (clean?.d?.aqi != null) {
-        verdict.appendChild(el('span.cmp-verdict-pill', null, icon('wind', 'pill-ico'), ` ${t('cmp_verdict_cleaner', { c: clean.p.name })}`));
+        verdict.appendChild(el('span.cmp-verdict-pill', null, icon('wind', 'pill-ico'), ` ${t('cmp_verdict_cleaner', { c: pickName(clean.p) })}`));
       }
     }
 
@@ -315,12 +316,12 @@ export function openJourney(ctx) {
   const toBtn = el('button.explore-from', { type: 'button', onclick: () => searchTo() });
   const paintFrom = () => {
     fromBtn.replaceChildren(`${t('jny_from')}: `);
-    if (from) fromBtn.append(icon('pin', 'chip-ico'), ` ${from.name}`);
+    if (from) fromBtn.append(icon('pin', 'chip-ico'), ` ${pickName(from)}`);
     else fromBtn.append(t('jny_pick_from'));
   };
   const paintTo = () => {
     toBtn.replaceChildren(`${t('jny_to')}: `);
-    if (to) toBtn.append(icon('pin', 'chip-ico'), ` ${to.name}`);
+    if (to) toBtn.append(icon('pin', 'chip-ico'), ` ${pickName(to)}`);
     else toBtn.append(t('jny_empty_to'));
   };
   paintFrom(); paintTo();
@@ -428,7 +429,7 @@ export function openJourney(ctx) {
     clear(out);
     const depLabel = departTarget(0).label;
     out.appendChild(el('div.jny-headline',
-      el('b', null, icon('pin', 'chip-ico'), ` ${from.name} → ${to.name}`),
+      el('b', null, icon('pin', 'chip-ico'), ` ${pickName(from)} → ${pickName(to)}`),
       el('span.jny-km', null, `· ~${Math.round(km)} km · ${depLabel}${durH >= 1 ? ` · ${t('jny_eta')} ~${durH.toFixed(0)} h` : ''}`),
     ));
 
@@ -439,7 +440,7 @@ export function openJourney(ctx) {
       rows.appendChild(el('div.jny-row',
         el('span.jny-mark', null, mark),
         el('div.jny-place',
-          el('b', null, p.f === 0 ? from.name : p.f === 1 ? to.name : `${Math.round(p.km)} km`),
+          el('b', null, p.f === 0 ? pickName(from) : p.f === 1 ? pickName(to) : `${Math.round(p.km)} km`),
           el('span.jny-cond', null, cond?.label ?? ''),
         ),
         el('div.jny-num',

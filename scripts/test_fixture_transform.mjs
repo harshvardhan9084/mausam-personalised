@@ -88,6 +88,21 @@ check('geo: no name param → legacy canned list', legacy.results?.length === 3 
 
 check('geo: all rows carry GeoNames fields', ['id', 'name', 'latitude', 'longitude', 'country', 'admin1', 'timezone', 'population'].every((k) => k in hiKanpur.results[0]));
 
+/* ---- v0.8.32: query-aware BigDataCloud reverse fixture ---- */
+const { reverseResponse } = await import('./geo_fixture.mjs');
+
+const revEn = reverseResponse(sp('latitude=19.07609&longitude=72.8774&localityLanguage=en'));
+check('reverse: Mumbai coords + en → Mumbai', revEn.city === 'Mumbai' && revEn.principalSubdivision === 'Maharashtra', JSON.stringify(revEn));
+const revHi = reverseResponse(sp('latitude=19.07609&longitude=72.8774&localityLanguage=hi'));
+check('reverse: Mumbai coords + hi → मुंबई', revHi.city === 'मुंबई' && revHi.principalSubdivision === 'महाराष्ट्र', JSON.stringify(revHi));
+check('reverse: hi variant carries hi country', revHi.countryName === 'भारत', revHi.countryName);
+const revNear = reverseResponse(sp('latitude=19.09&longitude=72.86&localityLanguage=en'));
+check('reverse: near-coords snap to nearest city', revNear.city === 'Mumbai', JSON.stringify(revNear));
+const revNone = reverseResponse(sp('latitude=10.0&longitude=10.0&localityLanguage=en'));
+check('reverse: unknown coords → empty shape', !revNone.city, JSON.stringify(revNone));
+const revBad = reverseResponse(sp('latitude=abc&longitude=def'));
+check('reverse: non-numeric coords → empty shape', !revBad.city, JSON.stringify(revBad));
+
 console.log(`\n=== fixture transform: ${pass} passed, ${fail} failed ===`);
 if (fails.length) {
   console.log('FAILURES:');

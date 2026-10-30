@@ -31,7 +31,10 @@ import { skeleton, errorCard } from './ui/shared.js';
 
 const REFRESH_MS = 15 * 60 * 1000;
 const IMD_TIMEOUT_MS = 9000;
-const DEFAULT_LOCATION = { name: 'New Delhi', admin1: 'Delhi', country: 'India', lat: 28.6139, lon: 77.209, isGeo: false };
+// v0.8.32: the default place ships with both name variants baked — the very
+// first Hindi session (before any pick, before any resolver call) shows
+// 'नई दिल्ली' in the header and hero.
+const DEFAULT_LOCATION = { name: 'New Delhi', nameAlt: 'नई दिल्ली', admin1: 'Delhi', admin1Alt: 'दिल्ली', country: 'India', countryAlt: 'भारत', lat: 28.6139, lon: 77.209, isGeo: false };
 
 /* ================= theme + accent + lang ================= */
 const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -221,6 +224,22 @@ function applyLocation(loc) {
   store.flags.set('welcomeDismissed', true);
   loadWeather(true);
 }
+
+/* v0.8.32: the placename resolver patches the stores in the background
+   (a place saved in one script gains its variant for the other); this
+   re-renders the affected surfaces. Merging the store copy into
+   currentLocation keeps the live object (which the hero and modals read)
+   in step with what was persisted. */
+window.addEventListener('mausam:placename', () => {
+  const saved = store.location.get();
+  if (saved?.nameAlt && currentLocation &&
+      Math.abs(saved.lat - currentLocation.lat) < 0.05 &&
+      Math.abs(saved.lon - currentLocation.lon) < 0.05) {
+    currentLocation = saved;
+  }
+  header.setLocation(currentLocation);
+  if (currentSnapshot) renderDashboard();
+});
 
 /* ================= pages wiring ================= */
 wireYouPage($('you-mount'), {

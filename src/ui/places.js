@@ -12,6 +12,7 @@ import { el, clear } from '../utils/dom.js';
 import { temp as fmtTemp } from '../utils/format.js';
 import { describeWeather } from '../api/wmo.js';
 import { store } from '../core/storage.js';
+import { pickName, pickAdmin1, pickCountry } from '../core/placename.js';
 import { t, getLang } from '../core/i18n.js';
 import { wxGlyph } from './icons.js';
 import { skyBucket } from './shared.js';
@@ -119,11 +120,11 @@ export function renderPlaces(mount, ctx) {
   const curWx = wxSlot();
   const curChip = el('button.place-chip.place-current', {
     type: 'button', role: 'listitem',
-    title: [cur?.admin1, cur?.country].filter(Boolean).join(', '),
+    title: [pickAdmin1(cur), pickCountry(cur)].filter(Boolean).join(', '),
     onclick: () => {}, // already there
   },
     curWx,
-    el('span.place-name', null, cur?.name ?? '—'),
+    el('span.place-name', null, cur ? pickName(cur) : '—'),
     el('span.place-temp', { 'data-keep': '1' }, '…'),
   );
   rail.appendChild(curChip);
@@ -143,15 +144,15 @@ export function renderPlaces(mount, ctx) {
     const chip = el('div.place-chip-wrap', { role: 'listitem' },
       el('button.place-chip', {
         type: 'button',
-        title: [p.admin1, p.country].filter(Boolean).join(', '),
+        title: [pickAdmin1(p), pickCountry(p)].filter(Boolean).join(', '),
         onclick: () => ctx.onSelect?.(p),
       },
         wx,
-        el('span.place-name', null, p.name),
+        el('span.place-name', null, pickName(p)),
         el('span.place-temp', null, '…'),
       ),
       el('button.place-forget', {
-        type: 'button', 'aria-label': `Forget ${p.name}`, title: `Forget ${p.name}`,
+        type: 'button', 'aria-label': t('forget_place', { n: pickName(p) }), title: t('forget_place', { n: pickName(p) }),
         onclick: (e) => { e.stopPropagation(); ctx.onForget?.(i); },
       }, '✕'),
     );
@@ -168,7 +169,7 @@ export function renderPlaces(mount, ctx) {
 
   // add-place chip
   rail.appendChild(el('button.place-chip.place-add', {
-    type: 'button', role: 'listitem', 'aria-label': 'Add a place',
+    type: 'button', role: 'listitem', 'aria-label': t('add_place'),
     onclick: () => ctx.onAdd?.(),
   }, t('add_place')));
 

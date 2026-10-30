@@ -21,6 +21,7 @@ import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, sim
 import { icon, skyIcon, tipIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
+import { pickName, pickAdmin1 } from '../core/placename.js';
 import { getProfile } from '../core/profile.js';
 import { t, getLang } from '../core/i18n.js';
 import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice, aqiBandColor } from '../core/aqi-cpcb.js';
@@ -181,7 +182,7 @@ function shareWeather(s, units, loc) {
   const aqi = s.currentAqi;
   const locale = dateLocale();
   const lines = [
-    `${loc?.name ?? 'Here'}: ${temp(n.temp, units, true)}, ${wxText(n.wx, getLang())}`,
+    `${loc ? pickName(loc) : 'Here'}: ${temp(n.temp, units, true)}, ${wxText(n.wx, getLang())}`,
     today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
     aqi?.aqi != null ? `AQI ${aqi.aqi} est. (${aqiCat(aqi.aqi, getLang())})` : null,
     '— Mausam',
@@ -708,7 +709,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const heroCard = card(
     el('div.sky-deco', { 'aria-hidden': 'true' }),
     el('div.hero-now-top',
-      el('div.hero-place', null, `${[loc?.name, loc?.admin1].filter(Boolean).join(', ')}`),
+      el('div.hero-place', null, `${[pickName(loc), pickAdmin1(loc)].filter(Boolean).join(', ')}`),
       shareBtn, // direct child: mobile grid places it beside the name, desktop flows it after the pills
       el('div.hero-top-actions', deltaPill, climatePill, el('span.updated-pill', { id: 'updated-pill', title: 'Data freshness' }, `${t('updated')} ${relativeTime(s.fetchedAt)}`)),
     ),

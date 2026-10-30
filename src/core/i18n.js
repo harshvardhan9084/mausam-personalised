@@ -68,6 +68,7 @@ const dict = {
   sec_flood:     ['River watch', 'नदी पर नज़र'],
   sec_bestday:   ['Best days ahead', 'आगे के सबसे अच्छे दिन'],
   add_place:     ['＋ Add place', '＋ जगह जोड़ें'],
+  forget_place:  ['Forget {n}', '{n} हटाएँ'],
   updated:       ['Updated', 'अपडेट'],
   share:         ['Share this weather', 'यह मौसम शेयर करें'],
   warmer_than_yesterday: ['warmer than yesterday', 'कल से गर्म'],

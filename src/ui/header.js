@@ -7,6 +7,7 @@
 import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
+import { pickName, pickAdmin1, pickCountry } from '../core/placename.js';
 import { t, getLang } from '../core/i18n.js';
 import { icon, wxGlyph } from './icons.js';
 import { skyBucket } from './shared.js';
@@ -28,10 +29,14 @@ export function wireHeader(refs, handlers) {
   brandEl.appendChild(el('img', { src: 'icons/favicon.svg', alt: '' }));
   brandEl.appendChild(el('span', null, 'Mausam'));
 
-  /* ---------- location label ---------- */
+  /* ---------- location label ----------
+     v0.8.32: the label reads through the placename layer, so a place
+     saved in one script re-renders in the reader's script after a
+     language switch (the lazy resolver patches the store and fires
+     'mausam:placename' → main.js re-renders). */
   function setLocation(loc) {
-    cityLabel.textContent = loc?.name ?? t('set_location');
-    cityBtn.title = loc ? [loc.admin1, loc.country].filter(Boolean).join(', ') : '';
+    cityLabel.textContent = loc?.name ? pickName(loc) : t('set_location');
+    cityBtn.title = loc ? [pickAdmin1(loc), pickCountry(loc)].filter(Boolean).join(', ') : '';
   }
 
   /* ---------- refresh ---------- */
@@ -67,7 +72,19 @@ export function wireHeader(refs, handlers) {
      saved places (current one tagged) and one-tap popular-city chips — and
      every state after it (searching / results / none) speaks the same
      designed row language: glyph disc + stacked name/sub (+ Current tag). */
-  const POPULAR_CITIES = ['Delhi', 'Mumbai', 'Patna', 'Lucknow', 'Jaipur', 'Kolkata', 'Hyderabad', 'Chennai'];
+  /* v0.8.32: popular cities are {en, hi} pairs — the chip labels AND the
+     query follow the UI language (a hi user taps 'मुंबई', the script-aware
+     geocoder answers in Hindi; an EN user taps 'Mumbai'). */
+  const POPULAR_CITIES = [
+    { en: 'Delhi', hi: 'दिल्ली' },
+    { en: 'Mumbai', hi: 'मुंबई' },
+    { en: 'Patna', hi: 'पटना' },
+    { en: 'Lucknow', hi: 'लखनऊ' },
+    { en: 'Jaipur', hi: 'जयपुर' },
+    { en: 'Kolkata', hi: 'कोलकाता' },
+    { en: 'Hyderabad', hi: 'हैदराबाद' },
+    { en: 'Chennai', hi: 'चेन्नई' },
+  ];
   let searchFocus = null;
 
   const pickPlace = (loc) => {
@@ -87,8 +104,8 @@ export function wireHeader(refs, handlers) {
     },
       el('span.result-disc', { 'aria-hidden': 'true' }, icon(opts.glyph ?? 'pin', 'result-ico')),
       el('span.result-texts', null,
-        el('span.result-name', null, loc.name),
-        el('span.result-sub', null, [loc.admin1, loc.country].filter(Boolean).join(', '))),
+        el('span.result-name', null, pickName(loc)),
+        el('span.result-sub', null, [pickAdmin1(loc), pickCountry(loc)].filter(Boolean).join(', '))),
       opts.tag ? el('span.result-tag', null, opts.tag) : null,
     );
 
@@ -121,10 +138,13 @@ export function wireHeader(refs, handlers) {
     }
     searchResults.appendChild(el('div.search-sec-label', null, t('search_popular')));
     searchResults.appendChild(el('div.search-quick', null,
-      POPULAR_CITIES.map((c) => el('button.search-quick-chip', {
-        type: 'button',
-        onclick: () => { searchInput.value = c; runSearch(c); },
-      }, c))));
+      POPULAR_CITIES.map((c) => {
+        const name = getLang() === 'hi' ? c.hi : c.en;
+        return el('button.search-quick-chip', {
+          type: 'button',
+          onclick: () => { searchInput.value = name; runSearch(name); },
+        }, name);
+      })));
   };
 
   /** Three shimmer rows in the skeleton language (aria-labelled). */
