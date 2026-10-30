@@ -164,6 +164,28 @@ export function focusMitraInput() {
   try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* textarea ok */ }
 }
 
+/**
+ * v0.8.37 "every advisory answers back" — the cross-tab handoff primitive.
+ * main.js routes a `mausam:ask` event here AFTER navigating to this tab,
+ * so the page is guaranteed wired and init()ed. While a turn is already
+ * streaming we never drop the question: it is pre-filled into the
+ * composer and focused, so the user just presses send — an advisory tap
+ * must always land somewhere visible.
+ */
+export function askMitra(question) {
+  const q = String(question ?? '').trim().slice(0, MAX_LEN);
+  if (!q || !mount) return false;
+  if (!inited) { init(); inited = true; }
+  if (busy) {
+    input.value = q;
+    autogrow();
+    input.focus();
+    return false;
+  }
+  send(q);
+  return true;
+}
+
 function autogrow() {
   if (!input) return;
   input.style.height = 'auto';

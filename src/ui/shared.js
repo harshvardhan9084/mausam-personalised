@@ -60,6 +60,36 @@ export function alert(kind, ...children) {
   return el(`div.alert.alert-${kind}`, { role: 'alert' }, ...children);
 }
 
+/* ================================================================
+   ASKABLE — v0.8.37 "every advisory answers back".
+   An advisory (farm-desk row, crop-week row…) becomes one tap away
+   from a conversation: the row itself is the button, a small chat
+   chip at the trailing edge is the affordance, and the question —
+   prepared by the code that GENERATED the advisory, so it always
+   matches the data — rides a `mausam:ask` event that main.js routes
+   to Mitra. Keyboard: Enter/Space; screen readers hear the row +
+   the "Ask Mitra" label, never a mystery div.
+================================================================ */
+export function askable(node, question) {
+  if (!question) return node; // no honest question → leave the row as plain text
+  node.classList.add('askable');
+  node.setAttribute('role', 'button');
+  node.setAttribute('tabindex', '0');
+  // the row's own headline (farm-rowtitle / crop-advice-crop) is what a
+  // screen reader should hear after "Ask Mitra:" — textContent of the whole
+  // row glues title and body together ("Spray window1 AM"), so prefer it
+  const head = node.querySelector('.farm-rowtitle, .crop-advice-crop')?.textContent
+    ?? node.textContent;
+  node.setAttribute('aria-label', `${t('ask_mitra_label')}: ${head.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
+  node.appendChild(el('span.ask-go', { 'aria-hidden': 'true' }, icon('chat', 'ask-ico')));
+  const fire = () => window.dispatchEvent(new CustomEvent('mausam:ask', { detail: { question: String(question) } }));
+  node.addEventListener('click', fire);
+  node.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); }
+  });
+  return node;
+}
+
 /** Horizontal strip of hour cards. */
 export function hourlyStrip(hours, renderCard) {
   return el(

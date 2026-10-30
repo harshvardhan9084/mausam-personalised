@@ -22,7 +22,7 @@ import { computeAlerts } from './core/insights.js';
 import { wireHeader } from './ui/header.js';
 import { wireSettingsPage, renderSettings } from './ui/settings.js';
 import { wireYouPage, renderYou } from './ui/you.js';
-import { wireMitraPage, showMitra, focusMitraInput } from './ui/mitra.js';
+import { wireMitraPage, showMitra, focusMitraInput, askMitra } from './ui/mitra.js';
 import { wireCropsPage, showCrops } from './ui/crops.js';
 import { rememberPlace } from './ui/places.js';
 import { openCompare, openJourney } from './ui/explore.js';
@@ -162,6 +162,19 @@ window.addEventListener('load', () => moveTabPill(true));
 document.fonts?.ready?.then(() => moveTabPill(true)).catch(() => {});
 moveTabPill(true);
 export function navigate(page) { go(page); }
+
+/* ================= "mausam:ask" — advisory → Mitra handoff =================
+ * v0.8.37 "every advisory answers back": any advisory row/card anywhere in
+ * the app can dispatch this event (shared.js's askable() wires the tap).
+ * The router owns the navigation; Mitra owns the send. One bus, one flow:
+ * land on Mitra with the question already asked — never a dead-end link.
+ */
+window.addEventListener('mausam:ask', (e) => {
+  const q = e.detail?.question;
+  if (!q) return;
+  if (currentPage !== 'mitra') navigate('mitra');
+  askMitra(q);
+});
 
 /* ================= "/" — focus the screen's main text field =================
  * Standard convention: / reaches the primary search/text input of whatever

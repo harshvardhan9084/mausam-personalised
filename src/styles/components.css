@@ -551,3 +551,37 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   .row-4 { grid-template-columns: 1fr 1fr; }
   .week-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ================================================================
+   ASKABLE — v0.8.37 "every advisory answers back".
+   One affordance language for every advisory row/card in the app:
+   the row carries a trailing chat chip, hovers and presses like a
+   button, and keyboard focus is as visible as the pointer's.
+================================================================ */
+.askable { cursor: pointer; position: relative; transition: background 0.18s, transform 0.12s; }
+.askable:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.askable:active { transform: scale(0.995); }
+.askable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+.ask-go {
+  flex: none;
+  width: 26px; height: 26px;
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  transition: color 0.18s, background 0.18s;
+}
+.askable .ask-ico { width: 14px; height: 14px; }
+.askable:hover .ask-go { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+/* farm desk rows are flex with body flexible — chip trails the text */
+.farm-desk .ask-go { margin-left: 10px; }
+/* crop-week rows stack icon/body — chip sits top-right like a badge */
+.crop-advice .ask-go { position: absolute; top: 10px; right: 10px; }
+.crop-advice { position: relative; }
+.crop-advice .crop-advice-body { padding-right: 26px; }
+@media (max-width: 700px) {
+  .ask-go { width: 30px; height: 30px; }
+  .crop-advice .crop-advice-body { padding-right: 32px; }
+}

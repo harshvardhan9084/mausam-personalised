@@ -17,7 +17,7 @@ import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
-import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, nowRow, skyBucket } from './shared.js';
+import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, nowRow, skyBucket, askable } from './shared.js';
 import { icon, skyIcon, tipIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
@@ -1008,12 +1008,14 @@ export function renderDashboard(root, snapshot, units, ctx) {
          of a 500px stack of three separate text cards beside a 200px curve. */
       const desk = el('div.card.farm-desk');
       for (const c of farmCards) {
-        desk.appendChild(el(`div.farm-row.${toneClass(c.tone)}`,
+        /* v0.8.37: the row answers back — tap asks Mitra the question that
+           was born with this advisory (c.ask). */
+        desk.appendChild(askable(el(`div.farm-row.${toneClass(c.tone)}`,
           el('span.insight-icon', null, tipContent(c.icon)),
           el('div.farm-rowbody',
             el('div.farm-rowtitle', null, c.title),
             el('div.farm-rowtext', null, rich(c.text))),
-        ));
+        ), c.ask));
       }
       farmSec.push(desk);
       /* extra stat tiles: soil + ET0 */

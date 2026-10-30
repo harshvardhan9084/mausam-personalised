@@ -195,6 +195,9 @@ export function computeFarmCards(s) {
     cards.push({
       icon: 'crops', tone: 'good', title: t('fy_farm_spray'),
       text: t('fy_farm_spray_good', { t: hourLabel(calm.time), w: fmtWind(calm.wind_speed_10m), p: Math.round(calm.precipitation_probability ?? 0) }),
+      /* v0.8.37: every advisory carries its own conversation — the question is
+         born with the data, so tapping the row asks exactly what the row saw. */
+      ask: t('ask_spray_good', { t: hourLabel(calm.time) }),
     });
   } else {
     const maxWind = Math.max(0, ...h24.map((h) => h.wind_speed_10m ?? 0));
@@ -202,6 +205,7 @@ export function computeFarmCards(s) {
     cards.push({
       icon: 'crops', tone: 'warn', title: t('fy_farm_spray'),
       text: t('fy_farm_spray_bad', { w: fmtWind(maxWind), p: Math.round(maxPop) }),
+      ask: t('ask_spray_none'),
     });
   }
 
@@ -215,6 +219,7 @@ export function computeFarmCards(s) {
     cards.push({
       icon: 'droplet', tone: top < 0.15 ? 'warn' : top > 0.35 ? 'info' : 'good', title: t('fy_farm_soil'),
       text,
+      ask: t('ask_soil', { v: pct }),
     });
   }
 
@@ -225,6 +230,7 @@ export function computeFarmCards(s) {
   cards.push({
     icon: 'umbrella', tone: total >= 40 ? 'good' : total >= 10 ? 'info' : 'warn', title: t('fy_farm_rain7'),
     text: t('fy_farm_rain7_t', { n: Math.round(total * 10) / 10, p: Math.round(peakPop) }),
+    ask: t('ask_rain7', { n: Math.round(total * 10) / 10 }),
   });
 
   return cards;

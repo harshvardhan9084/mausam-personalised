@@ -13,7 +13,7 @@
  */
 
 import { el, clear } from '../utils/dom.js';
-import { sectionTitle } from './shared.js';
+import { sectionTitle, askable } from './shared.js';
 import { icon, tipIcon } from './icons.js';
 import { store } from '../core/storage.js';
 import { t, getLang } from '../core/i18n.js';
@@ -152,14 +152,16 @@ function renderDynamic() {
     cardsZone.appendChild(sectionTitle(t('crop_week')));
     const wrap = el('div.crop-advisories');
     for (const a of advisories) {
-      wrap.appendChild(el(`div.crop-advice.insight-${a.tone === 'bad' ? 'danger' : a.tone}`,
+      /* v0.8.37: the row answers back — the advisory's icon names the topic,
+         the crop names the field, Mitra unpacks both. */
+      wrap.appendChild(askable(el(`div.crop-advice.insight-${a.tone === 'bad' ? 'danger' : a.tone}`,
         el('span.crop-advice-ico', { 'aria-hidden': 'true' }, tipIcon(a.icon) ?? document.createTextNode(String(a.icon ?? ''))),
         el('div.crop-advice-body',
           el('div.crop-advice-crop', null, `${a.crop.emoji} ${a.crop.name[langIdx()]}${statusChipText(a.status) ? ` · ${statusChipText(a.status)}` : ''}`),
           el('div.crop-advice-text', null, a.text),
           a.more > 0 ? el('div.crop-advice-more', null, t('crop_more', { n: a.more })) : null,
         ),
-      ));
+      ), askForFarm(a)));
     }
     cardsZone.appendChild(wrap);
   }
@@ -180,6 +182,25 @@ const STATUS = {
   off: { cls: 'muted', en: 'NOT IN FIELD', hi: 'खेत में नहीं' },
 };
 const statusChipText = (s) => (STATUS[s] ? STATUS[s][langIdx() ? 'hi' : 'en'] : '');
+
+/* v0.8.37 "every advisory answers back" — the advisory's ICON names the
+   topic (droplet=irrigation, thermo=heat, snow=frost, crops=spray,
+   rain/partly/sun=rain plan); the crop name grounds it in the reader's
+   field. One honest question per advisory family, asked in the reader's
+   language; unknown icons ask nothing (the row stays plain text). */
+const FARM_ASK = {
+  droplet:  (crop) => t('ask_irrigate', { crop }),
+  thermo:   (crop) => t('ask_heat', { crop }),
+  snow:     (crop) => t('ask_frost', { crop }),
+  crops:    (crop) => t('ask_spray_c', { crop }),
+  rain:     (crop) => t('ask_rain_plan', { crop }),
+  partly:   (crop) => t('ask_rain_plan', { crop }),
+  sun:      (crop) => t('ask_rain_plan', { crop }),
+};
+function askForFarm(a) {
+  const fn = FARM_ASK[a.icon];
+  return fn ? fn(a.crop?.name?.[langIdx()] ?? '') : null;
+}
 
 function fmtD(d) {
   try {

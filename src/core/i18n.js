@@ -214,6 +214,20 @@ const dict = {
   farm_stemp:    ['Soil temp', 'मिट्टी तापमान'],
   farm_et0:      ['Evapo‑transpiration', 'वाष्पोत्सर्जन'],
 
+  /* v0.8.37 "every advisory answers back" — the questions advisory rows ask
+     Mitra when tapped. EN reads as a natural chat prompt; hi mirrors it in
+     the farm vocabulary the advisories themselves already speak. */
+  ask_mitra_label: ['Ask Mitra', 'मित्रा से पूछें'],
+  ask_spray_good:  ['Why is {t} a good spray window — and what should I check before spraying?', '{t} को छिड़काव की खिड़की अच्छी क्यों है — और छिड़काव से पहले क्या जाँचें?'],
+  ask_spray_none:  ['Wind and rain are blocking spraying right now — when is my next safe spray window?', 'अभी हवा और बारिश छिड़काव रोक रही है — मेरी अगली सुरक्षित छिड़काव खिड़की कब है?'],
+  ask_soil:        ['My top-soil moisture is {v}% — what should I do about irrigation today?', 'मेरी ऊपरी मिट्टी की नमी {v}% है — आज सिंचाई को लेकर क्या करूँ?'],
+  ask_rain7:       ["Plan my field work around this week's rain (~{n} mm).", 'इस हफ़्ते की बारिश (~{n} मिमी) के हिसाब से खेत का काम plan करें।'],
+  ask_irrigate:    ['How much and when should I irrigate my {crop} field right now?', 'मेरे {crop} के खेत को अभी कितना और कब पानी देना चाहिए?'],
+  ask_heat:        ['Day temps are stressing my {crop} — how do I protect the crop this week?', 'मेरी {crop} को दिन की गर्मी दबा रही है — इस हफ़्ते फ़सल कैसे बचाएँ?'],
+  ask_frost:       ['Frost risk for my {crop} — what should I do tonight?', 'मेरी {crop} पर पाले का ख़तरा है — आज रात क्या करें?'],
+  ask_spray_c:     ['Explain the spray window for my {crop} — timing and precautions?', 'मेरी {crop} की छिड़काव खिड़की समझाइए — समय और सावधानियाँ?'],
+  ask_rain_plan:   ["Plan this week's {crop} field work around the rain forecast.", 'बारिश के पूर्वानुमान के हिसाब से इस हफ़्ते {crop} का खेती का काम plan करें।'],
+
   /* events / wedding */
   fy_event:      ['Wedding & events', 'शादी और कार्यक्रम'],
   fy_event_t:    ['**{d}** looks best of the next 10 days ({t1}–{t2}, {p}% rain). {w} is the riskiest — {p2}% rain.', '**{d}** अगले 10 दिनों में सबसे सही ({t1}–{t2}, {p}% बारिश)। {w} सबसे जोखिम भरा — {p2}% बारिश।'],
