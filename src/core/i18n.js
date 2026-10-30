@@ -58,6 +58,7 @@ const dict = {
   sec_digest:    ['Today in one line', 'आज एक नज़र में'],
   dg_rain:       ['rain {p}%', 'बारिश {p}%'],
   dg_aqi:        ['AQI {n}', 'AQI {n}'],
+  dg_jump:       ['See the full air-quality card', 'पूरा एयर-क्वालिटी कार्ड देखें'],
   sec_sun:       ['Sun & moon', 'सूरज और चाँद'],
   sec_imd:       ['IMD official forecast', 'IMD सरकारी पूर्वानुमान'],
   sec_foryou:    ['For you', 'आपके लिए'],

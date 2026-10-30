@@ -956,7 +956,11 @@ export function renderDashboard(root, snapshot, units, ctx) {
     );
     root.appendChild(dsec('dc-s sec-digest',
       sectionTitle(t('sec_digest')),
-      el('div.card.digest-card',
+      el('div.card.digest-card', {
+        role: 'button', tabindex: '0', title: t('dg_jump'), 'aria-label': t('dg_jump'),
+        onclick: () => jumpToAqi(),
+        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToAqi(); } },
+      },
         el('span.insight-icon', { 'aria-hidden': 'true' },
           skyIcon(skyBucket(s.now.weather_code, s.now.is_day), 'digest-glyph')),
         digestLine,
@@ -1021,6 +1025,98 @@ export function renderDashboard(root, snapshot, units, ctx) {
       ),
     )));
   }
+
+  /* v0.8.33 — pack the board before the browser paints it. */
+  packHomeGrid(root);
+  watchPacked(root);
+}
+
+/* ================================================================
+   v0.8.33 — the dashboard packs like masonry. Row-aligned auto-placement
+   pairs the k-th main section with the k-th rail section and sizes each
+   row to the taller cell, so every height mismatch becomes dead
+   background: measured ~1042px of holes in the profiled desktop state
+   (curve 281 beside farm 508, AQI 448 beside digest 122), spread across
+   every row. Packing replaces row alignment: rows collapse to 2px tracks
+   and each item spans exactly the tracks its outer height needs, so each
+   column packs independently and the holes vanish — same cards, same
+   order, same spacing rhythm (the gaps still come from the cards' own
+   margins and the next section's title strip).
+
+   The `.packed` class gates the CSS: if this JS never runs, the grid
+   keeps the old auto-row behaviour byte-for-byte. Tracks are 2px, so
+   quantisation costs at most 2px per item. Spans are recomputed by a
+   ResizeObserver (accordion days, font swap, data refresh), on the 640 /
+   900 breakpoints (column assignment changes) and after every render.
+================================================================ */
+const PACK_ROW_PX = 2;
+let packRO = null;
+let packedEls = []; // exactly the elements that currently carry spans
+
+/** Grid items of the board: direct children, with display:contents
+ *  wrappers (mobile sections, the dissolved says grid) unwrapped
+ *  recursively; display:none nodes are not items. */
+function packedItems(root) {
+  const out = [];
+  const collect = (node) => {
+    for (const n of node.children) {
+      const d = getComputedStyle(n).display;
+      if (d === 'none') continue;
+      if (d === 'contents') collect(n);
+      else out.push(n);
+    }
+  };
+  collect(root);
+  return out;
+}
+
+function packHomeGrid(root) {
+  if (!root || !root.isConnected) return;
+  const on = matchMedia('(min-width: 640px)').matches;
+  root.classList.toggle('packed', on);
+  if (!on) {
+    /* below 640 the sections turn display:contents, so packedItems() would
+       return their children — clear exactly the elements we spanned. */
+    for (const it of packedEls) it.style.gridRow = '';
+    packedEls = [];
+    return;
+  }
+  packedEls = packedItems(root);
+  for (const it of packedEls) {
+    const m = getComputedStyle(it).marginBottom;
+    const outer = it.offsetHeight + (parseFloat(m) || 0);
+    it.style.gridRow = `span ${Math.max(1, Math.ceil(outer / PACK_ROW_PX))}`;
+  }
+}
+
+/** Keep spans honest as heights move under us: accordion days, font
+ *  swap, viewport resize across the 640/900 breakpoints. */
+function watchPacked(root) {
+  if (!packRO) {
+    packRO = new ResizeObserver(() => {
+      if (!document.body.contains(root)) return;
+      packHomeGrid(document.getElementById('home-scroll'));
+    });
+    matchMedia('(min-width: 640px)').addEventListener('change', () =>
+      packHomeGrid(document.getElementById('home-scroll')));
+    matchMedia('(min-width: 900px)').addEventListener('change', () =>
+      packHomeGrid(document.getElementById('home-scroll')));
+    addEventListener('load', () => packHomeGrid(document.getElementById('home-scroll')));
+    document.fonts?.ready?.then(() => packHomeGrid(document.getElementById('home-scroll')));
+  }
+  packRO.disconnect();
+  for (const it of packedItems(root)) packRO.observe(it);
+}
+
+/** The digest points somewhere: tap/Enter scrolls the full AQI card into
+ *  view. Reduced-motion users get an instant jump. */
+function jumpToAqi() {
+  const target = document.querySelector('#home-scroll .sec-aqi');
+  if (!target) return;
+  target.scrollIntoView({
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  });
 }
 
 /** Tiny helper used by main.js to refresh the "Updated…" pill. */

@@ -620,6 +620,12 @@
     align-items: start;
     grid-auto-flow: dense;
   }
+  /* v0.8.33 — masonry pack (JS-computed spans, see dash.js): rows collapse
+     to 2px tracks and each item spans the tracks its outer height needs,
+     so each column packs independently and row-mismatch holes vanish.
+     Gated on .packed — without the JS the auto-row pairing below is kept
+     byte-for-byte. Mobile never sees this (block flow below 640px). */
+  #home-scroll.packed { grid-auto-rows: 2px; }
   #home-scroll > * { grid-column: 1 / -1; min-width: 0; }
   #home-scroll .dash-sec { display: block; }
   #home-scroll .sec-aqi { grid-column: 1; }
@@ -672,6 +678,10 @@
 .digest-dot { color: var(--muted); opacity: 0.45; margin: 0 6px; }
 .digest-cat { font-weight: 700; margin-left: 5px; }
 .digest-glyph { width: 16px; height: 16px; }
+/* v0.8.33 — the digest is a control: it jumps to the full AQI card. */
+.digest-card { cursor: pointer; transition: border-color 0.15s ease; }
+.digest-card:hover { border-color: var(--accent); }
+.digest-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 #home-scroll .dash-sec.sec-digest { display: none; }
 @media (min-width: 900px) {
