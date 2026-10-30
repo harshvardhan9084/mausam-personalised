@@ -12,7 +12,7 @@ import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { icon, skyIcon, tipIcon } from '../ui/icons.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
 import { aqiBandColor, aqiCat, aqiAdvice } from '../core/aqi-cpcb.js';
-import { t, getLang } from '../core/i18n.js';
+import { t, getLang, dateLocale } from '../core/i18n.js';
 
 /* ================================================================
    v0.8.20 — the chat joins the glyph language. Cards used to render
@@ -333,11 +333,12 @@ const R = {
     if (pops.length && peak < 15) {
       const i = pops.indexOf(peak);
       const at = p.d.labels?.[i];
+      /* v0.8.27 — the dry strip speaks the reader's language too. */
       return el('div.mu-dry',
         skyIcon('clear-day', 'mu-dry-ico'),
         el('div.mu-dry-text',
-          el('b', null, 'No rain in this window'),
-          el('span', null, `Peak chance ${Math.round(peak)}%${at ? ` around ${at}` : ''} — stay dry.`))
+          el('b', null, t('mt_dry_title')),
+          el('span', null, t('mt_dry_peak', { p: Math.round(peak), at: at ? ` ${t('mt_dry_around')} ${at}` : '' })))
       );
     }
     const svg = rainBarsSVG(p.d);
@@ -350,9 +351,20 @@ const R = {
     const los = p.d.days.map((x) => x.lo).filter((v) => v != null);
     const wMax = Math.max(...his, -99), lMin = Math.min(...los, 99);
     const range = Math.max(1, wMax - lMin);
+    /* v0.8.27 — day labels resolve at render from the raw date (t('today')/
+       t('tomorrow')/locale weekday), so an English-baked or LLM-English label
+       never leaks into a Hindi chat. Falls back to the payload label. */
+    const dayLab = (d, i) => {
+      if (d.date) {
+        if (i === 0) return t('today');
+        if (i === 1) return t('tomorrow');
+        return new Date(`${d.date}T12:00:00`).toLocaleDateString(dateLocale(), { weekday: 'short' });
+      }
+      return d.label || d.date || '—';
+    };
     return el('div.mu-days',
-      p.d.days.map((d) => el('div.mu-day',
-        el('span.mu-day-l', null, d.label || d.date || '—'),
+      p.d.days.map((d, i) => el('div.mu-day',
+        el('span.mu-day-l', null, dayLab(d, i)),
         el('span.mu-day-i', { title: d.cond || '' }, muGlyph(d.icon) ?? skyIcon('cloudy', 'mu-ico')),
         el('div.mu-day-bar',
           el('div.mu-day-fill', {
@@ -411,11 +423,14 @@ const R = {
   },
 
   'window-card'(p) {
+    /* v0.8.27 — scoring bands keep their EN bake in the payload; the badge
+       resolves through the dictionary like every other user-visible word. */
+    const bandTxt = (r) => ({ Good: t('mt_band_good'), Fair: t('mt_band_fair'), Poor: t('mt_band_poor') })[r] ?? r;
     return el('div.mu-windows',
       p.d.verdict ? el('div.mu-verdict', null, p.d.verdict) : null,
       p.d.windows.map((w) => el('div.win-row', { style: { borderLeftColor: w.color } },
         el('div.win-slot', null, w.slot),
-        w.rating ? el('div.win-badge', { style: { background: w.color } }, w.rating) : null,
+        w.rating ? el('div.win-badge', { style: { background: w.color } }, bandTxt(w.rating)) : null,
         w.reason ? el('div.win-why', null, w.reason) : null
       ))
     );
@@ -548,7 +563,8 @@ function salvageReadable(rawJSON) {
       if (v.length && v.every((x) => x && typeof x === 'object')) {
         const first = v[0];
         const label = first?.name ?? first?.label ?? first?.time ?? first?.slot;
-        return `${v.length} ${v.length === 1 ? 'entry' : 'entries'}${label ? ` · from ${label}` : ''}`;
+        if (label) return t(v.length === 1 ? 'mt_hist_one' : 'mt_hist_n', { n: v.length, l: label });
+        return t(v.length === 1 ? 'mt_hist_one_bare' : 'mt_hist_n_bare', { n: v.length });
       }
       return v.slice(0, 6).map((x) => String(x)).join(', ') + (v.length > 6 ? ', …' : '');
     }

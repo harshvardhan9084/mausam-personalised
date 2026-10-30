@@ -57,7 +57,9 @@ function* walk(dir) {
 const used = new Map();
 for (const file of walk('src')) {
   const txt = stripComments(readFileSync(file, 'utf8'));
-  for (const m of txt.matchAll(/\bt\(\s*'([a-z0-9_]+)'/g)) {
+  // v0.8.27 — offline.js imports the dictionary as `tr` (its local `t` is the
+  // temperature formatter), so both aliases count as dictionary usage.
+  for (const m of txt.matchAll(/\btr?\(\s*'([a-z0-9_]+)'/g)) {
     used.set(m[1], file);
   }
 }

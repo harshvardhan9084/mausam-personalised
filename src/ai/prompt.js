@@ -111,16 +111,23 @@ function personalBlock(profile) {
  * 'auto' mirrors the user's message; explicit settings override.
  */
 function languageBlock(explicit) {
+  /* v0.8.27 — CARDS_READ_IN_YOUR_LANGUAGE: the prose rule used to cover only
+     the message text; card titles/chips inside ```mausam-ui blocks kept their
+     English examples ("RAIN PROBABILITY TODAY") under a Hindi paragraph —
+     the one surface a Hindi reader stares at, still in English. Titles and
+     chip labels now follow the reply language; component names, icons and
+     numbers stay exactly as documented (the parser needs them). */
+  const CARDS = ' Inside ```mausam-ui blocks, write human-readable strings (card titles, advice lines, chip labels, verdicts) in the SAME reply language — keep component names, icon keys and numbers exactly as documented.';
   if (explicit === 'hi') {
-    return '\n\n## LANGUAGE\nReply in **हिंदी (Devanagari)**. Keep numbers and unit symbols in Latin script (29°C, km/h). Everyday words, no heavy Sanskritised Hindi.';
+    return '\n\n## LANGUAGE\nReply in **हिंदी (Devanagari)**. Keep numbers and unit symbols in Latin script (29°C, km/h). Everyday words, no heavy Sanskritised Hindi.' + CARDS;
   }
   if (explicit === 'hinglish') {
-    return '\n\n## LANGUAGE\nReply in **natural Hinglish** — Roman-script Hindi mixed with English words, exactly the way Indian friends text each other ("Baarish ho sakti hai shaam ko, umbrella le lo").';
+    return '\n\n## LANGUAGE\nReply in **natural Hinglish** — Roman-script Hindi mixed with English words, exactly the way Indian friends text each other ("Baarish ho sakti hai shaam ko, umbrella le lo").' + CARDS;
   }
   if (explicit === 'en') {
-    return '\n\n## LANGUAGE\nReply in English.';
+    return '\n\n## LANGUAGE\nReply in English.' + CARDS;
   }
-  return '\n\n## LANGUAGE\nReply in the SAME language the user writes in — English, Hindi (Devanagari) or Hinglish. If they type Roman-script Hindi, answer in Hinglish.';
+  return '\n\n## LANGUAGE\nReply in the SAME language the user writes in — English, Hindi (Devanagari) or Hinglish. If they type Roman-script Hindi, answer in Hinglish.' + CARDS;
 }
 
 /**
