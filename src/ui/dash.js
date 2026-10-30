@@ -59,6 +59,116 @@ function rich(text) {
   return frag;
 }
 
+/* ================================================================
+   v0.8.34 — the sky clock. The Sun & moon card used to be three bare
+   text rows: honest, but mute — the one card in the rail with no visual
+   voice. The helpers below draw the day's arc (sun travelling between
+   sunrise and sunset, moon taking the night shift) and compute the moon
+   phase on-device from the synodic month — real astronomy, zero extra
+   API calls, themeable through the same color tokens as every card.
+================================================================ */
+
+/** i18n key for the UV band word — same thresholds as uvLabel() in
+ *  aqi-cpcb.js, but the WORD follows the reader's language on every
+ *  dashboard surface (the engine's EN label stays for internals). */
+const uvBandKey = (v) => v == null ? 'uv_mod' : v < 3 ? 'uv_low' : v < 6 ? 'uv_mod' : v < 8 ? 'uv_high' : v < 11 ? 'uv_vhigh' : 'uv_ext';
+
+let saSeq = 0; // unique gradient ids per render
+
+/** Moon phase 0..1 (0 = new moon). Synodic-month approximation anchored
+ *  to the widely-cited reference new moon 2000-01-06 18:14 UTC; drift is
+ *  well under a day for the decades that matter here. */
+function moonPhaseFrac(now = new Date()) {
+  const synodic = 29.530588853;
+  const days = (now.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000;
+  let p = (days % synodic) / synodic;
+  if (p < 0) p += 1;
+  return p;
+}
+
+/** i18n key for the 8 classical phase buckets. */
+function phaseKey(p) {
+  if (p < 0.034 || p > 0.966) return 'mp_new';
+  if (p < 0.216) return 'mp_wax_cres';
+  if (p < 0.284) return 'mp_first';
+  if (p < 0.466) return 'mp_wax_gib';
+  if (p < 0.534) return 'mp_full';
+  if (p < 0.716) return 'mp_wan_gib';
+  if (p < 0.784) return 'mp_last';
+  return 'mp_wan_cres';
+}
+
+/** Little disc with the real terminator: dark base + lit shape built from
+ *  one semicircle plus an elliptical terminator (rx shrinks as the lit
+ *  fraction nears half). Waxing lights the right limb (northern sky). */
+function moonDiscSvg(p) {
+  const R = 10, cx = 12, cy = 12;
+  const k = Math.cos(2 * Math.PI * p);
+  const rx = Math.max(0.01, Math.abs(k) * R).toFixed(2);
+  const waxing = p <= 0.5;
+  const lit = waxing
+    ? `M ${cx} ${cy - R} A ${R} ${R} 0 0 1 ${cx} ${cy + R} A ${rx} ${R} 0 0 ${k > 0 ? 0 : 1} ${cx} ${cy - R} Z`
+    : `M ${cx} ${cy - R} A ${R} ${R} 0 0 0 ${cx} ${cy + R} A ${rx} ${R} 0 0 ${k > 0 ? 1 : 0} ${cx} ${cy - R} Z`;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = `<svg class="moon-disc" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="${R}" class="moon-dark"/><path d="${lit}" class="moon-lit"/></svg>`;
+  return tpl.content.firstElementChild;
+}
+
+/** The day's arc: horizon, the sun/moon glyph at its honest position,
+ *  dawn-to-dusk tint under the arc (night: dashed arc, dimmed fill).
+ *  Positions are parametric along the drawn quadratic — a designed
+ *  glance, not an ephemeris. Day/night follows the READER'S clock
+ *  against this card's own sunrise/sunset rows — the app renders every
+ *  place's times in the reader's clock, so the arc speaks the same
+ *  language (a real single-place user's clock and is_day always agree).
+ *  All strings are static; numbers come from the fetched forecast. */
+function sunArcSvg(sun) {
+  const X0 = 20, X1 = 280, YH = 100, CY = -76, MX = 150;
+  const px = (tt) => (1 - tt) * (1 - tt) * X0 + 2 * (1 - tt) * tt * MX + tt * tt * X1;
+  const py = (tt) => (1 - tt) * (1 - tt) * YH + 2 * (1 - tt) * tt * CY + tt * tt * YH;
+  const mins = (iso) => (iso ? Number(String(iso).slice(11, 13)) * 60 + Number(String(iso).slice(14, 16)) : null);
+  const sm = mins(sun?.sunrise), em = mins(sun?.sunset);
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  let tt = null, night = false;
+  if (sm != null && em != null && em > sm) {
+    if (nowMin >= sm && nowMin <= em) tt = (nowMin - sm) / (em - sm);
+    else {
+      night = true;
+      const nightLen = 1440 - (em - sm);
+      tt = nowMin < sm ? (nowMin + 1440 - em) / nightLen : (nowMin - em) / nightLen;
+    }
+  }
+  const at = tt != null ? Math.min(1, Math.max(0, tt)) : null;
+  const gx = at != null ? px(at) : 0, gy = at != null ? py(at) : 0;
+  const rays = Array.from({ length: 8 }, (_, k2) => {
+    const a = (k2 * Math.PI) / 4;
+    return `<line x1="${(9.5 * Math.cos(a)).toFixed(2)}" y1="${(9.5 * Math.sin(a)).toFixed(2)}" x2="${(12.5 * Math.cos(a)).toFixed(2)}" y2="${(12.5 * Math.sin(a)).toFixed(2)}"/>`;
+  }).join('');
+  const glyph = at == null ? '' : night
+    ? `<g transform="translate(${(gx - 7.7).toFixed(1)} ${(gy - 7.7).toFixed(1)}) scale(0.64)" class="sa-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></g>`
+    : `<g transform="translate(${gx.toFixed(1)} ${gy.toFixed(1)})" class="sa-sun"><circle r="7"/>${rays}</g>`;
+  const gid = `sa-g${++saSeq}`;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = `<svg viewBox="0 0 300 118" preserveAspectRatio="xMidYMid meet">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:color-mix(in srgb, var(--yellow) 26%, transparent)"/>
+      <stop offset="1" style="stop-color:color-mix(in srgb, var(--yellow) 4%, transparent)"/>
+    </linearGradient></defs>
+    <path class="sa-fill" d="M ${X0} ${YH} Q ${MX} ${CY} ${X1} ${YH} Z" fill="url(#${gid})"/>
+    <path class="sa-arc" d="M ${X0} ${YH} Q ${MX} ${CY} ${X1} ${YH}"/>
+    <line class="sa-horizon" x1="14" y1="${YH}" x2="286" y2="${YH}"/>
+    <circle class="sa-end" cx="${X0}" cy="${YH}" r="2.5"/><circle class="sa-end" cx="${X1}" cy="${YH}" r="2.5"/>
+    ${glyph}
+  </svg>`;
+  const wrap = el('div.sun-arc' + (night ? '.night' : ''), {
+    role: 'img',
+    'aria-label': `${t('sunrise')} ${fmtClock(sun?.sunrise)} · ${t('sunset')} ${fmtClock(sun?.sunset)}`,
+  });
+  wrap.appendChild(tpl.content.firstElementChild);
+  return wrap;
+}
+
 function toneClass(tone) {
   return { good: 'insight-good', info: 'insight-info', warn: 'insight-warn', danger: 'insight-danger' }[tone] ?? 'insight-info';
 }
@@ -909,7 +1019,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
     [`${Math.round(n.humidity ?? 0)}%`, t('humidity')],
     [wind(n.wind, units), `${t('wind')} ${n.wind_dir != null ? compass(n.wind_dir) : ''}`],
     [n.gusts != null ? wind(n.gusts, units) : '—', t('gusts')],
-    [`${n.uv != null ? Math.round(n.uv * 10) / 10 : '—'}`, `${t('uv')} · ${n.uvLabel ?? ''}`],
+    [`${n.uv != null ? Math.round(n.uv * 10) / 10 : '—'}`, `${t('uv')} · ${n.uv != null ? t(uvBandKey(n.uv)) : ''}`],
     [visibility(n.visibility), t('visibility')],
     [n.pressure != null ? `${Math.round(n.pressure)} hPa` : '—', t('pressure')],
     [n.dew != null ? temp(n.dew) : '—', t('dew_point')],
@@ -923,19 +1033,47 @@ export function renderDashboard(root, snapshot, units, ctx) {
 
   const imd = s.bundle?.imd;
   /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph
-     (same icon language as the hero) instead of raw emoji. */
+     (same icon language as the hero) instead of raw emoji.
+     v0.8.34: the card leads with the day's arc — the sun (or the moon,
+     after dark) at its honest position between sunrise and sunset — and
+     gains an on-device moon-phase row with the real terminator drawn. */
   const kvIco = (name, tint) => icon(name, `kv-ico ${tint}`);
+  const mP = moonPhaseFrac();
+  const mIllum = Math.round((1 - Math.cos(2 * Math.PI * mP)) / 2 * 100);
   const sunCard = card(
     el('div.card-h', null, `${t('sec_sun')}${imd?.ok ? ' · IMD' : ''}`),
+    sunArcSvg(sun),
     el('div.kv-list',
       el('div.kv-row', el('span.kv-label', kvIco('sunrise', 'ico-sun'), t('sunrise')), el('span.kv-value', null, fmtClock(sun?.sunrise))),
       el('div.kv-row', el('span.kv-label', kvIco('sunset', 'ico-dusk'), t('sunset')), el('span.kv-value', null, fmtClock(sun?.sunset))),
       el('div.kv-row', el('span.kv-label', kvIco('hourglass', 'ico-mut'), t('day_length')), el('span.kv-value', null, sun?.dayLength ?? '—')),
+      el('div.kv-row',
+        el('span.kv-label', kvIco('moon', 'ico-moon'), t('moon_phase')),
+        el('span.kv-value', { class: 'moon-val' }, moonDiscSvg(mP),
+          `${t(phaseKey(mP))} · ${t('mp_lit', { n: mIllum })}`)),
       ...(imd?.ok && imd.obs?.moonrise ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonrise')), el('span.kv-value', null, imd.obs.moonrise))] : []),
       ...(imd?.ok && imd.obs?.moonset ? [el('div.kv-row', el('span.kv-label', kvIco('moon', 'ico-moon'), t('moonset')), el('span.kv-value', null, imd.obs.moonset))] : []),
     ),
   );
   root.appendChild(dsec('dc-s sec-sun', sunCard));
+
+  /* ---------- today's records (rail) ----------
+     v0.8.34: the rail's honest extremes — the numbers a day is judged by
+     (strongest gust, peak UV, rain total, what the heat actually felt
+     like) — computed from the forecast already fetched, in the same kv
+     language as the sun card. Mobile gets them too: these day-level
+     extremes appear nowhere else below 900px. */
+  const rec0 = s.days?.[0];
+  if (rec0 && (rec0.gusts_max != null || rec0.uv_max != null || rec0.precipitation_sum != null || rec0.feels_max != null)) {
+    root.appendChild(dsec('dc-s sec-records', sectionTitle(t('sec_records')), card(
+      el('div.kv-list',
+        el('div.kv-row', el('span.kv-label', kvIco('wind', 'ico-mut'), t('rec_gust')), el('span.kv-value', null, rec0.gusts_max != null ? wind(rec0.gusts_max, units) : '—')),
+        el('div.kv-row', el('span.kv-label', kvIco('sun', 'ico-sun'), t('rec_uv')), el('span.kv-value', null, rec0.uv_max != null ? `${Math.round(rec0.uv_max * 10) / 10} · ${t(uvBandKey(rec0.uv_max))}` : '—')),
+        el('div.kv-row', el('span.kv-label', kvIco('umbrella', 'ico-mut'), t('rec_rain')), el('span.kv-value', null, rec0.precipitation_sum != null ? `${Math.round(rec0.precipitation_sum * 10) / 10} mm${rec0.precip_prob_max != null ? ` · ${t('rec_peak', { p: Math.round(rec0.precip_prob_max) })}` : ''}` : '—')),
+        el('div.kv-row', el('span.kv-label', kvIco('thermo', 'ico-dusk'), t('rec_feels')), el('span.kv-value', null, rec0.feels_max != null ? temp(rec0.feels_max, units) : '—')),
+      ),
+    )));
+  }
 
   /* ---------- today in one line (rail digest, ≥900px) ----------
      The desktop rail used to run out of content exactly where the data got
