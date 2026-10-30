@@ -23,7 +23,7 @@ import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { getProfile } from '../core/profile.js';
 import { t, getLang } from '../core/i18n.js';
-import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice } from '../core/aqi-cpcb.js';
+import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice, aqiBandColor } from '../core/aqi-cpcb.js';
 
 /** Clock-aware time-of-day formatter — every surface honors the Clock setting
  *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
@@ -675,6 +675,11 @@ export function renderDashboard(root, snapshot, units, ctx) {
   const profile = getProfile();
 
   clear(root);
+  /* v0.8.31 — the rail's granularity adapts to its load: with a profile the
+     side column is rich (your-day, for-you, farm) and the Mausam-says block
+     stays one grouped section; without one the rail is thin, so the says
+     cards pack as independent items (CSS keys off .has-prof). */
+  root.classList.toggle('has-prof', !!profile);
 
   /* ---------- hero ---------- */
   const yd = s.yesterday?.deltaMax;
@@ -894,7 +899,7 @@ export function renderDashboard(root, snapshot, units, ctx) {
         el('div.insight-text', null, rich(ins.text)),
       ));
     }
-    root.appendChild(dsec('dc-s', sectionTitle(t('sec_says')), grid));
+    root.appendChild(dsec('dc-s sec-says', sectionTitle(t('sec_says')), grid));
   }
 
   /* ---------- details grid ---------- */
@@ -930,6 +935,33 @@ export function renderDashboard(root, snapshot, units, ctx) {
     ),
   );
   root.appendChild(dsec('dc-s sec-sun', sunCard));
+
+  /* ---------- today in one line (rail digest, ≥900px) ----------
+     The desktop rail used to run out of content exactly where the data got
+     dense: the AQI row's side cell sat empty in every state. This compact
+     digest — the day as one glanceable line — is the rail's closing card.
+     It is a rail artifact: hidden below 900px where everything it says is
+     already on screen in sequence. */
+  if (s.now?.temp != null) {
+    const maxPop = Math.max(0, ...s.hours.slice(0, 12).map((h) => h.precipitation_probability ?? 0));
+    const aqiNow = s.currentAqi?.aqi;
+    const digestLine = el('p.digest-line', null,
+      el('strong', null, temp(s.now.temp, units)), ' ', wxText(s.now.wx, getLang()),
+      el('span.digest-dot', { 'aria-hidden': 'true' }, '·'),
+      t('dg_rain', { p: Math.round(maxPop) }),
+      aqiNow != null ? el('span.digest-dot', { 'aria-hidden': 'true' }, '·') : null,
+      aqiNow != null ? t('dg_aqi', { n: aqiNow }) : null,
+      aqiNow != null ? el('span.digest-cat', { style: `color:${aqiBandColor(aqiNow)}` }, aqiCat(aqiNow, getLang())) : null,
+    );
+    root.appendChild(dsec('dc-s sec-digest',
+      sectionTitle(t('sec_digest')),
+      el('div.card.digest-card',
+        el('span.insight-icon', { 'aria-hidden': 'true' },
+          skyIcon(skyBucket(s.now.weather_code, s.now.is_day), 'digest-glyph')),
+        digestLine,
+      ),
+    ));
+  }
 
   /* ---------- sea & coast (only where marine data exists) ---------- */
   const marine = s.extras?.marine;

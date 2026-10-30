@@ -638,3 +638,62 @@
      touching the tap targets below 900px. */
   .hour-card { min-width: 54px; padding: 10px 6px; }
 }
+
+/* ================================================================
+   v0.8.31 — the rail carries its weight. v0.8.29/30 gave the dashboard
+   two columns and taught them to pack, but the rail's content stayed
+   packaged in MONOLITHIC sections whose heights never matched the main
+   column's row granularity: without a profile the three Mausam-says
+   cards stacked ~500px beside a 120px nowcast (a dead gap below it) and
+   rows 4–6 had no rail content at all; with a profile the four for-you
+   cards stacked ~800px beside the 150px hourly strip. The fix is not
+   more content — it is granularity, plus one honest closing card.
+================================================================ */
+
+/* ---------- "Today in one line" (rail digest) ----------
+   The day as one glanceable line — temp + sky · rain odds · AQI + band,
+   band-tinted — parked beside the AQI card, which is exactly where the
+   rail used to run out. A rail artifact: hidden below 900px, where
+   everything it summarizes is already on screen in reading order. */
+.digest-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.digest-line {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.5;
+  min-width: 0;
+}
+.digest-line strong { color: var(--text); font-size: 1.04rem; font-weight: 700; }
+.digest-dot { color: var(--muted); opacity: 0.45; margin: 0 6px; }
+.digest-cat { font-weight: 700; margin-left: 5px; }
+.digest-glyph { width: 16px; height: 16px; }
+
+#home-scroll .dash-sec.sec-digest { display: none; }
+@media (min-width: 900px) {
+  #home-scroll .dash-sec.sec-digest { display: block; }
+
+  /* ---------- thin rail (no profile): card-granular packing ----------
+     The says section dissolves at ≥900px (display:contents twice: section,
+     then its grid) so the three insight cards become independent rail
+     items the dense packer can place one per row. The micro-label hides
+     here — a lone floating label would strand ~100px above its first
+     card; the cards' own icon + bold titles carry the voice. Mobile keeps
+     the snap strip, tablet the full-width auto-fit grid, and a profiled
+     rail keeps the grouped section (its rows are already fully paired). */
+  #home-scroll:not(.has-prof) .sec-says { display: contents; }
+  #home-scroll:not(.has-prof) .sec-says > .sec-title { display: none; }
+  #home-scroll:not(.has-prof) .sec-says .insight-grid { display: contents; }
+  #home-scroll:not(.has-prof) .sec-says .insight-card { grid-column: 2; margin-bottom: 20px; }
+
+  /* ---------- rich rail (profile): for-you pairs two-up ----------
+     Four commute-length cards stacked ~800px beside the 150px hourly
+     strip. Their text is one line deep — at rail width that pairs into a
+     2×2 grid (~400px) with no readability loss; farm/says keep full rail
+     width because their advice text needs the measure. */
+  #home-scroll .foryou-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -53,6 +53,11 @@ const dict = {
   aqi_est_note_title: ['Model estimate — and it reads low here', 'मॉडल अनुमान — और यहाँ यह कम बता रहा है'],
   aqi_est_note_body: ['This number comes from a satellite model (CAMS) that runs far below official sensors around Indian cities — in this season, Delhi-area CPCB stations often read Poor (200+) while models say Good. For health calls, trust station data:', 'यह संख्या सैटेलाइट मॉडल (CAMS) से है, जो भारतीय शहरों में सरकारी सेंसर से बहुत नीचे रहती है — इस मौसम में दिल्ली-क्षेत्र के CPCB स्टेशन अक्सर 200+ (ख़राब) दिखाते हैं जब मॉडल अच्छी हवा बताता है। सेहत के फ़ैसलों के लिए स्टेशन डेटा पर भरोसा करें:'],
   aqi_est_link:  ['Check official station AQI', 'सरकारी स्टेशन AQI देखें'],
+  /* v0.8.31 — the rail digest: the whole day as one glanceable line, parked
+     beside the AQI card where the desktop rail used to run out of content. */
+  sec_digest:    ['Today in one line', 'आज एक नज़र में'],
+  dg_rain:       ['rain {p}%', 'बारिश {p}%'],
+  dg_aqi:        ['AQI {n}', 'AQI {n}'],
   sec_sun:       ['Sun & moon', 'सूरज और चाँद'],
   sec_imd:       ['IMD official forecast', 'IMD सरकारी पूर्वानुमान'],
   sec_foryou:    ['For you', 'आपके लिए'],
