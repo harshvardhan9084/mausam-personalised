@@ -20,6 +20,7 @@ import http from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { geoResponse } from './scripts/geo_fixture.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
@@ -162,7 +163,13 @@ const FX_PATCH = `/* dev-only fetch patch: redirect Open-Meteo hosts to local fi
   window.fetch = function (input, init) {
     try {
       const url = typeof input === 'string' ? input : input?.url ?? '';
-      for (const [rx, to] of map) if (rx.test(url)) return of(to, init);
+      for (const [rx, to] of map) {
+        if (!rx.test(url)) continue;
+        // v0.8.28: forward the query string so the query-aware geo fixture
+        // can shape its response (name/language) like the real geocoder.
+        const qs = url.includes('?') ? url.slice(url.indexOf('?')) : '';
+        return of(to + qs, init);
+      }
     } catch { /* fall through */ }
     return of(input, init);
   };
@@ -170,7 +177,9 @@ const FX_PATCH = `/* dev-only fetch patch: redirect Open-Meteo hosts to local fi
 `;
 
 const server = http.createServer(async (req, res) => {
-  const urlPath = req.url ?? '/';
+  // v0.8.28: split off the query string — the /fx/geo.json fixture is
+  // query-aware now, and path matching/routing must never see the params.
+  const urlPath = (req.url ?? '/').split('?')[0];
 
   // ---- dev fixtures ----
   if (FX && urlPath.startsWith('/fx/')) {
@@ -180,6 +189,16 @@ const server = http.createServer(async (req, res) => {
     }
     const name = urlPath.replace('/fx/', '').replace(/[^a-z._-]/g, '');
     try {
+      // v0.8.28: the geo fixture is query-aware — shaped by geoResponse()
+      // from the request's name/language params (Devanagari queries match,
+      // hi returns Hindi names, unknown queries return the empty shape).
+      if (name === 'geo.json') {
+        const q = new URL(req.url ?? '/', 'http://x').searchParams;
+        if (q.has('name')) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          return res.end(JSON.stringify(geoResponse(q)));
+        }
+      }
       const data = await fs.readFile(path.join(FX_DIR, name));
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(data);

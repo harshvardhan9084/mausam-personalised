@@ -13,6 +13,8 @@
  * @see https://open-meteo.com/en/docs
  */
 
+import { getLang } from '../core/i18n.js';
+
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
@@ -291,13 +293,21 @@ export async function fetchWeatherBundle(lat, lon, signal) {
 
 /**
  * Search places by name (worldwide, India-friendly ordering).
+ * v0.8.28 — search in the reader's script: the geocoder matches names in the
+ * requested language first, so a Devanagari query ("कानपुर") under language=en
+ * finds NOTHING (verified live). Two rules fix every combination:
+ *   1. a Devanagari query always asks language=hi (the API matches BOTH
+ *      scripts under hi — Latin queries keep working, names localise);
+ *   2. otherwise the UI language decides, so an EN user searches Latin
+ *      exactly as before and a HI user gets Hindi names back.
  * @param {string} query
  * @param {AbortSignal} [signal]
  * @returns {Promise<Array<{id:number,name:string,admin1?:string,country?:string,lat:number,lon:number}>>}
  */
 export async function geocodeSearch(query, signal) {
   if (!query || query.trim().length < 2) return [];
-  const search = new URLSearchParams({ name: query.trim(), count: '8', language: 'en', format: 'json' });
+  const lang = /[\u0900-\u097F]/.test(query) ? 'hi' : getLang();
+  const search = new URLSearchParams({ name: query.trim(), count: '8', language: lang, format: 'json' });
   const data = await getJSON(`${GEO_URL}?${search}`, signal);
   const results = data.results ?? [];
   // Sort India-first, then by population (if present) descending.

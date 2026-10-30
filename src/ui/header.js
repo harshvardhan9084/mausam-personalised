@@ -7,7 +7,7 @@
 import { el, clear, trapFocus } from '../utils/dom.js';
 import { geocodeSearch } from '../api/open-meteo.js';
 import { store } from '../core/storage.js';
-import { t } from '../core/i18n.js';
+import { t, getLang } from '../core/i18n.js';
 import { icon, wxGlyph } from './icons.js';
 import { skyBucket } from './shared.js';
 import { probePlace } from './places.js';
@@ -178,7 +178,9 @@ export function wireHeader(refs, handlers) {
         let admin1 = '';
         try {
           // BigDataCloud client endpoint: keyless, CORS-open, village-level detail
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`, {
+          // v0.8.28: localityLanguage follows the UI language — a Hindi user's
+          // GPS place is named in Hindi, not hardcoded English.
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${getLang()}`, {
             signal: AbortSignal.timeout(8000),
           });
           const j = await res.json();
@@ -187,7 +189,7 @@ export function wireHeader(refs, handlers) {
         } catch {
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10`, {
-              headers: { Accept: 'application/json' },
+              headers: { Accept: 'application/json', 'Accept-Language': `${getLang()}, en` },
               signal: AbortSignal.timeout(8000),
             });
             const j = await res.json();

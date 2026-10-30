@@ -57,6 +57,37 @@ check('snapshot: AQI computed from stub air', snap.currentAqi?.aqi != null, JSON
 check('snapshot: yesterday delta', snap.yesterday?.deltaMax != null, JSON.stringify(snap.yesterday));
 check('snapshot: now label', snap.now?.wx?.label != null);
 
+/* ---- v0.8.28: query-aware geo fixture (scripts/geo_fixture.mjs) ---- */
+const { geoResponse } = await import('./geo_fixture.mjs');
+const sp = (s) => new URLSearchParams(s);
+
+const hiKanpur = geoResponse(sp('name=%E0%A4%95%E0%A4%BE%E0%A4%A8%E0%A4%AA%E0%A5%81%E0%A4%B0')); // "कानपुर"
+check('geo: Devanagari query matches', hiKanpur.results?.length === 1, JSON.stringify(hiKanpur).slice(0, 120));
+check('geo: Devanagari query → Hindi name', hiKanpur.results?.[0]?.name === 'कानपुर', hiKanpur.results?.[0]?.name);
+check('geo: Devanagari query → Hindi admin1', hiKanpur.results?.[0]?.admin1 === 'उत्तर प्रदेश', hiKanpur.results?.[0]?.admin1);
+check('geo: Devanagari query → Kanpur coords', hiKanpur.results?.[0]?.latitude === 26.46523 && hiKanpur.results?.[0]?.longitude === 80.34975);
+
+const enKanpur = geoResponse(sp('name=Kanpur'));
+check('geo: Latin query matches', enKanpur.results?.length === 1);
+check('geo: Latin query → EN name (en default)', enKanpur.results?.[0]?.name === 'Kanpur', enKanpur.results?.[0]?.name);
+
+const hiLangLatin = geoResponse(sp('name=Mumbai&language=hi'));
+check('geo: Latin query + language=hi → Hindi name', hiLangLatin.results?.[0]?.name === 'मुंबई', hiLangLatin.results?.[0]?.name);
+
+const noHit = geoResponse(sp('name=Atlantis'));
+check('geo: unknown query → empty shape (real-API parity)', !noHit.results && noHit.generationtime_ms != null, JSON.stringify(noHit));
+
+const prefix = geoResponse(sp('name=Pune'));
+check('geo: prefix match (real API parity, verify probe "Pune")', prefix.results?.length === 1 && prefix.results[0].name === 'Pune', JSON.stringify(prefix));
+
+const short = geoResponse(sp('name=K'));
+check('geo: <2-char query → empty shape', !short.results, JSON.stringify(short));
+
+const legacy = geoResponse(sp(''));
+check('geo: no name param → legacy canned list', legacy.results?.length === 3 && legacy.results?.[0]?.name === 'Ghaziabad', JSON.stringify(legacy.results?.[0]));
+
+check('geo: all rows carry GeoNames fields', ['id', 'name', 'latitude', 'longitude', 'country', 'admin1', 'timezone', 'population'].every((k) => k in hiKanpur.results[0]));
+
 console.log(`\n=== fixture transform: ${pass} passed, ${fail} failed ===`);
 if (fails.length) {
   console.log('FAILURES:');
