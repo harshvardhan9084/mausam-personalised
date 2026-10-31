@@ -60,6 +60,17 @@ const dict = {
   aqi_est_note_title: ['Model estimate — and it reads low here', 'मॉडल अनुमान — और यहाँ यह कम बता रहा है'],
   aqi_est_note_body: ['This number comes from a satellite model (CAMS) that runs far below official sensors around Indian cities — in this season, Delhi-area CPCB stations often read Poor (200+) while models say Good. For health calls, trust station data:', 'यह संख्या सैटेलाइट मॉडल (CAMS) से है, जो भारतीय शहरों में सरकारी सेंसर से बहुत नीचे रहती है — इस मौसम में दिल्ली-क्षेत्र के CPCB स्टेशन अक्सर 200+ (ख़राब) दिखाते हैं जब मॉडल अच्छी हवा बताता है। सेहत के फ़ैसलों के लिए स्टेशन डेटा पर भरोसा करें:'],
   aqi_est_link:  ['Check official station AQI', 'सरकारी स्टेशन AQI देखें'],
+  /* v0.8.41 — the cross-checked ledger: the verdict both number-families
+     earn once their independent witnesses have spoken. */
+  xcheck_title:      ['Cross-checked', 'क्रॉस-जाँच'],
+  xcheck_tag:        ['independent sources', 'स्वतंत्र स्रोत'],
+  xcheck_temp_label: ['Temperature · settled day {date}', 'तापमान · पक्का दिन {date}'],
+  xcheck_temp_ok:    ['NASA satellite {a}° · ERA5 {b}° — agree within {d}°', 'NASA सैटेलाइट {a}° · ERA5 {b}° — {d}° के भीतर सहमत'],
+  xcheck_temp_split: ['NASA satellite {a}° · ERA5 {b}° — {d}° apart; the forecast model leads until they settle', 'NASA सैटेलाइट {a}° · ERA5 {b}° — {d}° का अंतर; जब तक पक्का न हो, पूर्वानुमान मॉडल मुख्य'],
+  xcheck_aqi_label:  ['Air quality · live', 'वायु गुणवत्ता · लाइव'],
+  xcheck_aqi_ok:     ['Model {m} · {name} station {st} — same band (Δ {d})', 'मॉडल {m} · {name} स्टेशन {st} — एक ही श्रेणी (Δ {d})'],
+  xcheck_aqi_mild:   ['Model {m} · {name} station {st} — the station is ground truth', 'मॉडल {m} · {name} स्टेशन {st} — स्टेशन ही सच है'],
+  xcheck_aqi_only:   ['Model {m} — no fresh monitor within 25 km, so nothing to check it against', 'मॉडल {m} — 25 किमी में कोई ताज़ा स्टेशन नहीं, जिससे जाँच हो सके'],
   /* v0.8.31 — the rail digest: the whole day as one glanceable line, parked
      beside the AQI card where the desktop rail used to run out of content. */
   sec_digest:    ['Today in one line', 'आज एक नज़र में'],
@@ -714,6 +725,7 @@ const dict = {
   src_always:    ['always on', 'हमेशा चालू'],
   src_station:   ['Live station AQI (OpenAQ · CPCB feed)', 'लाइव स्टेशन AQI (OpenAQ · CPCB फ़ीड)'],
   src_fires:     ['Farm-fire hotspots (NASA FIRMS)', 'खेत की आग (NASA FIRMS)'],
+  src_witness:   ['Temperature witness (NASA POWER × ERA5)', 'तापमान गवाह (NASA POWER × ERA5)'],
   src_imd:       ['IMD official forecast', 'IMD सरकारी पूर्वानुमान'],
   src_ok:        ['ok', 'ठीक'],
   src_off:       ['off', 'बंद'],

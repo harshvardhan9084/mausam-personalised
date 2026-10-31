@@ -25,6 +25,7 @@ import { pickName, pickAdmin1 } from '../core/placename.js';
 import { getProfile } from '../core/profile.js';
 import { t, getLang } from '../core/i18n.js';
 import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice, aqiBandColor } from '../core/aqi-cpcb.js';
+import { compareAqi } from '../core/crosscheck.js';
 
 /** Clock-aware time-of-day formatter — every surface honors the Clock setting
  *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
@@ -421,6 +422,66 @@ function aqiDialSvg(aqi) {
     }
   } catch { /* matchMedia unavailable — render final state */ }
   return svg;
+}
+
+/* ================= v0.8.41 — the cross-checked ledger =================
+ * After the ground-truth phase lands, the board earns one calm card that
+ * says WHICH numbers were verified and by WHOM: temperature against the
+ * NASA POWER × ERA5 settled-day pair, air quality against the live CPCB
+ * station. Rows exist only when their witness spoke — no fake checks —
+ * and a diverging witness is shown with the warn glyph, never hidden. */
+function crosscheckCard(s) {
+  const witness = s.bundle?.witness;
+  const station = s.bundle?.station;
+  const modelAqi = s.currentAqi?.aqi;
+  const stOk = Boolean(station?.ok && station.aqi != null);
+  if (!witness?.ok && !stOk && station?.error?.kind !== 'stale') return null;
+
+  const rows = [];
+  if (witness?.ok) {
+    const agree = Boolean(witness.agree);
+    rows.push(el('div.xcheck-row' + (agree ? '' : '.warn'),
+      icon(agree ? 'check' : 'warn', 'xcheck-ico'),
+      el('div.xcheck-body',
+        el('b', null, t('xcheck_temp_label', { date: dateLabel(witness.day) })),
+        el('span', null, agree
+          ? t('xcheck_temp_ok', { a: Number(witness.powerT).toFixed(1), b: Number(witness.era5T).toFixed(1), d: witness.delta })
+          : t('xcheck_temp_split', { a: Number(witness.powerT).toFixed(1), b: Number(witness.era5T).toFixed(1), d: witness.delta })),
+      ),
+    ));
+  }
+  if (modelAqi != null) {
+    if (stOk) {
+      const v = compareAqi(modelAqi, station.aqi);
+      if (v.ok) {
+        rows.push(el('div.xcheck-row' + (v.verdict === 'agree' ? '' : '.warn'),
+          icon(v.verdict === 'agree' ? 'check' : 'warn', 'xcheck-ico'),
+          el('div.xcheck-body',
+            el('b', null, t('xcheck_aqi_label')),
+            el('span', null, v.verdict === 'agree'
+              ? t('xcheck_aqi_ok', { m: modelAqi, name: station.station.name, st: station.aqi, d: v.delta })
+              : t('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi })),
+          ),
+        ));
+      }
+    } else if (station?.error?.kind === 'stale') {
+      rows.push(el('div.xcheck-row',
+        icon('haze', 'xcheck-ico'),
+        el('div.xcheck-body',
+          el('b', null, t('xcheck_aqi_label')),
+          el('span', null, t('xcheck_aqi_only', { m: modelAqi })),
+        ),
+      ));
+    }
+  }
+  if (!rows.length) return null;
+  return card(
+    el('div.aqi-head',
+      el('div.card-h', null, t('xcheck_title')),
+      el('span.aqi-src-tag', { 'aria-label': t('xcheck_tag') }, t('xcheck_tag')),
+    ),
+    el('div.xcheck-list', ...rows),
+  );
 }
 
 function aqiCardV2(s, loc = null) {
@@ -1113,6 +1174,10 @@ export function renderDashboard(root, snapshot, units, ctx) {
   /* ---------- AQI (main column) + sun (side column) ---------- */
   const sun = s.sun;
   root.appendChild(dsec('dc-m sec-aqi', aqiCardV2(s, ctx.location)));
+  /* v0.8.41 — the cross-checked ledger: rides the two-phase render, so it
+     appears (or stays absent) exactly when its witnesses have spoken. */
+  const xc = crosscheckCard(s);
+  if (xc) root.appendChild(dsec('dc-m sec-xcheck', xc));
 
   const imd = s.bundle?.imd;
   /* v0.8.9: kv rows built inline so the label carries a stroke-SVG glyph

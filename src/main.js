@@ -16,6 +16,7 @@ import { fetchImdBundle } from './api/imd.js';
 import { fetchFloodBundle, fetchMarineBundle, fetchClimateDelta } from './api/extras.js';
 import { fetchStationAqi } from './api/openaq.js';
 import { fetchFires } from './api/firms.js';
+import { fetchWeatherWitness } from './api/witness.js';
 import { buildSnapshot } from './core/engine.js';
 import { store } from './core/storage.js';
 import { setLang, t } from './core/i18n.js';
@@ -315,12 +316,13 @@ async function loadExtras(lat, lon, signal) {
   return { flood, marine, climate };
 }
 
-/* ================= ground truth (v0.8.40): live station AQI + farm fires =================
- * Two optional sources fetched together, each never-blocking: OpenAQ's
- * CPCB/DPCC/UPPCB monitors (the real number next to the model estimate)
- * and NASA FIRMS hotspots (why the winter haze is what it is). Results
- * ride the bundle so cache paint shows them too; failures record an
- * honest status row in Settings → Data sources instead of breaking. */
+/* ================= ground truth (v0.8.40-41): live station AQI + farm fires + independent witness =================
+ * Three optional sources fetched together, each never-blocking: OpenAQ's
+ * CPCB/DPCC/UPPCB monitors (the real number next to the model estimate),
+ * NASA FIRMS hotspots (why the winter haze is what it is) and the NASA
+ * POWER × ERA5 settled-day pair (the temperature's independent witness).
+ * Results ride the bundle so cache paint shows them too; failures record
+ * an honest status row in Settings → Data sources instead of breaking. */
 
 async function enrichWithGroundTruth(bundle, signal) {
   const { lat, lon } = bundle.location;
@@ -329,12 +331,14 @@ async function enrichWithGroundTruth(bundle, signal) {
   signal?.addEventListener('abort', onOuter, { once: true });
   const timer = setTimeout(() => relay.abort(new DOMException('ground truth timeout', 'TimeoutError')), 12000);
   try {
-    const [station, fires] = await Promise.all([
+    const [station, fires, witness] = await Promise.all([
       fetchStationAqi(lat, lon, relay.signal).catch(() => null),
       fetchFires(lat, lon, relay.signal).catch(() => null),
+      store.dataSaver.get() ? Promise.resolve({ ok: false, error: { kind: 'saver', message: 'Data saver is on.' } }) : fetchWeatherWitness(lat, lon, relay.signal).catch(() => null),
     ]);
     bundle.station = station;
     bundle.fires = fires;
+    bundle.witness = witness;
     store.flags.set('src_station', station
       ? (station.ok
         ? { state: 'ok', detail: `${station.station.name} · ${station.station.distanceKm} km · AQI ${station.aqi}`, at: Date.now() }
@@ -344,6 +348,11 @@ async function enrichWithGroundTruth(bundle, signal) {
       ? (fires.ok
         ? { state: 'ok', detail: `${fires.count24} / 48 h`, at: Date.now() }
         : { state: 'off', detail: fires.error?.kind ?? 'unavailable', at: Date.now() })
+      : { state: 'off', detail: 'timeout', at: Date.now() });
+    store.flags.set('src_witness', witness
+      ? (witness.ok
+        ? { state: 'ok', detail: `${witness.day} · Δ ${witness.delta}° ${witness.agree ? '✓' : '⚠'}`, at: Date.now() }
+        : { state: 'off', detail: witness.error?.kind ?? 'unavailable', at: Date.now() })
       : { state: 'off', detail: 'timeout', at: Date.now() });
     return bundle;
   } finally {

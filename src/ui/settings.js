@@ -129,7 +129,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.40'),
+      el('span.ver-badge', null, 'v0.8.41'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -165,6 +165,10 @@ function buildSourcesSection() {
   kids.push(srcRow(t('src_fires'),
     fr?.state === 'ok' ? 'ok' : 'off',
     fr ? (fr.state === 'ok' ? `${t('src_ok')} · ${fr.detail}` : `${t('src_off')} · ${fr.detail}`) : t('src_off')));
+  const wc = store.flags.get('src_witness');
+  kids.push(srcRow(t('src_witness'),
+    wc?.state === 'ok' ? 'ok' : 'off',
+    wc ? (wc.state === 'ok' ? `${t('src_ok')} · ${wc.detail}` : `${t('src_off')} · ${wc.detail}`) : t('src_off')));
   kids.push(srcRow(t('src_imd'),
     store.imdKey.has() ? 'ok' : 'off',
     store.imdKey.has() ? t('src_imd_ok') : t('src_imd_nokey')));
