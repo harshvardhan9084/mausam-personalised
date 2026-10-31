@@ -319,20 +319,36 @@ async function loadExtras(lat, lon, signal) {
   return { flood, marine, climate };
 }
 
-/* ================= ground truth (v0.8.40-41): live station AQI + farm fires + independent witness =================
+/* ================= ground truth (v0.8.40-44): live station AQI + farm fires + independent witness =================
  * Three optional sources fetched together, each never-blocking: OpenAQ's
  * CPCB/DPCC/UPPCB monitors (the real number next to the model estimate),
  * NASA FIRMS hotspots (why the winter haze is what it is) and the NASA
  * POWER × ERA5 settled-day pair (the temperature's independent witness).
  * Results ride the bundle so cache paint shows them too; failures record
- * an honest status row in Settings → Data sources instead of breaking. */
+ * an honest status row in Settings → Data sources instead of breaking.
+ * v0.8.44: the rows tell the truth WHILE we wait too — each source is
+ * flipped to an amber 'checking' dot the moment its fetch starts (the
+ * event re-renders the Settings rows live), and the outer timeout grows
+ * to 25 s because the witness's settled-day walk legitimately needs
+ * more than the old shared 12 s. */
+
+function setSourceFlag(name, val) {
+  store.flags.set(name, val);
+  try {
+    document.dispatchEvent(new CustomEvent('mausam:flag', { detail: { name } }));
+  } catch { /* non-DOM (tests) */ }
+}
 
 async function enrichWithGroundTruth(bundle, signal) {
   const { lat, lon } = bundle.location;
   const relay = new AbortController();
   const onOuter = () => relay.abort();
   signal?.addEventListener('abort', onOuter, { once: true });
-  const timer = setTimeout(() => relay.abort(new DOMException('ground truth timeout', 'TimeoutError')), 12000);
+  const timer = setTimeout(() => relay.abort(new DOMException('ground truth timeout', 'TimeoutError')), 25000);
+  const waitFlag = () => ({ state: 'wait', detail: 'checking', at: Date.now() });
+  setSourceFlag('src_station', waitFlag());
+  setSourceFlag('src_fires', waitFlag());
+  setSourceFlag('src_witness', waitFlag());
   try {
     const [station, fires, witness] = await Promise.all([
       fetchStationAqi(lat, lon, relay.signal).catch(() => null),
@@ -342,17 +358,17 @@ async function enrichWithGroundTruth(bundle, signal) {
     bundle.station = station;
     bundle.fires = fires;
     bundle.witness = witness;
-    store.flags.set('src_station', station
+    setSourceFlag('src_station', station
       ? (station.ok
         ? { state: 'ok', detail: `${station.station.name} · ${station.station.distanceKm} km · AQI ${station.aqi}`, at: Date.now() }
         : { state: 'off', detail: station.error?.kind ?? 'unavailable', at: Date.now() })
       : { state: 'off', detail: 'timeout', at: Date.now() });
-    store.flags.set('src_fires', fires
+    setSourceFlag('src_fires', fires
       ? (fires.ok
         ? { state: 'ok', detail: `${fires.count24} / 48 h`, at: Date.now() }
         : { state: 'off', detail: fires.error?.kind ?? 'unavailable', at: Date.now() })
       : { state: 'off', detail: 'timeout', at: Date.now() });
-    store.flags.set('src_witness', witness
+    setSourceFlag('src_witness', witness
       ? (witness.ok
         ? { state: 'ok', detail: `${witness.day} · Δ ${witness.delta}° ${witness.agree ? '✓' : '⚠'}`, at: Date.now() }
         : { state: 'off', detail: witness.error?.kind ?? 'unavailable', at: Date.now() })

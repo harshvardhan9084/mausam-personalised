@@ -129,7 +129,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.43'),
+      el('span.ver-badge', null, 'v0.8.44'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -142,7 +142,30 @@ function section(title, ...children) {
   return el('div.settings-block.page-block', el('div.settings-h', null, title), ...children);
 }
 
-/* ---------------- data sources section (v0.8.40) ---------------- */
+/* ---------------- data sources section (v0.8.40, live rows v0.8.44) ----------------
+ * The rows are STATUS, not switches. Three honest states share one dot
+ * grammar: green = the source answered and its data is on the card,
+ * amber pulse = the fetch is in flight right now, grey = the source has
+ * nothing to say (with the reason in plain words). The rows subscribe to
+ * the mausam:flag event, so a row flips while you watch it — no reload,
+ * no stale 'off' from a section you opened before the fetch landed. */
+
+const KIND_KEYS = {
+  checking: 'src_checking',
+  network: 'src_k_network',
+  timeout: 'src_k_timeout',
+  http: 'src_k_http',
+  auth: 'src_k_auth',
+  rate: 'src_k_rate',
+  stale: 'src_k_stale',
+  saver: 'src_k_saver',
+  empty: 'src_k_empty',
+};
+
+function srcDetailWord(kind) {
+  const key = KIND_KEYS[String(kind ?? '')];
+  return key ? t(key) : String(kind ?? '');
+}
 
 function srcRow(label, state, detail) {
   return el('div.src-row',
@@ -154,25 +177,51 @@ function srcRow(label, state, detail) {
   );
 }
 
-function buildSourcesSection() {
+function optionalRow(label, flag) {
+  const state = flag?.state === 'ok' ? 'ok' : flag?.state === 'wait' ? 'wait' : 'off';
+  const detail = !flag || flag.state === 'wait' ? t('src_checking')
+    : flag.state === 'ok' ? `${t('src_ok')} · ${flag.detail}`
+    : flag.detail ? `${t('src_off')} · ${srcDetailWord(flag.detail)}`
+    : t('src_off');
+  return srcRow(label, state, detail);
+}
+
+let srcRowsBox = null;
+
+function sourceRows() {
   const st = store.flags.get('src_station');
   const fr = store.flags.get('src_fires');
-  const kids = [el('div.set-help', null, t('set_sources_help'))];
-  kids.push(srcRow(t('src_openmeteo'), 'ok', t('src_always')));
-  kids.push(srcRow(t('src_station'),
-    st?.state === 'ok' ? 'ok' : 'off',
-    st ? (st.state === 'ok' ? `${t('src_ok')} · ${st.detail}` : `${t('src_off')} · ${st.detail}`) : t('src_off')));
-  kids.push(srcRow(t('src_fires'),
-    fr?.state === 'ok' ? 'ok' : 'off',
-    fr ? (fr.state === 'ok' ? `${t('src_ok')} · ${fr.detail}` : `${t('src_off')} · ${fr.detail}`) : t('src_off')));
   const wc = store.flags.get('src_witness');
-  kids.push(srcRow(t('src_witness'),
-    wc?.state === 'ok' ? 'ok' : 'off',
-    wc ? (wc.state === 'ok' ? `${t('src_ok')} · ${wc.detail}` : `${t('src_off')} · ${wc.detail}`) : t('src_off')));
-  kids.push(srcRow(t('src_imd'),
-    store.imdKey.has() ? 'ok' : 'off',
-    store.imdKey.has() ? t('src_imd_ok') : t('src_imd_nokey')));
-  mount.appendChild(section(t('set_sources'), ...kids));
+  return [
+    srcRow(t('src_openmeteo'), 'ok', t('src_always')),
+    optionalRow(t('src_station'), st),
+    optionalRow(t('src_fires'), fr),
+    optionalRow(t('src_witness'), wc),
+    srcRow(t('src_imd'),
+      store.imdKey.has() ? 'ok' : 'off',
+      store.imdKey.has() ? t('src_imd_ok') : t('src_imd_nokey')),
+  ];
+}
+
+/* Repaint on a mausam:flag event — only while the section is mounted. */
+function paintSourceRows() {
+  if (!srcRowsBox?.isConnected) return;
+  clear(srcRowsBox);
+  srcRowsBox.append(...sourceRows());
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('mausam:flag', (e) => {
+    if (String(e?.detail?.name ?? '').startsWith('src_')) paintSourceRows();
+  });
+}
+
+function buildSourcesSection() {
+  srcRowsBox = el('div.src-rows');
+  srcRowsBox.append(...sourceRows()); // initial paint, unguarded — v0.8.44 lesson: isConnected is false before append
+  mount.appendChild(section(t('set_sources'),
+    el('div.set-help', null, t('set_sources_help')),
+    srcRowsBox));
 }
 
 function buildInstallSection() {

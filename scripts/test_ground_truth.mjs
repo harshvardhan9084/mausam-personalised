@@ -112,6 +112,63 @@ const counts = countRecent(spots, new Date('2026-10-31T14:00:00Z'));
 check('firms: count24=1, count48=2', counts.c24 === 1 && counts.c48 === 2, JSON.stringify(counts));
 check('firms: garbage CSV → []', parseFirmsCsv('Invalid MAP_KEY').length === 0);
 
+/* ---------------- v0.8.44: the courier snapshot tier ---------------- */
+import { haversineKm, nearestFromSnapshot } from '../src/api/openaq.js';
+import { filterBbox } from '../src/api/firms.js';
+import { packOpenaqSnapshot, packFirmsSnapshot, pickMonitors } from './refresh-snapshot.mjs';
+
+check('haversine: Delhi → Hapur ≈ 56.8 km', Math.abs(haversineKm(28.6139, 77.2090, 28.7304, 77.7757) - 56.8) < 0.3, String(haversineKm(28.6139, 77.2090, 28.7304, 77.7757)));
+
+const vasundhara = { id: 5665, name: 'Vasundhara, Ghaziabad - UPPCB', isMonitor: true,
+  coordinates: { latitude: 28.6683, longitude: 77.4628 },
+  provider: { name: 'UPPCB' },
+  datetimeLast: { utc: '2026-10-31T08:30:00Z' },
+  sensors: LOCATION.sensors };
+const SNAP_NOW = NOW;
+const SNAPSHOT = {
+  source: 'openaq-snapshot',
+  locations: [
+    vasundhara,                                                        // 0.88 km, fresh
+    { ...vasundhara, id: 9001, name: 'Far Away - CPCB', coordinates: { latitude: 29.9, longitude: 78.1 } }, // >25 km
+    { ...vasundhara, id: 9002, name: 'Dead Sensor - CPCB', datetimeLast: { utc: '2022-10-31T02:00:00Z' } }, // stale
+  ],
+};
+const nearest = nearestFromSnapshot(SNAPSHOT, 28.6692, 77.4538, SNAP_NOW);
+check('snapshot: nearest fresh monitor wins', nearest?.id === 5665, JSON.stringify(nearest?.id));
+check('snapshot: distance computed ≈ 0.88 km', Math.abs(nearest.distKm - 0.88) < 0.05, String(nearest.distKm));
+check('snapshot: far monitor excluded', !SNAPSHOT.locations.some((l) => l.id === 9001 && nearestFromSnapshot(SNAPSHOT, 28.6692, 77.4538, SNAP_NOW).id === 9001));
+check('snapshot: stale monitor excluded', nearest?.id !== 9002);
+check('snapshot: only stale → null', nearestFromSnapshot({ locations: [SNAPSHOT.locations[2]] }, 28.6692, 77.4538, SNAP_NOW) === null);
+check('snapshot: only far → null', nearestFromSnapshot({ locations: [SNAPSHOT.locations[1]] }, 28.6692, 77.4538, SNAP_NOW) === null);
+check('snapshot: garbage → null', nearestFromSnapshot(null, 28.6692, 77.4538, SNAP_NOW) === null);
+
+/* snapshot rows feed the SAME fresh-sensor pipeline as the live API */
+const snapPicked = pickFreshSensors(nearest, nearest.latest ?? LATEST, SNAP_NOW);
+check('snapshot: readings → same pm25=63', snapPicked.values.pm25 === 63, JSON.stringify(snapPicked.values));
+
+/* courier packers: v3 shapes in, v3 shapes out */
+const packed = packOpenaqSnapshot(
+  pickMonitors([
+    { isMonitor: true, coordinates: { latitude: 28.6, longitude: 77.2 }, datetimeLast: { utc: '2026-10-31T08:30:00Z' }, id: 1, name: 'A', sensors: [{ id: 11, name: 'pm25', parameter: { name: 'pm25', units: 'µg/m³' } }] },
+    { isMonitor: false, coordinates: { latitude: 28.6, longitude: 77.2 }, datetimeLast: { utc: '2026-10-31T08:00:00Z' }, id: 2, name: 'not-a-monitor' },
+    { isMonitor: true, coordinates: { latitude: 28.7, longitude: 77.3 }, datetimeLast: { utc: '2026-10-31T08:31:00Z' }, id: 3, name: 'B', sensors: [] },
+  ], NOW),
+  new Map([[1, [{ sensorsId: 11, value: 63, datetime: { utc: '2026-10-31T08:30:00Z' } }]]]),
+  new Date(NOW),
+);
+check('courier: non-monitors dropped, freshest first', packed.locations.length === 2 && packed.locations[0].id === 3, JSON.stringify(packed.locations.map((l) => l.id)));
+check('courier: snapshot carries source + generatedAt', packed.source === 'openaq-snapshot' && !Number.isNaN(Date.parse(packed.generatedAt)));
+check('courier: sensor parameter shape preserved', packed.locations[1].sensors[0].parameter.name === 'pm25' && packed.locations[1].sensors[0].parameter.units === 'µg/m³');
+check('courier: latest rows ride with their monitor', packed.locations[1].latest.length === 1 && packed.locations[1].latest[0].value === 63);
+check('courier: monitor without latest → []', packed.locations[0].latest.length === 0);
+
+const firmSnap = packFirmsSnapshot(CSV, new Date(NOW));
+check('courier: firms snapshot shape', firmSnap.source === 'firms-snapshot' && typeof firmSnap.csv === 'string');
+const localBox = filterBbox(parseFirmsCsv(firmSnap.csv), 77.0, 28.0, 78.0, 29.2);
+check('courier: firms NCR csv → district filter keeps 2', localBox.length === 2, String(localBox.length));
+check('firms: filterBbox edges inclusive', filterBbox([{ lat: 28.0, lon: 77.0 }, { lat: 27.99, lon: 77.0 }, { lat: 28.1, lon: 77.1 }], 77.0, 28.0, 78.0, 29.0).length === 2);
+check('firms: filterBbox garbage → []', filterBbox(null, 0, 0, 1, 1).length === 0);
+
 /* ---------------- live: OpenAQ direct from Node ---------------- */
 try {
   const st = await fetchStationAqi(28.67, 77.45, AbortSignal.timeout(25000));

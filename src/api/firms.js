@@ -7,9 +7,13 @@
  * "why is the air suddenly bad" context, and for farming users it is a
  * neighbour-signal (what's burning nearby, today).
  *
- * Transport mirrors openaq.js: same-origin proxy /api/firms (server adds
- * the MAP_KEY) first, direct call with the bundled key as fallback.
- * FIRMS answers CSV — parsed here, never evaluated.
+ * Transport mirrors openaq.js (v0.8.44): same-origin proxy /api/firms
+ * (server adds the MAP_KEY) first; then the courier snapshot
+ * ./data/firms-ncr.json — a static file the ground-truth-snapshot GitHub
+ * Action refreshes hourly with the NCR-wide VIIRS CSV, which the client
+ * re-filters to the user's own district box (same-origin works on static
+ * Pages where the proxy doesn't); then the direct call with the bundled
+ * key. FIRMS answers CSV — parsed here, never evaluated.
  *
  * Never throws — resolves to {ok:true,…} | {ok:false, error}.
  */
@@ -19,7 +23,9 @@ import { get, set } from '../core/storage.js';
 
 const TIMEOUT_MS = 8000;
 const CACHE_TTL_MIN = 60;
+const SNAPSHOT_TTL_MIN = 30;
 const HALF_DEG = 0.75; // bbox half-width ≈ 83 km — district scale
+const SNAPSHOT = './data/firms-ncr.json'; // courier-committed, same-origin
 
 /* ---------------- transport ---------------- */
 
@@ -86,7 +92,27 @@ export function countRecent(hotspots, now = new Date()) {
   return { c24, c48 };
 }
 
+/** Keep hotspots inside a bbox (pure — snapshot rows arrive NCR-wide). */
+export function filterBbox(hotspots, w, s, e, n) {
+  return (Array.isArray(hotspots) ? hotspots : []).filter(
+    (h) => h.lon >= w && h.lon <= e && h.lat >= s && h.lat <= n,
+  );
+}
+
 /* ---------------- public ---------------- */
+
+async function loadSnapshot(signal) {
+  const hit = get('opt:snapshot:firms', null);
+  if (hit && Date.now() - hit.at < hit.ttl && hit.val) return hit.val;
+  const res = await fetch(SNAPSHOT, { signal, headers: { Accept: 'application/json' } });
+  if (!res.ok) throw Object.assign(new Error(`snapshot HTTP ${res.status}`), { fKind: 'http' });
+  const data = await res.json();
+  if (data?.source !== 'firms-snapshot' || typeof data.csv !== 'string') {
+    throw Object.assign(new Error('snapshot shape'), { fKind: 'http' });
+  }
+  set('opt:snapshot:firms', { at: Date.now(), ttl: SNAPSHOT_TTL_MIN * 60000, val: data });
+  return data;
+}
 
 /**
  * Fire hotspots around a point, district scale.
@@ -107,18 +133,35 @@ export async function fetchFires(lat, lon, signal) {
   try {
     let text, via;
     if (transport === 'direct') {
-      text = await fetchText(upstream, {}, signal); via = 'direct';
+      try {
+        text = await fetchText(upstream, {}, signal); via = 'direct';
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        text = null; // fall through to the courier snapshot
+      }
     } else {
       try {
         text = await fetchText(proxyUrl, { Accept: 'text/csv' }, signal); via = 'proxy';
         transport = 'proxy';
       } catch (err) {
         if (err?.name === 'AbortError') throw err;
-        text = await fetchText(upstream, {}, signal); via = 'direct';
-        transport = 'direct';
+        try {
+          text = await fetchText(upstream, {}, signal); via = 'direct';
+          transport = 'direct';
+        } catch (err2) {
+          if (err2?.name === 'AbortError') throw err2;
+          text = null; // fall through to the courier snapshot
+        }
       }
     }
-    const hotspots = parseFirmsCsv(text);
+    if (text == null) {
+      /* Tier 3 — the courier snapshot: NCR-wide CSV committed hourly by
+       * the ground-truth-snapshot Action, re-filtered to this district. */
+      const snap = await loadSnapshot(signal);
+      text = snap.csv;
+      via = 'snapshot';
+    }
+    const hotspots = filterBbox(parseFirmsCsv(text), w, s, e, n);
     const { c24, c48 } = countRecent(hotspots);
     const out = { ok: true, count24: c24, count48: c48, via, fetchedAt: Date.now() };
     set(`opt:${key}`, { at: Date.now(), ttl: CACHE_TTL_MIN * 60000, val: out });

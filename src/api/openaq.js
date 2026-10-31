@@ -9,17 +9,25 @@
  * AQI card are directly comparable — and when they disagree, the card
  * now says which one to trust.
  *
- * TRANSPORT (browser reality, v0.8.40):
+ * TRANSPORT (browser reality, v0.8.44):
  *   1. same-origin proxy  /api/openaq/v3/...  — served by server.mjs in
  *      dev/preview; the server adds the X-API-Key header. This is the
  *      path that actually works in browsers, because OpenAQ's gateway
  *      answers CORS *preflight* (OPTIONS) with 401/no-ACAO, which
  *      blocks any header-authed call from a page. GET responses carry
  *      access-control-allow-origin: * — only the preflight is broken.
- *   2. direct https://api.openaq.org/v3/... with X-API-Key — tried when
- *      no proxy exists (e.g. static Pages). Today it fails in browsers
- *      at preflight; it works in Node (tests). If OpenAQ ever fixes
- *      OPTIONS, static deploys gain station AQI with zero code change.
+ *   2. the courier snapshot  ./data/openaq-ncr.json — a static file the
+ *      ground-truth-snapshot GitHub Action refreshes hourly (scripts/
+ *      refresh-snapshot.mjs): OpenAQ bbox → freshest 60 NCR monitors →
+ *      their /latest payloads, packed in v3 shapes so this client reuses
+ *      the same parsing and freshness gates. Same-origin, so it works on
+ *      static Pages where the proxy doesn't exist. Freshness stays
+ *      honest: the file's own timestamps flow through the same ≤3 h
+ *      monitor / ≤4 h sensor gates as a live call.
+ *   3. direct https://api.openaq.org/v3/... with X-API-Key — works in
+ *      Node (tests). Today it fails in browsers at preflight; if OpenAQ
+ *      ever fixes OPTIONS, static deploys gain the live path with zero
+ *      code change.
  *
  * DATA HYGIENE: OpenAQ carries decades of CPCB history, including dead
  * sensors. The freshness gate (≤4 h per sensor, monitor's last payload
@@ -35,8 +43,10 @@ import { openaqKey } from './keys.js';
 
 const DIRECT = 'https://api.openaq.org/v3';
 const PROXY = '/api/openaq/v3';
+const SNAPSHOT = './data/openaq-ncr.json'; // courier-committed, same-origin
 const TIMEOUT_MS = 9000;
 const CACHE_TTL_MIN = 20;
+const SNAPSHOT_TTL_MIN = 10;
 const SENSOR_MAX_AGE_MIN = 240; // a sensor older than 4 h is not "live"
 const MONITOR_MAX_AGE_MIN = 180; // the monitor itself must have spoken in 3 h
 const RADIUS_M = 25000;
@@ -83,6 +93,51 @@ async function getJSON(path, signal) {
     }
   }
   throw lastErr ?? new Error('OpenAQ unreachable');
+}
+
+/* ---------------- the courier snapshot tier ---------------- */
+
+async function loadSnapshot(signal) {
+  const hit = get('opt:snapshot:openaq', null);
+  if (hit && Date.now() - hit.at < hit.ttl && hit.val) return hit.val;
+  const res = await fetch(SNAPSHOT, { signal, headers: { Accept: 'application/json' } });
+  if (!res.ok) throw Object.assign(new Error(`snapshot HTTP ${res.status}`), { oqKind: 'http' });
+  const data = await res.json();
+  if (data?.source !== 'openaq-snapshot' || !Array.isArray(data.locations)) {
+    throw Object.assign(new Error('snapshot shape'), { oqKind: 'http' });
+  }
+  set('opt:snapshot:openaq', { at: Date.now(), ttl: SNAPSHOT_TTL_MIN * 60000, val: data });
+  return data;
+}
+
+/** Great-circle distance in km (exported: tests + snapshot selection). */
+export function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * The nearest monitor within 25 km whose LAST PAYLOAD is fresh (≤3 h),
+ * from a courier snapshot (pure — exported for tests). Distance is
+ * computed here because the bbox courier can't know where the user is.
+ * Ties break on freshness.
+ */
+export function nearestFromSnapshot(snapshot, lat, lon, now = Date.now()) {
+  const rows = Array.isArray(snapshot?.locations) ? snapshot.locations : [];
+  const monitors = rows
+    .filter((r) => r?.isMonitor && r?.coordinates
+      && Number.isFinite(r.coordinates?.latitude) && Number.isFinite(r.coordinates?.longitude))
+    .map((r) => ({ ...r, distKm: haversineKm(lat, lon, r.coordinates.latitude, r.coordinates.longitude) }))
+    .filter((r) => r.distKm <= RADIUS_M / 1000)
+    .map((r) => ({ ...r, age: ageMinutes(r.datetimeLast?.utc, now) }))
+    .filter((r) => r.age <= MONITOR_MAX_AGE_MIN)
+    .sort((a, b) => (a.distKm - b.distKm) || (a.age - b.age));
+  return monitors[0] ?? null;
 }
 
 /* ---------------- unit + freshness math (pure, exported for tests) ------- */
@@ -180,57 +235,81 @@ export async function fetchStationAqi(lat, lon, signal) {
   const cached = get(`opt:${key}`, null);
   if (cached && Date.now() - cached.at < cached.ttl && cached.val) return cached.val;
 
+  const now = Date.now();
+  const remember = (val) => set(`opt:${key}`, { at: Date.now(), ttl: 30 * 60000, val });
+  const staleOut = () => {
+    const out = { ok: false, error: { kind: 'stale', message: 'No monitor near this place reported in the last 3 hours.' } };
+    remember(out);
+    return out;
+  };
+
+  /* Tiers 1+2 — the live two-step: proxy (dev) first, direct behind it.
+   * A failure here is not an answer yet: static Pages has no proxy and
+   * browsers trip OpenAQ's broken preflight, so fall through. */
   try {
     const q = `/locations?coordinates=${lat},${lon}&radius=${RADIUS_M}&limit=25`;
     const locs = await getJSON(q, signal);
-    const now = Date.now();
     const monitors = (locs?.results ?? [])
       .filter((r) => r?.isMonitor && r?.coordinates)
       .map((r) => ({ ...r, age: ageMinutes(r.datetimeLast?.utc, now) }))
       .filter((r) => r.age <= MONITOR_MAX_AGE_MIN)
       .sort((a, b) => (a.distance ?? a.distanceKm ?? 1e9) - (b.distance ?? b.distanceKm ?? 1e9));
-    if (!monitors.length) {
-      const out = { ok: false, error: { kind: 'stale', message: 'No monitor near this place reported in the last 3 hours.' } };
-      set(`opt:${key}`, { at: Date.now(), ttl: 30 * 60000, val: out });
-      return out;
-    }
+    if (!monitors.length) return staleOut();
     const mon = monitors[0];
-
     const latest = await getJSON(`/locations/${mon.id}/latest`, signal);
-    const readings = pickFreshSensors(mon, latest?.results, now);
-    const conc = concFromReadings(readings.values, readings.units);
-    if (!Object.keys(conc).length) {
-      const out = { ok: false, error: { kind: 'empty', message: 'The nearest monitor answered but reported no fresh pollutant values.' } };
-      set(`opt:${key}`, { at: Date.now(), ttl: 30 * 60000, val: out });
-      return out;
-    }
-    const computed = computeCPCBAqi(conc);
-    const out = {
-      ok: true,
-      aqi: computed.aqi,
-      category: computed.category,
-      color: computed.color,
-      advice: computed.advice,
-      dominant: computed.dominant,
-      subIndices: computed.subIndices,
-      conc,
-      station: {
-        id: mon.id,
-        name: String(mon.name ?? mon.id),
-        distanceKm: Math.round((mon.distance ?? 0) / 10) / 100,
-        provider: String(mon.provider?.name ?? mon.owner?.name ?? 'CPCB'),
-      },
-      ageMin: freshestAge(mon, latest?.results, now),
-      via: transport ?? 'direct',
-      fetchedAt: now,
-    };
-    set(`opt:${key}`, { at: now, ttl: CACHE_TTL_MIN * 60000, val: out });
-    return out;
+    return finishStation(key, mon, latest?.results, transport ?? 'direct', mon.distance, now);
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    /* fall through to the courier snapshot */
+  }
+
+  /* Tier 3 — the courier snapshot: same-origin static file, works where
+   * the proxy doesn't (Pages). Freshness is re-gated here from the
+   * snapshot's own timestamps, so an old file reads as stale, never as
+   * live. */
+  try {
+    const snap = await loadSnapshot(signal);
+    const mon = nearestFromSnapshot(snap, lat, lon, now);
+    if (!mon) return staleOut();
+    return finishStation(key, mon, mon.latest ?? [], 'snapshot', mon.distKm * 1000, now);
   } catch (err) {
     if (err?.name === 'AbortError') throw err;
     const kind = err?.oqKind ?? (String(err?.message).includes('Failed to fetch') ? 'network' : 'error');
     return { ok: false, error: { kind, message: String(err?.message ?? err).slice(0, 140) } };
   }
+}
+
+/** Shared finish line for both tiers: readings → CPCB AQI → cached out. */
+function finishStation(key, mon, latestResults, via, distanceMeters, now) {
+  const readings = pickFreshSensors(mon, latestResults, now);
+  const conc = concFromReadings(readings.values, readings.units);
+  if (!Object.keys(conc).length) {
+    const out = { ok: false, error: { kind: 'empty', message: 'The nearest monitor answered but reported no fresh pollutant values.' } };
+    set(`opt:${key}`, { at: Date.now(), ttl: 30 * 60000, val: out });
+    return out;
+  }
+  const computed = computeCPCBAqi(conc);
+  const out = {
+    ok: true,
+    aqi: computed.aqi,
+    category: computed.category,
+    color: computed.color,
+    advice: computed.advice,
+    dominant: computed.dominant,
+    subIndices: computed.subIndices,
+    conc,
+    station: {
+      id: mon.id,
+      name: String(mon.name ?? mon.id),
+      distanceKm: Math.round((distanceMeters ?? 0) / 10) / 100,
+      provider: String(mon.provider?.name ?? mon.owner?.name ?? 'CPCB'),
+    },
+    ageMin: freshestAge(mon, latestResults, now),
+    via,
+    fetchedAt: now,
+  };
+  set(`opt:${key}`, { at: now, ttl: CACHE_TTL_MIN * 60000, val: out });
+  return out;
 }
 
 /** Age of the freshest reading actually used (for the "N min ago" line). */

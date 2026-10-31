@@ -743,6 +743,17 @@ const dict = {
   src_off:       ['off', 'बंद'],
   src_imd_nokey: ['no key — add one above', 'कुंजी नहीं — ऊपर जोड़ें'],
   src_imd_ok:    ['key set', 'कुंजी सेव'],
+  /* v0.8.44 — the source rows tell the truth while waiting, and say WHY
+     when a source has nothing to say. */
+  src_checking:  ['checking…', 'जाँच जारी…'],
+  src_k_network: ['blocked on this host', 'इस होस्ट पर ब्लॉक'],
+  src_k_timeout: ['timed out', 'समय समाप्त'],
+  src_k_http:    ['upstream error', 'सोर्स त्रुटि'],
+  src_k_auth:    ['key rejected', 'कुंजी अमान्य'],
+  src_k_rate:    ['rate limited', 'दर सीमित'],
+  src_k_stale:   ['no fresh report nearby', 'आस-पास ताज़ा रिपोर्ट नहीं'],
+  src_k_saver:   ['data saver is on', 'डेटा सेवर चालू है'],
+  src_k_empty:   ['no usable reading', 'कोई उपयोगी रीडिंग नहीं'],
   set_about:     ['About', 'ऐप के बारे में'],
   set_misc_12:   ['12-hour', '12 घंटे'],
   set_misc_24:   ['24-hour', '24 घंटे'],
