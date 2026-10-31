@@ -18,3 +18,7 @@ node_modules/
 # Build output
 dist/
 build/
+
+# Secrets (never commit; .env.example is the template)
+.env
+.env.local
