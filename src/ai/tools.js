@@ -10,6 +10,8 @@
 import { geocodeSearch, fetchWeatherBundle } from '../api/open-meteo.js';
 import { buildSnapshot } from '../core/engine.js';
 import { dayScore, fieldScore } from '../core/scoring.js';
+/* v0.8.42 — the verify_numbers tool reuses the board's agreement math. */
+import { compareAqi } from '../core/crosscheck.js';
 
 const hh = (iso) => {
   const h = Number(iso?.slice(11, 13));
@@ -105,6 +107,11 @@ export const TOOL_DECLARATIONS = [
         count: { type: 'NUMBER', description: 'How many best days to return (default 3)' },
       },
     },
+  },
+  {
+    name: 'verify_numbers',
+    description: 'Answer "is this data verified / can I trust it": the independent witnesses for the CURRENT location — settled-day temperature (NASA POWER vs ERA5 reanalyses) and live CPCB station AQI vs the model estimate. Use whenever the user asks whether the numbers are accurate, cross-checked, or which source to trust.',
+    parameters: { type: 'OBJECT', properties: {} },
   },
 ];
 
@@ -249,6 +256,50 @@ export async function runTool(name, args = {}, state) {
           activity,
           bestDays: scored.slice(0, count),
           worstDay: scored[scored.length - 1] ?? null,
+        };
+      }
+      /* v0.8.42 "the conversation vouches" — the witnesses the board's
+         Cross-checked ledger shows, in tool form. Reads the enrichment
+         already riding the bundle (station / witness land at load; the
+         two-phase render never blocks on them). If a witness has not
+         spoken yet the tool says so — it never improvises a verdict. */
+      case 'verify_numbers': {
+        const s = state?.snapshot;
+        if (!s) return { error: 'Weather data is still loading.' };
+        const witness = state.witness ?? s.bundle?.witness ?? null;
+        const station = state.station ?? s.bundle?.station ?? null;
+        const modelAqi = s.currentAqi?.aqi ?? null;
+        let air = null;
+        if (modelAqi != null) {
+          if (station?.ok && station.aqi != null) {
+            const v = compareAqi(modelAqi, station.aqi);
+            air = v.ok
+              ? {
+                  modelAqi,
+                  station: { name: station.station.name, distanceKm: station.station.distanceKm, aqi: station.aqi },
+                  verdict: v.verdict,
+                  delta: v.delta,
+                  rule: v.verdict === 'agree' ? 'same CPCB band within tolerance' : 'the live station is ground truth — trust it over the model',
+                }
+              : null;
+          } else {
+            air = { modelAqi, station: null, rule: 'no fresh monitor within 25 km answered — this number is the CAMS model estimate only' };
+          }
+        }
+        return {
+          place: state.location?.name,
+          asOf: localTimeOf(s),
+          temperature: witness?.ok
+            ? {
+                settledDay: witness.day,
+                nasaPowerC: witness.powerT,
+                era5C: witness.era5T,
+                deltaC: witness.delta,
+                agree: Boolean(witness.agree),
+                sources: 'NASA POWER (MERRA-2) and Open-Meteo archive (ERA5) — independent satellite reanalyses',
+              }
+            : { status: 'witness not finished yet — the settled-day check lands a few seconds after load' },
+          airQuality: air,
         };
       }
       default:

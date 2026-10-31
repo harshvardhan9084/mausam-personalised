@@ -8,7 +8,7 @@
    the provider probe must reflect the real server.
 ================================================================ */
 
-const VERSION = 'v0.8.41';
+const VERSION = 'v0.8.42';
 const SHELL_CACHE = `mausam-shell-${VERSION}`;
 const DATA_CACHE = `mausam-data-${VERSION}`;
 const API_HOSTS = [
@@ -71,6 +71,7 @@ const SHELL_ASSETS = [
   './src/ui/crops.js',
   './src/ui/explore.js',
   './src/ai/contract.js',
+  './src/ai/chatAsk.js',
   './src/ai/render.js',
   './src/ai/prompt.js',
   './src/ai/tools.js',

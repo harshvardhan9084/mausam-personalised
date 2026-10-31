@@ -32,6 +32,10 @@ ok(chatAsk('alert', { severity: 'info', text: 'No title here' }) === null, 'aler
 ok(typeof chatAsk('wear-list', { items: [{ name: 'Cotton shirt' }] }) === 'string', 'wear-list with items → question');
 ok(chatAsk('wear-list', { items: [] }) === null, 'wear-list empty → null');
 
+/* v0.8.42 verify-card: the ledger's follow-up is who wins a split */
+ok(typeof chatAsk('verify-card', { rows: [{ label: 'Temperature · settled day Oct 28', detail: 'NASA satellite 24.2° · ERA5 24.0° — agree within 0.2°', verdict: 'ok' }] }) === 'string', 'verify-card with rows → question');
+ok(chatAsk('verify-card', { rows: [] }) === null, 'verify-card with no rows → null');
+
 /* facts and charts NEVER ask — no fake affordances */
 for (const c of ['now-card', 'hourly-timeline', 'temp-chart', 'rain-bars', 'sun-card', 'note', 'chips']) {
   ok(chatAsk(c, { anything: 1 }) === null, `${c} (fact/chart/action) → null`);

@@ -289,6 +289,13 @@ const dict = {
   ask_chat_aqi:    ['Is AQI {n} safe for outdoor work — and for how long?', 'AQI {n} बाहर के काम के लिए सुरक्षित है — और कितनी देर तक?'],
   ask_chat_alert:  ['What exactly does "{x}" mean for my plans today?', '"{x}" का आज के काम-काज पर ठीक क्या मतलब है?'],
   ask_chat_wear:   ['Why these layers today — and what would you swap for the evening?', 'आज ये कपड़े क्यों — शाम के लिए क्या बदलूँ?'],
+  /* v0.8.42 — the conversation vouches: Mitra answers "is this verified?"
+     from the same witnesses the board's Cross-checked ledger uses. */
+  mt_verify_text:  ['Every headline number on the board has an independent witness — here is the check for {place}.', 'बोर्ड के हर बड़े नंबर की एक स्वतंत्र गवाह होती है — {place} की जाँच यह है।'],
+  mt_verify_wait:  ['The independent checks are still landing — give it a few seconds and ask me again.', 'स्वतंत्र जाँचें अभी आ रही हैं — कुछ सेकंड बाद फिर पूछिए।'],
+  mt_verify_trust_aqi: ['When model and station disagree, the CPCB station wins — it measures the air you are actually breathing.', 'जब मॉडल और स्टेशन अलग बोलें, CPCB स्टेशन मानिए — जो हवा आप साँस में ले रहे हैं, वही नापता है।'],
+  mt_verify_trust_temp: ['Both temperature witnesses are independent satellite reanalyses (NASA POWER and ERA5) — the forecast model stays in charge until a day settles.', 'दोनों तापमान गवाह स्वतंत्र सैटेलाइट पुनर्विश्लेषण हैं (NASA POWER और ERA5) — दिन पक्का होने तक पूर्वानुमान मॉडल मुख्य रहता है।'],
+  ask_chat_verify: ['Who are these witnesses — and who wins when they disagree?', 'ये गवाह कौन हैं — और अलग बोलें तो किसकी मानूँ?'],
 
   /* events / wedding */
   fy_event:      ['Wedding & events', 'शादी और कार्यक्रम'],
@@ -427,6 +434,7 @@ const dict = {
   sugg_run:      ['Best time for a run?', 'दौड़ने का सही समय?'],
   sugg_wear:     ['What should I wear?', 'क्या पहनूँ?'],
   sugg_air:      ['Air quality right now?', 'अभी हवा कैसी है?'],
+  sugg_verify:   ['Is this data verified?', 'क्या यह डेटा पक्का है?'],
   sugg_city:     ['Weather in Mumbai?', 'मुंबई का मौसम?'],
   sugg_weekend:  ['Plan my weekend', 'मेरा वीकेंड बनाओ'],
   sugg_wedding:  ['Best day for a function?', 'कार्यक्रम का सही दिन?'],
@@ -603,6 +611,10 @@ const dict = {
   crop_stage_pos:['Stage {n} of {m}', 'स्तर {n} / {m}'],
   crop_next_sow: ['Next sowing', 'अगली बुवाई'],
   crop_in_days:  ['{n} days away', '{n} दिन बाद'],
+  /* v0.8.42 — English plural honesty: "1 days away" was never a sentence. */
+  crop_in_one:   ['1 day away', '1 दिन बाद'],
+  crop_sow_one:  ['Sow within 1 day', '1 दिन के भीतर बुवाई करें'],
+  crop_harvest_one: ['Harvest in 1 day', 'कटाई में 1 दिन'],
   /* v0.8.25 — the countdown headlines: the farmer's number in days. */
   crop_sow_within: ['Sow within {n} days', '{n} दिनों के भीतर बुवाई करें'],
   crop_harvest_in: ['Harvest in {n} days', 'कटाई में {n} दिन'],

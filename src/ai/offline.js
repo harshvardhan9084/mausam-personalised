@@ -11,9 +11,12 @@
  * default and the graceful fallback.
  */
 
-import { temp as fmtTemp, wind as fmtWind, hourLabel } from '../utils/format.js';
+import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel } from '../utils/format.js';
 import { runScore, eventScore, driveScore, dayScore, bestWindows, band } from '../core/scoring.js';
 import { isPollutionSeason, aqiCat } from '../core/aqi-cpcb.js';
+/* v0.8.42 — verification answers use the SAME agreement math as the
+   board's Cross-checked ledger; the chat can never contradict the card. */
+import { compareAqi } from '../core/crosscheck.js';
 import { wxText } from '../api/wmo.js';
 import { runTool, fetchCitySnapshot } from './tools.js';
 /* v0.8.27 — Mausam Core speaks the user's language. The engine runs at SEND
@@ -90,6 +93,9 @@ const INTENTS = [
   { id: 'hours', kw: ['hourly', 'hours', 'timeline', 'next few hours', 'abhi ka', 'right now', 'ab ', 'this evening', 'this morning', 'tonight', 'afternoon', 'प्रति-घंटा', 'अगले घंटे', 'अगले कुछ घंटे', 'आज शाम', 'आज सुबह', 'आज रात', 'दोपहर'] },
   { id: 'week', kw: ['week', 'weekend', 'tomorrow', 'kal ', 'day after', 'sunday', 'saturday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'forecast', '7 day', 'seven day', 'outlook', 'next few days', 'सप्ताह', 'हफ़्ता', 'हफ्ता', 'वीकेंड', 'कल', 'परसों', 'रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'] },
   { id: 'wind', kw: ['wind', 'gust', 'hawa', 'humidity', 'sticky', 'muggy', 'nami', 'हवा', 'झोंका', 'नमी', 'उमस'] },
+  /* v0.8.42 — "is this verified / can I trust it": the conversation earns
+     the same witnesses the board's Cross-checked ledger shows. */
+  { id: 'verify', kw: ['verif', 'accura', 'trust', 'cross-check', 'crosscheck', 'cross check', 'witness', 'real data', 'real number', 'which source', 'sources', 'सत्यापित', 'पक्का', 'भरोसा', 'गवाह', 'स्रोत'] },
 ];
 
 function classify(text) {
@@ -105,6 +111,12 @@ function classify(text) {
   // words carry no ASCII word chars, so \\b never fires on them — match plain.
   const STRONG_ACTIVITY = /\b(run|jog|jogging|cycl|cycling|hike|trek|workout|exercise|picnic|cricket|football|match|photoshoot|laundry)\b|दौड़|धुलाई|सुखाने|पिकनिक|क्रिकेट|कसरत/;
   if (best.id !== 'plan' && STRONG_ACTIVITY.test(q)) best = { id: 'plan', score: 99 };
+  /* v0.8.42 — verification/trust questions override topical intents: an
+     "is the AQI verified?" is about EVIDENCE, not about air quality.
+     Devanagari alternatives sit outside \b (word boundaries never fire
+     on Devanagari — the lesson v0.8.27 already encoded). */
+  const STRONG_VERIFY = /\b(verif|accura|trust|cross.?check|witness|disagree|who wins|which source|real data|real number)\b|सत्यापित|पक्का|भरोसा|गवाह|स्रोत/;
+  if (STRONG_VERIFY.test(q)) best = { id: 'verify', score: 100 };
   return best;
 }
 
@@ -572,6 +584,69 @@ async function buildCity(state, text0) {
   };
 }
 
+/* ---------------- v0.8.42 — the conversation vouches ---------------- */
+/* "Is this verified?" gets the SAME answer the board's Cross-checked
+   ledger shows: temperature against the NASA POWER × ERA5 settled-day
+   pair, air quality against the live CPCB station — compareAqi() is the
+   SAME function the board calls, so the chat can never contradict the
+   card. Rows exist only when their witness spoke; a warning row pulls
+   the matching "who wins" rule into the prose, exactly when it matters. */
+function buildVerify(state, q) {
+  const s = state?.snapshot;
+  if (!s) return { text: tr('mt_verify_wait'), comps: [] };
+  const witness = state.witness ?? s.bundle?.witness ?? null;
+  const station = state.station ?? s.bundle?.station ?? null;
+  const modelAqi = s.currentAqi?.aqi ?? null;
+  const stOk = Boolean(station?.ok && station.aqi != null);
+
+  const rows = [];
+  if (witness?.ok) {
+    const agree = Boolean(witness.agree);
+    rows.push({
+      label: tr('xcheck_temp_label', { date: dateLabel(witness.day) }),
+      detail: agree
+        ? tr('xcheck_temp_ok', { a: Number(witness.powerT).toFixed(1), b: Number(witness.era5T).toFixed(1), d: witness.delta })
+        : tr('xcheck_temp_split', { a: Number(witness.powerT).toFixed(1), b: Number(witness.era5T).toFixed(1), d: witness.delta }),
+      verdict: agree ? 'ok' : 'warn',
+    });
+  }
+  if (modelAqi != null && stOk) {
+    const v = compareAqi(modelAqi, station.aqi);
+    if (v.ok) {
+      rows.push({
+        label: tr('xcheck_aqi_label'),
+        detail: v.verdict === 'agree'
+          ? tr('xcheck_aqi_ok', { m: modelAqi, name: station.station.name, st: station.aqi, d: v.delta })
+          : tr('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi }),
+        verdict: v.verdict === 'agree' ? 'ok' : 'warn',
+      });
+    }
+  } else if (modelAqi != null && station?.error?.kind === 'stale') {
+    rows.push({ label: tr('xcheck_aqi_label'), detail: tr('xcheck_aqi_only', { m: modelAqi }), verdict: 'info' });
+  }
+
+  /* No witness has spoken yet (checks still landing / all unavailable):
+     say so honestly — never draw an empty ledger. */
+  if (!rows.length) return { text: tr('mt_verify_wait'), comps: [] };
+
+  /* Prose leads with the claim, then — only when the reader's question is
+     about trust, or a witness actually warned — the "who wins" rule. */
+  const asksTrust = /disagree|trust|wins|source|conflict|भरोसा|किसकी|स्रोत/i.test(q);
+  let text = tr('mt_verify_text', { place: placeName(state) });
+  const warnedTemp = witness?.ok && !witness.agree;
+  const warnedAqi = rows.some((r) => r.verdict === 'warn' && r.label === tr('xcheck_aqi_label'));
+  if (asksTrust || warnedTemp) text += ` ${tr('mt_verify_trust_temp')}`;
+  if (asksTrust || warnedAqi) text += ` ${tr('mt_verify_trust_aqi')}`;
+
+  return {
+    text,
+    comps: [
+      fence('verify-card', { rows }, tr('xcheck_title')),
+      fence('chips', { items: [tr('sugg_air'), tr('sugg_rain')] }),
+    ],
+  };
+}
+
 function buildDefault(state) {
   const s = state?.snapshot;
   if (!s) return { text: tr('mt_def_loading'), comps: [] };
@@ -632,6 +707,7 @@ export async function offlineChat(opts) {
       case 'hours': built = buildHours(state); break;
       case 'week': built = buildWeek(state); break;
       case 'wind': built = buildWind(state); break;
+      case 'verify': built = buildVerify(state, q); break;
       default: built = buildDefault(state); break;
     }
   }

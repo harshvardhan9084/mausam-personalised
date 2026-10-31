@@ -16,6 +16,7 @@
  *   aqi-card    → asks about the number itself
  *   alert       → asks what the warning means for today's plans
  *   wear-list   → asks why these layers / what to swap
+ *   verify-card → asks who the witnesses are and who wins a split
  *
  * Facts and charts (now-card, hourly-timeline, temp-chart, rain-bars,
  * sun-card, note, chips, …) return null — no fake affordances on data
@@ -40,6 +41,11 @@ export function chatAsk(c, d) {
     }
     case 'wear-list':
       return Array.isArray(d.items) && d.items.length ? t('ask_chat_wear') : null;
+    /* v0.8.42 — the verification ledger is a verdict about verdicts; its
+       own follow-up ("who wins when they disagree?") is answerable from
+       the same witness data, so the affordance is real, not decorative. */
+    case 'verify-card':
+      return Array.isArray(d.rows) && d.rows.length ? t('ask_chat_verify') : null;
     default:
       return null;
   }

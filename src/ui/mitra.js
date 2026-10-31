@@ -639,7 +639,7 @@ function suggestions() {
   if (ints.includes('wedding')) out.unshift(t('sugg_wedding'));
   if (ints.includes('laundry') || ints.includes('cooking')) out.push(t('sugg_laundry'));
   if (ints.includes('fitness') || ints.includes('cycling')) out.splice(1, 0, t('sugg_run'));
-  out.push(t('sugg_air'), t('sugg_city'), t('sugg_weekend'));
+  out.push(t('sugg_air'), t('sugg_verify'), t('sugg_city'), t('sugg_weekend'));
   return out.slice(0, 6);
 }
 

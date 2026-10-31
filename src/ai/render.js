@@ -492,6 +492,24 @@ const R = {
   'note'(p) {
     return el('div.chat-note', null, p.d.text);
   },
+
+  /* v0.8.42 "the conversation vouches" — the verification answer renders
+     with the BOARD's own ledger grammar (.xcheck-* lives in dash.css,
+     linked globally): same tint rows, same check/warn/haze glyphs, same
+     "independent sources" voice. One design language, two surfaces. */
+  'verify-card'(p) {
+    const list = el('div.xcheck-list');
+    for (const r of p.d.rows) {
+      list.appendChild(el('div.xcheck-row' + (r.verdict === 'warn' ? '.warn' : ''),
+        icon(r.verdict === 'warn' ? 'warn' : r.verdict === 'info' ? 'haze' : 'check', 'xcheck-ico'),
+        el('div.xcheck-body',
+          el('b', null, r.label),
+          el('span', null, r.detail),
+        ),
+      ));
+    }
+    return el('div.card.mu-verify', list);
+  },
 };
 
 /* ---------------- public API ---------------- */

@@ -269,10 +269,14 @@ function cropCard(row, hasData) {
   let count = null;
   if (row.status === 'sowing') {
     count = el('div.crop-count', null,
-      t('crop_sow_within', { n: row.sowLeftDays }));
+      row.sowLeftDays === 1
+        ? t('crop_sow_one')
+        : t('crop_sow_within', { n: row.sowLeftDays }));
   } else if (row.status === 'growing') {
     count = el('div.crop-count', null,
-      t('crop_harvest_in', { n: row.harvestLeftDays }),
+      row.harvestLeftDays === 1
+        ? t('crop_harvest_one')
+        : t('crop_harvest_in', { n: row.harvestLeftDays }),
       el('span.crop-count-date', null, ` · ~${fmtD(row.harvestAt)}`));
   } else if (row.status === 'harvest') {
     count = el('div.crop-count', null,
@@ -282,7 +286,7 @@ function cropCard(row, hasData) {
   } else {
     count = el('div.crop-count', null,
       `${t('crop_next_sow')}: ${fmtD(row.sowStart)}`,
-      el('span.crop-count-date', null, ` · ${t('crop_in_days', { n: row.nextSowDays })}`));
+      el('span.crop-count-date', null, ` · ${row.nextSowDays === 1 ? t('crop_in_one') : t('crop_in_days', { n: row.nextSowDays })}`));
   }
 
   const meta = [];

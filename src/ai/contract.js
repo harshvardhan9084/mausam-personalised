@@ -265,6 +265,23 @@ export const REGISTRY = {
     },
   },
 
+  'verify-card': {
+    blurb: 'independent-witness verification rows — the Cross-checked ledger, one row per source pair (label + detail + verdict ok|warn|info)',
+    validate(d) {
+      const rows = arr(pick(d, 'rows', 'items', 'checks'), 4).map((r) => {
+        const label = str(pick(r ?? {}, 'label', 'name', 'title'));
+        const detail = str(pick(r ?? {}, 'detail', 'text', 'why', 'note'));
+        if (!label || !detail) throw new Error('verify row needs label + detail');
+        const verdict = str(pick(r ?? {}, 'verdict', 'state'));
+        /* Anything the model invents that is not warn/info reads as a
+           pass — we never let a typo manufacture a warning. */
+        return { label, detail, verdict: verdict === 'warn' || verdict === 'info' ? verdict : 'ok' };
+      }).filter((r) => r.label && r.detail);
+      if (!rows.length) throw new Error('no verify rows');
+      return { rows };
+    },
+  },
+
   'chips': {
     blurb: 'clickable follow-up suggestions',
     validate(d) {

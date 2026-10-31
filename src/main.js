@@ -299,6 +299,9 @@ function publishChatState() {
     imd: currentSnapshot?.bundle?.imd ?? null,
     station: currentSnapshot?.bundle?.station ?? null,
     fires: currentSnapshot?.bundle?.fires ?? null,
+    /* v0.8.42 — the temperature witness rides the state bridge too, so the
+       conversation can vouch for the board from the same evidence. */
+    witness: currentSnapshot?.bundle?.witness ?? null,
     loading: Boolean(inflight),
     online: navigator.onLine,
   };

@@ -11,6 +11,9 @@ import { CONTRACT_VERSION } from './contract.js';
 import { profileForAI } from '../core/profile.js';
 import { store } from '../core/storage.js';
 import { skyBucket } from '../ui/shared.js';
+/* v0.8.42 — the DATA block carries the witnesses with the SAME agreement
+   math the board's Cross-checked ledger uses. */
+import { compareAqi } from '../core/crosscheck.js';
 
 const round = (v, d = 0) => (v == null || !Number.isFinite(v) ? null : Number(v.toFixed(d)));
 const hhmm = (iso) => (iso ? iso.slice(11, 16) : null);
@@ -68,6 +71,44 @@ export function compactSnapshot(state) {
     aqi: s.currentAqi?.aqi != null
       ? { cpcbAqi: s.currentAqi.aqi, category: s.currentAqi.category, dominant: s.currentAqi.dominant, source: 'cams-model-estimate' }
       : null,
+    /* v0.8.42 "the conversation vouches" — the independent witnesses ride
+       with the snapshot so EVERY LLM path (preview, Gemini) can answer
+       "is this verified?" from the same evidence the board's ledger shows.
+       Absent witness = field stays absent — the model is told never to
+       claim verification the evidence doesn't show. */
+    verification: (() => {
+      const witness = state.witness ?? s.bundle?.witness ?? null;
+      const station = state.station ?? s.bundle?.station ?? null;
+      const modelAqi = s.currentAqi?.aqi ?? null;
+      const out = {};
+      if (witness?.ok) {
+        out.temperature = {
+          settledDay: witness.day,
+          nasaPowerC: witness.powerT,
+          era5C: witness.era5T,
+          deltaC: witness.delta,
+          agree: Boolean(witness.agree),
+          sources: 'NASA POWER (MERRA-2) and Open-Meteo archive (ERA5) — independent satellite reanalyses',
+        };
+      }
+      if (modelAqi != null) {
+        if (station?.ok && station.aqi != null) {
+          const v = compareAqi(modelAqi, station.aqi);
+          if (v.ok) {
+            out.airQuality = {
+              modelAqi,
+              liveStation: { name: station.station.name, distanceKm: station.station.distanceKm, aqi: station.aqi },
+              verdict: v.verdict,
+              delta: v.delta,
+              rule: v.verdict === 'agree' ? 'same CPCB band within tolerance' : 'the live station is ground truth — trust it over the model',
+            };
+          }
+        } else if (station?.error?.kind === 'stale') {
+          out.airQuality = { modelAqi, liveStation: null, rule: 'no fresh monitor within 25 km — this AQI is the model estimate only' };
+        }
+      }
+      return Object.keys(out).length ? out : null;
+    })(),
     rainToday: {
       maxPop: pops.length ? Math.max(...pops) : null,
       nextWetHours: wetHours,
@@ -184,7 +225,7 @@ export function buildSystemPrompt(state) {
 1. ${unitLine}
 2. NEVER invent weather numbers. Use ONLY the DATA block below and tool results. If something isn't in the data, say so plainly and offer what you do have.
 3. Answer with REAL substance — usually 2–3 short paragraphs (roughly 80–150 words): verdict first, then the why, then what to actually do about it. For planning, comparisons or "explain" questions, go deeper: 3–4 short paragraphs (up to ~250 words). Never reply with a single bare sentence unless the user literally asked for yes/no. Bold the key numbers with **…**. No markdown headings or tables in prose.
-4. If the user asks about another city, call the \`get_city_weather\` tool first; then answer. If a tool fails, say what happened and answer from what you have.
+4. If the user asks about another city, call the \`get_city_weather\` tool first; then answer. If a tool fails, say what happened and answer from what you have. If the user asks whether the data is verified/accurate or which source to trust, call \`verify_numbers\` — never claim verification without it.
 5. You are data-aware: the DATA block is the live situation for ${snap?.place ?? 'the user\'s location'}. Treat it as ground truth for "now". The TIME block below tells you the current date and time — use it to resolve every "today", "tonight", "tomorrow" and "this morning".
 6. Never give medical advice; frame heat/air warnings practically (shade, hydration, masks, timing).
 7. NEVER write raw JSON outside a \`\`\`mausam-ui fence. Never wrap JSON in prose, quotes or \`\`\`json fences.
@@ -223,6 +264,7 @@ Presentation guidance:
 - What to wear/carry → ALWAYS answer with a \`wear-list\` (one-line reason per item) plus one short intro sentence
 - Planning/timing questions → \`window-card\` with slots + Good/Fair/Poor rating
 - Air quality → \`aqi-card\` + one practical line. The AQI you get is a CAMS MODEL ESTIMATE, not an official reading — around Indian cities it reads FAR below real CPCB stations (Delhi in Oct–Feb: model often ~30 while stations read 200+ Poor). ALWAYS call it a "model estimate", never present it as the official number, and point users to official station data for health decisions when it matters
+- "Is this verified / accurate?" or any trust question → use the \`verification\` block: it carries the independent witnesses (settled-day temperature from NASA POWER × ERA5 reanalyses; live CPCB station AQI vs the model). You may draw it with a \`verify-card\` fence — rows of {label, detail, verdict: ok|warn|info}. NEVER claim verification the block doesn't show; when the block is null, say the independent checks have not landed yet. Trust rule: air → the live station wins; temperature → both witnesses are reanalyses, the forecast model leads until a day settles
 - Another city → \`now-card\` for that city, or \`compare-table\` if comparing
 - Warnings (storm, heat, AQI severe) → \`alert\`
 - Farming questions → use the soilNow + next10days blocks: moisture bands (0.0–0.15 dry → irrigate, 0.15–0.35 good, >0.35 wet), spray when wind < 15 km/h and rain < 30%
