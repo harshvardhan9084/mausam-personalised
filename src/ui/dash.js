@@ -926,10 +926,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
   if (forYou && forYou.cards.length) {
     const rail = el('div.foryou-rail');
     for (const c of forYou.cards) {
-      rail.appendChild(el(`div.card.foryou-card.${toneClass(c.tone)}`,
+      /* v0.8.38: the verdict answers back — c.ask is born with the card,
+         parameterised by the same numbers the card shows. */
+      rail.appendChild(askable(el(`div.card.foryou-card.${toneClass(c.tone)}`,
         el('div.foryou-head', el('span.insight-icon', null, tipContent(c.icon)), el('span', null, c.title)),
         el('div.foryou-text', null, rich(c.text)),
-      ));
+      ), c.ask));
     }
     root.appendChild(dsec('dc-s', sectionTitle(`${t('sec_foryou')}${forYou.greeting ? ` · ${forYou.greeting}` : ''}`, false, 'sparkles'), rail));
   }
@@ -1020,11 +1022,18 @@ export function renderDashboard(root, snapshot, units, ctx) {
       farmSec.push(desk);
       /* extra stat tiles: soil + ET0 */
       const h0 = s.hours[0] ?? {};
+      /* v0.8.38: the tiles ask about the NUMBER — glossary-shaped questions
+         ("what does 0.1 mm/d ET0 mean for my crop?") born from the same h0
+         values the tiles display. */
+      const sm01 = h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—';
+      const sm39 = h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—';
+      const st07 = h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—';
+      const et0 = h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—';
       farmSec.push(statTiles([
-        [h0.soil_moisture_0_to_1cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_0_to_1cm / 0.4) * 100))}%` : '—', t('farm_soil01')],
-        [h0.soil_moisture_3_to_9cm != null ? `${Math.round(Math.min(100, (h0.soil_moisture_3_to_9cm / 0.4) * 100))}%` : '—', t('farm_soil39')],
-        [h0.soil_temperature_0_to_7cm != null ? temp(h0.soil_temperature_0_to_7cm) : '—', t('farm_stemp')],
-        [h0.et0_fao_evapotranspiration != null ? `${Math.round((h0.et0_fao_evapotranspiration ?? 0) * 24 * 10) / 10} mm/d` : '—', t('farm_et0')],
+        [sm01, t('farm_soil01'), null, h0.soil_moisture_0_to_1cm != null ? t('ask_tile_sm01', { v: sm01 }) : null],
+        [sm39, t('farm_soil39'), null, h0.soil_moisture_3_to_9cm != null ? t('ask_tile_sm39', { v: sm39 }) : null],
+        [st07, t('farm_stemp'), null, h0.soil_temperature_0_to_7cm != null ? t('ask_tile_stemp', { v: st07 }) : null],
+        [et0, t('farm_et0'), null, h0.et0_fao_evapotranspiration != null ? t('ask_tile_et0', { v: et0 }) : null],
       ]));
       root.appendChild(dsec('dc-s', ...farmSec));
     }
@@ -1035,10 +1044,12 @@ export function renderDashboard(root, snapshot, units, ctx) {
   if (insights.length) {
     const grid = el('div.insight-grid');
     for (const ins of insights) {
-      grid.appendChild(el(`div.card.insight-card.${toneClass(ins.tone)}`,
+      /* v0.8.38: the verdict answers back — every Mausam-says card carries
+         the question its own data can answer. */
+      grid.appendChild(askable(el(`div.card.insight-card.${toneClass(ins.tone)}`,
         el('div.insight-head', el('span.insight-icon', null, tipContent(ins.icon)), el('span', null, ins.title)),
         el('div.insight-text', null, rich(ins.text)),
-      ));
+      ), ins.ask));
     }
     root.appendChild(dsec('dc-s sec-says', sectionTitle(t('sec_says')), grid));
   }

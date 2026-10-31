@@ -30,14 +30,17 @@ export function statTiles(items) {
   return el(
     'div.row-4',
     null,
-    items.map(([value, label, color]) =>
-      el('div.card.pad-sm', null,
+    items.map(([value, label, color, ask]) => {
+      const tile = el('div.card.pad-sm', null,
         el('div.mini-stat', null,
           el('div.mini-val', { style: color ? { color } : null }, value),
           el('div.mini-lbl', null, label)
         )
-      )
-    )
+      );
+      /* v0.8.38: a tile that carries a glossary question is an honest
+         button — the number IS what the user taps to ask about. */
+      return ask ? askable(tile, ask) : tile;
+    })
   );
 }
 
@@ -75,10 +78,11 @@ export function askable(node, question) {
   node.classList.add('askable');
   node.setAttribute('role', 'button');
   node.setAttribute('tabindex', '0');
-  // the row's own headline (farm-rowtitle / crop-advice-crop) is what a
-  // screen reader should hear after "Ask Mitra:" — textContent of the whole
-  // row glues title and body together ("Spray window1 AM"), so prefer it
-  const head = node.querySelector('.farm-rowtitle, .crop-advice-crop')?.textContent
+  // the row's own headline (farm-rowtitle / crop-advice-crop / the card or
+  // tile head) is what a screen reader should hear after "Ask Mitra:" —
+  // textContent of the whole row glues title and body together ("Spray window1 AM"),
+  // so prefer a head node
+  const head = node.querySelector('.farm-rowtitle, .crop-advice-crop, .foryou-head, .insight-head, .mini-lbl')?.textContent
     ?? node.textContent;
   node.setAttribute('aria-label', `${t('ask_mitra_label')}: ${head.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
   node.appendChild(el('span.ask-go', { 'aria-hidden': 'true' }, icon('chat', 'ask-ico')));

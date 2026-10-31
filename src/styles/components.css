@@ -581,7 +581,18 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 .crop-advice .ask-go { position: absolute; top: 10px; right: 10px; }
 .crop-advice { position: relative; }
 .crop-advice .crop-advice-body { padding-right: 26px; }
+/* v0.8.38: insight/for-you cards stack head+text — chip as top-right badge,
+   head reserves the corner so long titles never slide under it */
+.foryou-card .ask-go, .insight-card .ask-go { position: absolute; top: 10px; right: 10px; }
+.foryou-card .foryou-head, .insight-card .insight-head { padding-right: 30px; }
+/* farm tiles: the number IS the button — compact corner chip keeps the
+   tile geometry (mini-stat stays centered, no reflow) */
+.pad-sm .ask-go { position: absolute; top: 7px; right: 7px; width: 22px; height: 22px; }
+.pad-sm .ask-ico { width: 12px; height: 12px; }
+.pad-sm { position: relative; }
 @media (max-width: 700px) {
   .ask-go { width: 30px; height: 30px; }
   .crop-advice .crop-advice-body { padding-right: 32px; }
+  .foryou-card .foryou-head, .insight-card .insight-head { padding-right: 34px; }
+  .pad-sm .ask-go { width: 24px; height: 24px; top: 6px; right: 6px; }
 }
