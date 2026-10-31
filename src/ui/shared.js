@@ -81,8 +81,9 @@ export function askable(node, question) {
   // the row's own headline (farm-rowtitle / crop-advice-crop / the card or
   // tile head) is what a screen reader should hear after "Ask Mitra:" —
   // textContent of the whole row glues title and body together ("Spray window1 AM"),
-  // so prefer a head node
-  const head = node.querySelector('.farm-rowtitle, .crop-advice-crop, .foryou-head, .insight-head, .mini-lbl')?.textContent
+  // so prefer a head node. v0.8.39: chat verdict cards join — the window
+  // verdict, the AQI category, the alert title, the first wear item.
+  const head = node.querySelector('.farm-rowtitle, .crop-advice-crop, .foryou-head, .insight-head, .mini-lbl, .mu-verdict, .alert-title, .aqi-cat, .wear-name')?.textContent
     ?? node.textContent;
   node.setAttribute('aria-label', `${t('ask_mitra_label')}: ${head.replace(/\s+/g, ' ').trim().slice(0, 90)}`);
   node.appendChild(el('span.ask-go', { 'aria-hidden': 'true' }, icon('chat', 'ask-ico')));

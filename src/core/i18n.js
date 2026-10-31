@@ -265,6 +265,12 @@ const dict = {
   ask_frost:       ['Frost risk for my {crop} — what should I do tonight?', 'मेरी {crop} पर पाले का ख़तरा है — आज रात क्या करें?'],
   ask_spray_c:     ['Explain the spray window for my {crop} — timing and precautions?', 'मेरी {crop} की छिड़काव खिड़की समझाइए — समय और सावधानियाँ?'],
   ask_rain_plan:   ["Plan this week's {crop} field work around the rain forecast.", 'बारिश के पूर्वानुमान के हिसाब से इस हफ़्ते {crop} का खेती का काम plan करें।'],
+  /* v0.8.39 — Mitra's own verdict cards answer back (the question is born
+     with the card, parameterised by the same numbers the card shows) */
+  ask_chat_win:    ['Why is {t} the best window — and what should I check before heading out?', '{t} सबसे अच्छी खिड़की क्यों है — और निकलने से पहले क्या जाँचें?'],
+  ask_chat_aqi:    ['Is AQI {n} safe for outdoor work — and for how long?', 'AQI {n} बाहर के काम के लिए सुरक्षित है — और कितनी देर तक?'],
+  ask_chat_alert:  ['What exactly does "{x}" mean for my plans today?', '"{x}" का आज के काम-काज पर ठीक क्या मतलब है?'],
+  ask_chat_wear:   ['Why these layers today — and what would you swap for the evening?', 'आज ये कपड़े क्यों — शाम के लिए क्या बदलूँ?'],
 
   /* events / wedding */
   fy_event:      ['Wedding & events', 'शादी और कार्यक्रम'],

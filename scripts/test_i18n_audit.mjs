@@ -16,10 +16,15 @@ const dictSrc = src.slice(start, end);
 const entries = [...dictSrc.matchAll(/^\s{2}([a-z0-9_]+):\s*\[((?:[^\][]|\\.)*)\]/gm)];
 const dict = new Map();
 for (const [, key, arr] of entries) {
-  // split top-level comma (strings contain no commas-then-quote edge; use a light split)
-  const parts = arr.match(/(?:'[^']*')/g) ?? [];
-  const en = parts[0]?.slice(1, -1) ?? null;
-  const hi = parts[1]?.slice(1, -1) ?? null;
+  // extract quoted strings in order — single OR double quoted, backslash
+  // escapes respected. v0.8.39 fix: the old matcher only knew '…', so any
+  // EN text containing an apostrophe (double-quoted in the source: "What's
+  // …") hid its hi pair from the audit and was falsely reported missing —
+  // the audit itself lied about 5 perfectly translated keys (ask_rain7,
+  // ask_commute, ask_tile_sm39, ask_tile_et0, ask_rain_plan).
+  const parts = [...arr.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1] ?? m[2]);
+  const en = parts[0] ?? null;
+  const hi = parts[1] ?? null;
   dict.set(key, { en, hi });
 }
 

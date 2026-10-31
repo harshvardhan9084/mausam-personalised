@@ -590,9 +590,30 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 .pad-sm .ask-go { position: absolute; top: 7px; right: 7px; width: 22px; height: 22px; }
 .pad-sm .ask-ico { width: 12px; height: 12px; }
 .pad-sm { position: relative; }
+/* v0.8.39: chat verdict cards (window verdict / AQI / alert / wear list)
+   stack content — the chip sits top-right like a badge and the card's own
+   headline reserves the corner so text never slides under it */
+.mu-windows .ask-go, .mu-aqi .ask-go, .mu-alert .ask-go, .wear-list .ask-go {
+  position: absolute; top: 10px; right: 10px;
+}
+.mu-windows .mu-verdict, .mu-alert .alert-title { padding-right: 30px; }
+.mu-aqi > div:last-child { padding-right: 34px; }
+.wear-list { padding-right: 32px; }
+/* the alert's tone background must survive the hover — tint each tone with
+   itself instead of letting the generic accent hover repaint the banner */
+.mu-alert.askable:hover { background: color-mix(in srgb, var(--yellow) 9%, var(--surface)); }
+.mu-alert.alert-danger.askable:hover { background: color-mix(in srgb, var(--red) 10%, var(--surface)); }
+.mu-alert.alert-info.askable:hover { background: color-mix(in srgb, var(--blue) 10%, var(--surface)); }
+.mu-alert.alert-ok.askable:hover { background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
+/* card-level askables lift like the hero on hover — the affordance should
+   feel as alive as the surface it lives on (rows keep tint-only feedback) */
+.insight-card.askable:hover, .foryou-card.askable:hover { box-shadow: var(--shadow); }
 @media (max-width: 700px) {
   .ask-go { width: 30px; height: 30px; }
   .crop-advice .crop-advice-body { padding-right: 32px; }
   .foryou-card .foryou-head, .insight-card .insight-head { padding-right: 34px; }
   .pad-sm .ask-go { width: 24px; height: 24px; top: 6px; right: 6px; }
+  .mu-windows .mu-verdict, .mu-alert .alert-title { padding-right: 36px; }
+  .mu-aqi > div:last-child { padding-right: 38px; }
+  .wear-list { padding-right: 38px; }
 }

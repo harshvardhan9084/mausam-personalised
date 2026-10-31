@@ -10,6 +10,8 @@
 import { el } from '../utils/dom.js';
 import { temp as fmtTemp, wind as fmtWind } from '../utils/format.js';
 import { icon, skyIcon, tipIcon } from '../ui/icons.js';
+import { askable } from '../ui/shared.js';
+import { chatAsk } from './chatAsk.js';
 import { parseBlock, REGISTRY, FENCE } from './contract.js';
 import { aqiBandColor, aqiCat, aqiAdvice } from '../core/aqi-cpcb.js';
 import { t, getLang, dateLocale } from '../core/i18n.js';
@@ -514,7 +516,14 @@ export function renderPayload(payload, handlers) {
     console.warn('MausamUI render failed:', err);
     return fallbackNode(payload.t, 'This card could not be displayed.', payload.d);
   }
-  return node ? withTitle(payload, node) : null;
+  if (!node) return null;
+  /* v0.8.39 "the conversation answers back" — a verdict card is one tap
+     from the follow-up its own data can answer, on the same mausam:ask
+     bus every board advisory rides (already on Mitra → instant follow-up
+     turn; facts/charts get no chip — chatAsk returns null for them). */
+  const ask = chatAsk(payload.c, payload.d);
+  if (ask) node = askable(node, ask);
+  return withTitle(payload, node);
 }
 
 /**
