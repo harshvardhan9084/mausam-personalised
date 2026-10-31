@@ -14,6 +14,8 @@ import { relativeTime } from './utils/format.js';
 import { fetchWeatherBundle } from './api/open-meteo.js';
 import { fetchImdBundle } from './api/imd.js';
 import { fetchFloodBundle, fetchMarineBundle, fetchClimateDelta } from './api/extras.js';
+import { fetchStationAqi } from './api/openaq.js';
+import { fetchFires } from './api/firms.js';
 import { buildSnapshot } from './core/engine.js';
 import { store } from './core/storage.js';
 import { setLang, t } from './core/i18n.js';
@@ -294,6 +296,8 @@ function publishChatState() {
     units: currentUnits,
     location: currentLocation,
     imd: currentSnapshot?.bundle?.imd ?? null,
+    station: currentSnapshot?.bundle?.station ?? null,
+    fires: currentSnapshot?.bundle?.fires ?? null,
     loading: Boolean(inflight),
     online: navigator.onLine,
   };
@@ -309,6 +313,43 @@ async function loadExtras(lat, lon, signal) {
     fetchClimateDelta(lat, lon, signal),
   ]);
   return { flood, marine, climate };
+}
+
+/* ================= ground truth (v0.8.40): live station AQI + farm fires =================
+ * Two optional sources fetched together, each never-blocking: OpenAQ's
+ * CPCB/DPCC/UPPCB monitors (the real number next to the model estimate)
+ * and NASA FIRMS hotspots (why the winter haze is what it is). Results
+ * ride the bundle so cache paint shows them too; failures record an
+ * honest status row in Settings → Data sources instead of breaking. */
+
+async function enrichWithGroundTruth(bundle, signal) {
+  const { lat, lon } = bundle.location;
+  const relay = new AbortController();
+  const onOuter = () => relay.abort();
+  signal?.addEventListener('abort', onOuter, { once: true });
+  const timer = setTimeout(() => relay.abort(new DOMException('ground truth timeout', 'TimeoutError')), 12000);
+  try {
+    const [station, fires] = await Promise.all([
+      fetchStationAqi(lat, lon, relay.signal).catch(() => null),
+      fetchFires(lat, lon, relay.signal).catch(() => null),
+    ]);
+    bundle.station = station;
+    bundle.fires = fires;
+    store.flags.set('src_station', station
+      ? (station.ok
+        ? { state: 'ok', detail: `${station.station.name} · ${station.station.distanceKm} km · AQI ${station.aqi}`, at: Date.now() }
+        : { state: 'off', detail: station.error?.kind ?? 'unavailable', at: Date.now() })
+      : { state: 'off', detail: 'timeout', at: Date.now() });
+    store.flags.set('src_fires', fires
+      ? (fires.ok
+        ? { state: 'ok', detail: `${fires.count24} / 48 h`, at: Date.now() }
+        : { state: 'off', detail: fires.error?.kind ?? 'unavailable', at: Date.now() })
+      : { state: 'off', detail: 'timeout', at: Date.now() });
+    return bundle;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onOuter);
+  }
 }
 
 /* ================= IMD enrichment (optional, never blocks) ================= */
@@ -386,6 +427,18 @@ async function loadWeather(force = false, { silent = false } = {}) {
     renderDashboard();
     maybeWelcomeHint();
     runNotifCheck();
+    /* v0.8.40 — ground truth lands a beat LATER (two-phase render): the
+       board paints with the model estimate now; the live station row,
+       trust verdict and farm-fire note patch the AQI card in place when
+       OpenAQ/FIRMS answer. A hung source can never delay first paint. */
+    enrichWithGroundTruth(bundle, controller.signal)
+      .then((b2) => {
+        if (controller.signal.aborted || !b2) return;
+        store.bundle.set(currentLocation.lat, currentLocation.lon, b2);
+        currentSnapshot = buildSnapshot(b2);
+        renderDashboard();
+      })
+      .catch(() => { /* statuses already recorded by the enricher */ });
   } catch (err) {
     if (controller.signal.aborted || err.name === 'AbortError') return;
     header.setOffline(true);

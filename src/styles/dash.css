@@ -763,3 +763,23 @@
 .moon-disc { width: 15px; height: 15px; flex: none; }
 .moon-dark { fill: var(--surface-2); stroke: var(--border); stroke-width: 1; }
 .moon-lit { fill: var(--yellow); }
+
+/* ================================================================
+   v0.8.40 — LIVE STATION GROUND TRUTH (OpenAQ · CPCB/DPCC/UPPCB)
+   The AQI card's real number: a calm row under the dial that speaks
+   the card's own visual language (muted chip row, band-coloured dot).
+================================================================ */
+.aqi-station {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--green) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
+}
+.aqi-st-ico { color: var(--green); flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.aqi-st-body { display: grid; gap: 2px; min-width: 0; }
+.aqi-st-body b { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+.aqi-st-body span { font-size: 0.72rem; color: var(--muted); }

@@ -427,11 +427,12 @@ function aqiCardV2(s, loc = null) {
   const aqi = s.currentAqi;
   const nowAir = s.hours[0]?.air ?? {};
   const trend = s.hours.slice(0, 48).filter((h) => h.aqi != null);
-  /* v0.8.24: the title no longer claims the source — "(CPCB)" read as
-     official station data while the number is a CAMS model estimate.
-     The scale + estimation method now live on a visible tag, and during
-     the pollution season a designed notice says how far the model can
-     sit below the real stations (and links to them). */
+  /* v0.8.40: when a live CPCB monitor answered, the card gains the real
+     number (station row), a trust verdict when model and station disagree,
+     and the farm-fire context behind the winter haze. The old "the model
+     can lie" notice only stays when there is NO station number to show. */
+  const st = s.bundle?.station;
+  const stOk = Boolean(st?.ok && st.aqi != null);
   const head = el('div.aqi-head',
     el('div.card-h', null, t('sec_aqi')),
     el('span.aqi-src-tag', { 'aria-label': t('aqi_model_tag') }, t('aqi_model_tag')),
@@ -468,6 +469,45 @@ function aqiCardV2(s, loc = null) {
         chips.map(([k, v]) => el('span.aqi-chip', null, el('b', null, v), ` ${k}`))) : null,
     ),
   ));
+
+  /* v0.8.40 — the ground truth line: nearest fresh CPCB/DPCC/UPPCB monitor
+     with its own AQI, computed through the same official breakpoints. */
+  if (stOk) {
+    cardBody.appendChild(el('div.aqi-station', { role: 'status' },
+      icon('pin', 'aqi-st-ico'),
+      el('div.aqi-st-body',
+        el('b', null, t('aqi_station_title', { name: st.station.name, km: st.station.distanceKm })),
+        el('span', null, t('aqi_station_vals', {
+          a: st.aqi, c: aqiCat(st.aqi, getLang()),
+          pm: st.conc?.pm2_5 != null ? Math.round(st.conc.pm2_5) : '—',
+          m: st.ageMin ?? '—',
+        })),
+      ),
+    ));
+    /* trust verdict: when the official monitor sits far above the model,
+       say which one to believe — this is the card's whole honesty point. */
+    if (aqi?.aqi != null && st.aqi - aqi.aqi >= 40) {
+      cardBody.appendChild(el('div.aqi-est-note', { role: 'note' },
+        icon('warn', 'aqi-est-ico'),
+        el('div.aqi-est-body',
+          el('b', null, t('aqi_gap_title')),
+          el('span', null, t('aqi_gap_body', { st: st.aqi, model: aqi.aqi })),
+        ),
+      ));
+    }
+    /* farm-fire context: fresh VIIRS hotspots around the district — the
+       why behind tonight's haze (stubble season, Delhi-NCR). */
+    const fr = s.bundle?.fires;
+    if (fr?.ok && fr.count24 > 0) {
+      cardBody.appendChild(el('div.aqi-est-note.aqi-fires', { role: 'note' },
+        icon('haze', 'aqi-est-ico'),
+        el('div.aqi-est-body',
+          el('b', null, t('fires_title')),
+          el('span', null, t('fires_body', { n: fr.count24, n48: fr.count48 })),
+        ),
+      ));
+    }
+  }
 
   /* 48h CPCB outlook — absolute 0–500 scale. (The old window-max
      normalisation made Severe days look flat-full and Good days look
@@ -538,8 +578,10 @@ function aqiCardV2(s, loc = null) {
 
   /* v0.8.24 pollution-season honesty: a low model number in the Oct–Feb
      haze belt is the one case where this card could genuinely mislead —
-     say so, in the card, with a one-tap path to real station readings. */
-  if (aqiNeedsSeasonNotice(aqi?.aqi, loc?.lat, loc?.lon)) {
+     say so, in the card, with a one-tap path to real station readings.
+     v0.8.40: when a live station number IS on the card, this notice is
+     redundant — the real answer replaced the apology. */
+  if (!stOk && aqiNeedsSeasonNotice(aqi?.aqi, loc?.lat, loc?.lon)) {
     cardBody.appendChild(el('div.aqi-est-note', { role: 'note' },
       icon('warn', 'aqi-est-ico'),
       el('div.aqi-est-body',

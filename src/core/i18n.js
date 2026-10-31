@@ -50,6 +50,13 @@ const dict = {
      station data: every AQI surface says so, and the seasonal note says
      how far the model can sit below real CPCB stations around cities. */
   aqi_model_tag: ['CPCB scale · model estimate', 'CPCB पैमाना · मॉडल अनुमान'],
+  /* v0.8.40 — live station ground truth (OpenAQ · CPCB/DPCC/UPPCB monitors) */
+  aqi_station_title: ['Live station: {name} · {km} km', 'लाइव स्टेशन: {name} · {km} किमी'],
+  aqi_station_vals:  ['Station AQI {a} ({c}) · PM2.5 {pm} µg/m³ · {m} min ago', 'स्टेशन AQI {a} ({c}) · PM2.5 {pm} µg/m³ · {m} मिनट पहले'],
+  aqi_gap_title:     ['The station reads far above the model', 'स्टेशन मॉडल से कहीं ऊपर बता रहा है'],
+  aqi_gap_body:      ['Official monitor {st} vs model estimate {model}. When they disagree this much, trust the station — mask up outdoors.', 'सरकारी मॉनिटर {st} बनाम मॉडल अनुमान {model}। इतना फ़र्क़ हो तो स्टेशन को मानें — बाहर मास्क लगाएँ।'],
+  fires_title:       ['Farm fires around your district', 'आपके ज़िले के आस-पास खेत की आग'],
+  fires_body:        ['{n} fresh fire spots in 24 h ({n48} in 48 h) — smoke like this pushes tonight\'s AQI up.', '24 घंटे में {n} ताज़ी आग ({n48} दिन में) — ऐसा धुआँ रात का AQI बढ़ा देता है।'],
   aqi_est_note_title: ['Model estimate — and it reads low here', 'मॉडल अनुमान — और यहाँ यह कम बता रहा है'],
   aqi_est_note_body: ['This number comes from a satellite model (CAMS) that runs far below official sensors around Indian cities — in this season, Delhi-area CPCB stations often read Poor (200+) while models say Good. For health calls, trust station data:', 'यह संख्या सैटेलाइट मॉडल (CAMS) से है, जो भारतीय शहरों में सरकारी सेंसर से बहुत नीचे रहती है — इस मौसम में दिल्ली-क्षेत्र के CPCB स्टेशन अक्सर 200+ (ख़राब) दिखाते हैं जब मॉडल अच्छी हवा बताता है। सेहत के फ़ैसलों के लिए स्टेशन डेटा पर भरोसा करें:'],
   aqi_est_link:  ['Check official station AQI', 'सरकारी स्टेशन AQI देखें'],
@@ -700,6 +707,18 @@ const dict = {
   set_test:      ['Test connection', 'जाँचें'],
   set_imd:       ['IMD official data (optional)', 'IMD सरकारी डेटा (मर्ज़ी से)'],
   set_imd_help:  ['Mausam runs fully on Open-Meteo by default. Add a free key from api.imd.gov.in to enrich the dashboard with the India Meteorological Department\'s official 7-day city forecast, observations & moon times.', 'मौसम पहले से पूरी तरह Open-Meteo पर चलता है। api.imd.gov.in की मुफ़्त कुंजी डालें तो IMD का सरकारी 7-दिन पूर्वानुमान, अवलोकन और चंद्र समय भी जुड़ जाएँगे।'],
+  /* v0.8.40 — Settings → Data sources: what the app is reading right now */
+  set_sources:      ['Data sources', 'डेटा स्रोत'],
+  set_sources_help: ['What Mausam is reading right now. Optional sources fall back silently — the app never breaks when one is missing.', 'मौसम अभी क्या पढ़ रहा है। वैकल्पिक स्रोत चुपचाप हट जाते हैं — एक के ग़ायब होने से ऐप कभी नहीं टूटता।'],
+  src_openmeteo: ['Forecast + model air (Open-Meteo)', 'पूर्वानुमान + मॉडल हवा (Open-Meteo)'],
+  src_always:    ['always on', 'हमेशा चालू'],
+  src_station:   ['Live station AQI (OpenAQ · CPCB feed)', 'लाइव स्टेशन AQI (OpenAQ · CPCB फ़ीड)'],
+  src_fires:     ['Farm-fire hotspots (NASA FIRMS)', 'खेत की आग (NASA FIRMS)'],
+  src_imd:       ['IMD official forecast', 'IMD सरकारी पूर्वानुमान'],
+  src_ok:        ['ok', 'ठीक'],
+  src_off:       ['off', 'बंद'],
+  src_imd_nokey: ['no key — add one above', 'कुंजी नहीं — ऊपर जोड़ें'],
+  src_imd_ok:    ['key set', 'कुंजी सेव'],
   set_about:     ['About', 'ऐप के बारे में'],
   set_misc_12:   ['12-hour', '12 घंटे'],
   set_misc_24:   ['24-hour', '24 घंटे'],

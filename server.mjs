@@ -21,12 +21,23 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { geoResponse, reverseResponse } from './scripts/geo_fixture.mjs';
+import { BUNDLED_KEYS } from './src/api/keys.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT ?? 3000);
 const FX = process.env.FX === '1'; // dev-only: mock Open-Meteo with local fixtures
 const FX_DIR = process.env.FX_DIR ?? '/home/z/my-project/scripts/fixtures_v3';
+
+/* v0.8.40 — optional source proxies. OpenAQ's gateway answers CORS
+ * preflight (OPTIONS) with 401, so a browser page can never send the
+ * X-API-Key header itself; FIRMS' edge is similarly unproven for pages.
+ * Same-origin proxies move the key server-side (dev/preview only — on
+ * static Pages the client silently falls back / hides these sources).
+ * Env vars override the bundled demo keys; see src/api/keys.js. */
+const OPENAQ_KEY = process.env.OPENAQ_API_KEY ?? BUNDLED_KEYS.openaq;
+const FIRMS_KEY = process.env.FIRMS_MAP_KEY ?? BUNDLED_KEYS.firms;
+const UPSTREAM_TIMEOUT_MS = 12000;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -93,6 +104,22 @@ function readBody(req, limit = 512 * 1024) {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+/** Pass an upstream response through with its real status + content type. */
+async function passthrough(res, url, headers, accept) {
+  try {
+    const up = await fetch(url, {
+      headers: { Accept: accept, ...headers },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+    const body = await up.text();
+    const ct = up.headers.get('content-type') ?? (accept.includes('json') ? 'application/json; charset=utf-8' : 'text/csv; charset=utf-8');
+    res.writeHead(up.status, { 'Content-Type': ct, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+    res.end(body);
+  } catch (err) {
+    sendJSON(res, 502, { error: `upstream failed: ${String(err?.message ?? err).slice(0, 120)}` });
+  }
 }
 
 function safeJoin(root, urlPath) {
@@ -227,6 +254,20 @@ const server = http.createServer(async (req, res) => {
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     return res.end();
+  }
+
+  // ---- optional data-source proxies (v0.8.40) ----
+  if (urlPath.startsWith('/api/openaq/')) {
+    const sub = urlPath.replace('/api/openaq', ''); // keep /v3/...
+    return passthrough(res, `https://api.openaq.org${sub}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`,
+      { 'X-API-Key': OPENAQ_KEY }, 'application/json');
+  }
+  if (urlPath === '/api/firms') {
+    const bbox = new URL(req.url ?? '/', 'http://x').searchParams.get('bbox') ?? '';
+    if (!/^-?\d{1,2}\.\d{2},-?\d{1,2}\.\d{2},-?\d{1,2}\.\d{2},-?\d{1,2}\.\d{2}$/.test(bbox)) {
+      return sendJSON(res, 400, { error: 'bbox=w,s,e,n (2-decimal) required' });
+    }
+    return passthrough(res, `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_KEY}/VIIRS_SNPP_NRT/${bbox}/2`, {}, 'text/csv');
   }
 
   // ---- AI endpoints ----

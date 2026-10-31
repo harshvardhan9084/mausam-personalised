@@ -98,6 +98,9 @@ function build() {
   /* ---------------- IMD ---------------- */
   buildImdSection();
 
+  /* ---------------- data sources (v0.8.40) ---------------- */
+  buildSourcesSection();
+
   /* ---------------- notifications ---------------- */
   buildNotifSection();
 
@@ -126,7 +129,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.39'),
+      el('span.ver-badge', null, 'v0.8.40'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -137,6 +140,35 @@ function build() {
 
 function section(title, ...children) {
   return el('div.settings-block.page-block', el('div.settings-h', null, title), ...children);
+}
+
+/* ---------------- data sources section (v0.8.40) ---------------- */
+
+function srcRow(label, state, detail) {
+  return el('div.src-row',
+    el(`span.src-dot.${state}`),
+    el('div.src-text',
+      el('div.src-name', null, label),
+      el('div.src-detail', null, detail),
+    ),
+  );
+}
+
+function buildSourcesSection() {
+  const st = store.flags.get('src_station');
+  const fr = store.flags.get('src_fires');
+  const kids = [el('div.set-help', null, t('set_sources_help'))];
+  kids.push(srcRow(t('src_openmeteo'), 'ok', t('src_always')));
+  kids.push(srcRow(t('src_station'),
+    st?.state === 'ok' ? 'ok' : 'off',
+    st ? (st.state === 'ok' ? `${t('src_ok')} · ${st.detail}` : `${t('src_off')} · ${st.detail}`) : t('src_off')));
+  kids.push(srcRow(t('src_fires'),
+    fr?.state === 'ok' ? 'ok' : 'off',
+    fr ? (fr.state === 'ok' ? `${t('src_ok')} · ${fr.detail}` : `${t('src_off')} · ${fr.detail}`) : t('src_off')));
+  kids.push(srcRow(t('src_imd'),
+    store.imdKey.has() ? 'ok' : 'off',
+    store.imdKey.has() ? t('src_imd_ok') : t('src_imd_nokey')));
+  mount.appendChild(section(t('set_sources'), ...kids));
 }
 
 function buildInstallSection() {
