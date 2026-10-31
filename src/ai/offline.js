@@ -120,6 +120,18 @@ function classify(text) {
   return best;
 }
 
+/* v0.8.43 "every provider draws the ledger" — the verify-intent answer is
+   a shared export now: classify() above stays the single source of truth
+   (keyword scan + the STRONG_VERIFY override), and client.js calls this
+   to guarantee the tool-less Z.ai preview path draws the same ledger
+   whenever a question would be classified as evidence. */
+
+/** Would this question be classified as verify/trust (evidence, not
+    weather)? Delegates to classify() so the two can never drift apart. */
+export function isVerifyQuestion(text) {
+  return classify(String(text ?? '')).id === 'verify';
+}
+
 /* --- city extraction for weather-in-X / compare questions --- */
 /* v0.8.27 — Devanagari city names: the Hindi suggestion chip asks
    "मुंबई का मौसम?" — the keyless engine must find Mumbai, not fall to the
@@ -591,9 +603,14 @@ async function buildCity(state, text0) {
    SAME function the board calls, so the chat can never contradict the
    card. Rows exist only when their witness spoke; a warning row pulls
    the matching "who wins" rule into the prose, exactly when it matters. */
-function buildVerify(state, q) {
+/* v0.8.43 "every provider draws the ledger" — the row builder is a pure
+   export now: the offline engine, the Gemini tool path and the Z.ai
+   preview path all draw the SAME rows from the SAME state through the
+   SAME compareAqi(), so a provider can no longer skip (or invent)
+   verification evidence. Rows exist only when their witness spoke. */
+export function verifyLedgerRows(state) {
   const s = state?.snapshot;
-  if (!s) return { text: tr('mt_verify_wait'), comps: [] };
+  if (!s) return [];
   const witness = state.witness ?? s.bundle?.witness ?? null;
   const station = state.station ?? s.bundle?.station ?? null;
   const modelAqi = s.currentAqi?.aqi ?? null;
@@ -624,11 +641,28 @@ function buildVerify(state, q) {
   } else if (modelAqi != null && station?.error?.kind === 'stale') {
     rows.push({ label: tr('xcheck_aqi_label'), detail: tr('xcheck_aqi_only', { m: modelAqi }), verdict: 'info' });
   }
+  return rows;
+}
 
+/** v0.8.43 — the whole ledger as ONE streamable mausam-ui fence; '' when
+    no witness has spoken (callers show the honest "still landing" state
+    instead — never an empty card). Title and rows localize through the
+    same tr() keys the offline engine and the board already use. */
+export function verifyCardFence(state) {
+  const rows = verifyLedgerRows(state);
+  if (!rows.length) return '';
+  return fence('verify-card', { rows }, tr('xcheck_title'));
+}
+
+function buildVerify(state, q) {
+  const s = state?.snapshot;
+  if (!s) return { text: tr('mt_verify_wait'), comps: [] };
+  const rows = verifyLedgerRows(state);
   /* No witness has spoken yet (checks still landing / all unavailable):
      say so honestly — never draw an empty ledger. */
   if (!rows.length) return { text: tr('mt_verify_wait'), comps: [] };
 
+  const witness = state.witness ?? s.bundle?.witness ?? null;
   /* Prose leads with the claim, then — only when the reader's question is
      about trust, or a witness actually warned — the "who wins" rule. */
   const asksTrust = /disagree|trust|wins|source|conflict|भरोसा|किसकी|स्रोत/i.test(q);

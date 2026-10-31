@@ -18,7 +18,7 @@ import { buildSystemPrompt, trimHistory } from './prompt.js';
 import { TOOL_DECLARATIONS, runTool } from './tools.js';
 import { geminiChat, geminiErrorCopy } from './gemini.js';
 import { probeZai, zaiChat, zaiErrorCopy } from './zai.js';
-import { offlineChat, offlineErrorCopy } from './offline.js';
+import { offlineChat, offlineErrorCopy, isVerifyQuestion, verifyCardFence } from './offline.js';
 import { createStreamParser } from './render.js';
 
 export const PROVIDERS = {
@@ -78,15 +78,41 @@ export async function runChatTurn(ev) {
 
   ev.onOpen?.({ provider: res.id, badge: providerBadge(res), note: res.note });
 
+  /* v0.8.43 "every provider draws the ledger" — remember what the stream
+     drew and whether the witnesses were asked for, so the auto-ledger can
+     fill a missing verification card without ever doubling one. */
+  let sawVerifyCard = false;
+  let verifyToolCalled = false;
   const handleEvents = (events) => {
     for (const e of events) {
       if (e.type === 'text') ev.onText?.(e.text);
-      else if (e.type === 'component') ev.onComponent?.(e.payload);
+      else if (e.type === 'component') {
+        if (e.payload?.c === 'verify-card') sawVerifyCard = true;
+        ev.onComponent?.(e.payload);
+      }
       else if (e.type === 'fallback') ev.onFallback?.(e.raw, e.reason);
       else if (e.type === 'code') ev.onCode?.(e.text);
     }
   };
   const onText = (delta) => { if (delta) handleEvents(parser.push(delta)); };
+
+  /* The auto-ledger: when the turn was ABOUT verification — the model
+     called verify_numbers, or on the tool-less Z.ai preview path the
+     question itself is verify-intent — and the stream drew no
+     verify-card of its own, push the SAME ledger the offline engine and
+     the board show, through the SAME parser path (validated, askable,
+     board grammar). Prose stays the model's own; the evidence is the
+     app's. No witness spoke → no card, never an empty ledger. Runs only
+     on the success path — an aborted turn stays cut. */
+  const autoVerifyLedger = () => {
+    if (sawVerifyCard) return;
+    const asked = verifyToolCalled || (res.id === 'zai' && isVerifyQuestion(ev.userText));
+    if (!asked) return;
+    const fence = verifyCardFence(state);
+    if (!fence) return;
+    onText(fence);
+    handleEvents(parser.end());
+  };
 
   try {
     if (res.id === 'gemini') {
@@ -94,7 +120,14 @@ export async function runChatTurn(ev) {
         system, history, userText: ev.userText,
         apiKey: res.key, model: res.model,
         toolDecls: TOOL_DECLARATIONS,
-        runTool: (name, args) => runTool(name, args, state),
+        runTool: async (name, args) => {
+          const r = await runTool(name, args, state);
+          /* v0.8.43 — a verify_numbers call means the turn is about
+             evidence; if the model forgets to draw the fence, the
+             auto-ledger below still shows the witnesses. */
+          if (name === 'verify_numbers' && r && !r.error) verifyToolCalled = true;
+          return r;
+        },
         onText, signal: ev.signal,
       });
     } else if (res.id === 'zai') {
@@ -103,6 +136,7 @@ export async function runChatTurn(ev) {
       await offlineChat({ userText: ev.userText, onText, signal: ev.signal, getState: ev.getState });
     }
     handleEvents(parser.end());
+    autoVerifyLedger();
     ev.onDone?.({ provider: res.id, badge: providerBadge(res) });
   } catch (err) {
     if (err?.name === 'AbortError') {

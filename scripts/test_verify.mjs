@@ -9,7 +9,7 @@
 import { chatAsk } from '../src/ai/chatAsk.js';
 import { parseBlock } from '../src/ai/contract.js';
 import { runTool } from '../src/ai/tools.js';
-import { offlineChat } from '../src/ai/offline.js';
+import { offlineChat, isVerifyQuestion, verifyLedgerRows, verifyCardFence } from '../src/ai/offline.js';
 import { compactSnapshot } from '../src/ai/prompt.js';
 import { compareAqi } from '../src/core/crosscheck.js';
 
@@ -104,6 +104,40 @@ ok(cs.verification?.airQuality?.liveStation?.aqi === 244, 'DATA block carries th
 ok(cs.verification?.airQuality?.verdict === 'gap', 'DATA block verdict comes from the SAME compareAqi');
 const cs2 = compactSnapshot({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84 } }, location: { name: 'Hapur' } });
 ok(cs2.verification === null, 'no witnesses → verification null (model must not claim)');
+
+/* ---------------- 6. v0.8.43 — the shared verify-intent matcher ----------------
+   classify() overrides with it (offline path); client.js triggers the
+   Z.ai auto-ledger with it. Evidence questions ≠ weather questions. */
+ok(isVerifyQuestion('Is this data verified?') === true, 'EN chip question is verify-intent');
+ok(isVerifyQuestion('क्या यह डेटा पक्का है?') === true, 'Devanagari chip question is verify-intent');
+ok(isVerifyQuestion('who wins when they disagree?') === true, 'trust-rule follow-up is verify-intent');
+ok(isVerifyQuestion('is the AQI accurate?') === true, 'accuracy wording is verify-intent');
+ok(isVerifyQuestion('Will it rain today?') === false, 'rain question is NOT verify-intent');
+ok(isVerifyQuestion('AQI kya hai?') === false, 'plain AQI question is NOT verify-intent (evidence ≠ air)');
+ok(isVerifyQuestion('plan my weekend') === false, 'plan question is NOT verify-intent');
+ok(isVerifyQuestion(null) === false && isVerifyQuestion(undefined) === false, 'null/undefined question is never verify-intent');
+
+/* ---------------- 7. v0.8.43 — the ledger builder: one source of rows ----------------
+   The offline engine, the Gemini tool path and the Z.ai preview path all
+   draw from THIS function — a provider can no longer skip or invent
+   verification evidence. */
+const rowsFull = verifyLedgerRows(STATE_FULL);
+ok(rowsFull.length === 2, 'full state → temperature + air rows (only witnesses that spoke)');
+ok(rowsFull[0].verdict === 'ok', 'agree temperature witness → ok row');
+ok(rowsFull[1].verdict === 'warn', 'AQI gap (84 vs 244, cross-band) → warn row');
+const rowsSplit = verifyLedgerRows(STATE_SPLIT);
+ok(rowsSplit[0].verdict === 'warn', 'split temperature witness → warn row (never faked as ok)');
+
+const fenceFull = verifyCardFence(STATE_FULL);
+ok(fenceFull.startsWith('\n```mausam-ui\n') && fenceFull.endsWith('\n```\n'), 'fence is a streamable mausam-ui block');
+const fm = fenceFull.match(/```mausam-ui\n([\s\S]*?)\n```/);
+const pb = fm ? parseBlock(fm[1]) : { ok: false };
+ok(pb.ok === true && pb.payload.c === 'verify-card', 'auto fence round-trips through the SAME contract parser');
+ok(pb.ok && pb.payload.d.rows.length === 2 && pb.payload.t.length > 0, 'round-tripped card keeps both rows + the ledger title');
+
+ok(verifyCardFence({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84 } } }) === '', 'no witnesses → empty fence, never an empty ledger');
+ok(verifyCardFence(null) === '' && verifyLedgerRows(null).length === 0, 'null state is silent, not a crash');
+ok(verifyCardFence(STATE_FULL) === verifyCardFence(STATE_FULL), 'fence is deterministic (same state → same ledger)');
 
 console.log(`=== verify flow: ${pass} passed, ${fail} failed ===`);
 process.exit(fail ? 1 : 0);
