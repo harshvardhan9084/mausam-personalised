@@ -50,9 +50,15 @@
   --header-h: 58px;
   --nav-h: 62px;
 
-  /* motion — one place to keep every transition consistent */
+  /* motion — one place to keep every transition consistent.
+     v0.8.47 completes the scale: press states are TOKENS too, so a chip
+     and a card can never squish by different amounts, and the micro
+     duration cluster (0.12–0.16s) collapses onto --t-fast everywhere. */
   --t-fast: 0.14s ease;
   --t-med:  0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+  --t-slow: 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
+  --press:      scale(0.96);  /* chips, icon buttons, small controls */
+  --press-soft: scale(0.98);  /* cards, rows, large tappable surfaces */
 }
 
 [data-theme='light'] {

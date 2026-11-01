@@ -196,7 +196,7 @@
 .aqi-dial-svgwrap { position: relative; }
 .aqi-dial svg { display: block; width: 128px; height: 70px; }
 .aqi-dial-track { fill: none; stroke: var(--border); stroke-width: 11; stroke-linecap: round; }
-.aqi-dial-arc { fill: none; stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.7s var(--t-med); }
+.aqi-dial-arc { fill: none; stroke-width: 11; stroke-linecap: round; transition: stroke-dasharray 0.7s cubic-bezier(0.2, 0.7, 0.3, 1); }
 .aqi-dial-num {
   position: absolute; left: 0; right: 0; bottom: 6px;
   font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px;
@@ -264,7 +264,7 @@
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--t-med);
   white-space: nowrap;
 }
 .you-btn:hover { filter: brightness(1.1); }
@@ -340,7 +340,7 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all var(--t-med);
 }
 .delta-pill:hover { filter: brightness(1.15); }
 .delta-arrow { font-size: 0.68rem; }
@@ -356,7 +356,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--t-med);
   flex: 0 0 auto;
 }
 .hero-share:hover { border-color: var(--accent); color: var(--accent); }
@@ -382,7 +382,7 @@
   padding: 7px 14px;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--t-med);
   white-space: nowrap;
 }
 .place-chip:hover { border-color: var(--accent); }
@@ -552,7 +552,7 @@
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height 0.26s var(--t-med), opacity 0.2s ease;
+  transition: max-height var(--t-slow), opacity var(--t-med);
   font-size: 0.78rem;
   color: var(--muted);
 }
@@ -700,7 +700,7 @@
 .digest-cat { font-weight: 700; margin-left: 5px; }
 .digest-glyph { width: 16px; height: 16px; }
 /* v0.8.33 — the digest is a control: it jumps to the full AQI card. */
-.digest-card { cursor: pointer; transition: border-color 0.15s ease; }
+.digest-card { cursor: pointer; transition: border-color var(--t-fast); }
 .digest-card:hover { border-color: var(--accent); }
 .digest-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

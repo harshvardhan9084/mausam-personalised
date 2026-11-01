@@ -67,7 +67,7 @@
   transition: transform var(--t-med), width var(--t-med), opacity 0.25s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  .tab-pill { transition: opacity 0.2s ease; }
+  .tab-pill { transition: opacity var(--t-med); }
 }
 
 .tab-btn {
@@ -147,7 +147,7 @@
   cursor: pointer;
   min-height: 38px;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--t-fast), background var(--t-fast);
 }
 .pack-chip:active { transform: scale(0.97); }
 .pack-chip:hover { border-color: var(--accent); }
@@ -215,7 +215,7 @@
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.2s;
+  transition: background var(--t-med);
 }
 .toggle-knob {
   position: absolute;
@@ -223,7 +223,7 @@
   width: 22px; height: 22px;
   border-radius: 50%;
   background: var(--muted);
-  transition: left 0.2s ease, background 0.2s;
+  transition: left var(--t-med), background var(--t-med);
 }
 .toggle.on { background: var(--accent); border-color: var(--accent); }
 .toggle.on .toggle-knob { left: 24px; background: var(--text-on-accent); }
@@ -546,7 +546,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   opacity: 0;
   transform: translateY(8px);
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--t-med), transform var(--t-med);
   z-index: 5;
 }
 .chat-scroll-down.show {
@@ -566,7 +566,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.14s ease, background 0.14s ease;
+  transition: transform var(--t-fast), background var(--t-fast);
 }
 .chat-mic:hover { transform: scale(1.06); }
 .chat-mic.listening {
@@ -972,7 +972,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   box-shadow: var(--shadow);
   opacity: 0;
   transform: translateY(-52px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--t-med), transform var(--t-med);
   pointer-events: none;
   z-index: 90;
 }
@@ -1239,17 +1239,45 @@ textarea.chat-input {
    get ONLY the :active rule here — re-declaring `transition` last in the
    cascade would erase their existing color/shadow transitions. */
 .seg-btn, .aqi-trend-bar, .modal-close, .chat-new, .chat-scroll-down {
-  transition: transform 0.12s ease;
+  transition: transform var(--t-fast);
 }
 .btn:active, .chip:active, .seg-btn:active, .accent-swatch:active,
 .persona-card:active, .hero-share:active, .delta-pill:active,
 .you-btn:active, .place-chip:active, .aqi-trend-bar:active,
 .modal-close:active, .chat-new:active, .chat-send:active,
 .chat-mic:active, .chat-scroll-down:active {
-  transform: scale(0.96);
+  transform: var(--press);
 }
-.ten-row, .search-result { transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease; }
+.ten-row, .search-result { transition: transform var(--t-fast), border-color var(--t-fast), background var(--t-fast); }
 .ten-row:active, .search-result:active { transform: translateX(2px); }
+
+/* ---------- v0.8.47: the motion grammar closes — press layer v2 ----------
+   The v0.8.11 pass taught 22 surfaces to answer the finger; 15 interactive
+   elements were still inert: settings rows, hourly cards, the chat FAB,
+   explore chips, destination removes, profile controls. Same grammar, now
+   token-driven: --press for small controls, --press-soft for large
+   surfaces (a settings row squishing like a chip felt wrong), --t-fast
+   everywhere. Same cascade discipline as v0.8.11: selectors whose base
+   rules already transition transform/all get ONLY the :active rule here.
+   Under prefers-reduced-motion the press stays (state, not animation). */
+.chat-hist-open, .chat-hist-del, .explore-hit, .explore-from,
+.chat-close, .dest-remove, .place-forget, .persona-badge {
+  transition: transform var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.chat-hist-open:active, .chat-hist-del:active, .explore-hit:active,
+.explore-from:active, .chat-close:active, .dest-remove:active,
+.place-forget:active, .persona-badge:active {
+  transform: var(--press);
+}
+.settings-item, button.hour-card, .digest-card {
+  transition: transform var(--t-fast), border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+}
+.settings-item:active, button.hour-card:active, .digest-card:active {
+  transform: var(--press-soft);
+}
+.chat-fab:active, .profile-edit:active { transform: var(--press); }
+.alert-close, .chat-copy { transition: opacity var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
+.alert-close:active, .chat-copy:active { transform: var(--press); }
 
 @media (prefers-reduced-motion: reduce) {
   .page.active, .tab-btn.active .tab-ico { animation: none; }
