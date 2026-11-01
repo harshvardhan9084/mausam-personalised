@@ -50,6 +50,10 @@ const dict = {
      station data: every AQI surface says so, and the seasonal note says
      how far the model can sit below real CPCB stations around cities. */
   aqi_model_tag: ['CPCB scale · model estimate', 'CPCB पैमाना · मॉडल अनुमान'],
+  /* v0.8.46 — the chat card's ground-truth pill: the card's number IS the
+     live CPCB reading (fence source='station'). Green pill, same grammar
+     as the settings source dots — green means a real sensor answered. */
+  aqi_station_tag: ['CPCB station · ground truth', 'CPCB स्टेशन · असली आँकड़ा'],
   /* v0.8.40 — live station ground truth (OpenAQ · CPCB/DPCC/UPPCB monitors) */
   aqi_station_title: ['Live station: {name} · {km} km', 'लाइव स्टेशन: {name} · {km} किमी'],
   /* v0.8.45: the age receipt is appended in code via freshAgo() — it must

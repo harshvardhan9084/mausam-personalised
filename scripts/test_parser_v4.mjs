@@ -77,6 +77,24 @@ const textOf = (evts) => evts.filter((e) => e.type === 'text').map((e) => e.text
   check('drift: aqi-card aliases', r8.ok && r8.payload.d.category === 'Poor' && r8.payload.d.dominant === 'PM2.5', r8.error);
 }
 
+/* ------------- 4b. aqi-card source field (v0.8.46: the card knows its source) ------------- */
+{
+  const r1 = parseBlock('{"v":1,"c":"aqi-card","d":{"aqi":330,"category":"Very Poor","source":"station"}}');
+  check('aqi-src: station survives validation', r1.ok && r1.payload.d.source === 'station' && r1.payload.d.aqi === 330, r1.error ?? JSON.stringify(r1.payload?.d));
+  const r2 = parseBlock('{"v":1,"c":"aqi-card","d":{"aqi":84,"category":"Satisfactory"}}');
+  check('aqi-src: absent source → empty string (model tag path)', r2.ok && r2.payload.d.source === '', r2.error ?? JSON.stringify(r2.payload?.d));
+  const r3 = parseBlock('{"v":1,"c":"aqi-card","d":{"aqi":84,"src":"station"}}');
+  check('aqi-src: src alias accepted', r3.ok && r3.payload.d.source === 'station', r3.error);
+  const r4 = parseBlock('{"v":1,"c":"aqi-card","d":{"aqi":90,"source":123}}');
+  check('aqi-src: non-string source coerced to empty (model tag)', r4.ok && r4.payload.d.source === '', r4.error ?? JSON.stringify(r4.payload?.d));
+  const p5 = createStreamParser();
+  const o5 = [...p5.push('```mausam-ui\n{"v":1,"c":"aqi-card","d":{"aqi":335,"category":"Very Poor","dominant":"PM2.5","source":"station"}}\n```'), ...p5.end()];
+  const c5 = o5.find((e) => e.type === 'component');
+  check('aqi-src: full fence stream round-trip keeps source', !!c5 && c5.payload.c === 'aqi-card' && c5.payload.d.source === 'station' && c5.payload.d.dominant === 'PM2.5', o5.map((e) => e.type).join(','));
+  const r6 = parseBlock('{"v":1,"c":"aqi-card","d":{"aqi":76,"source":"cams-model-estimate"}}');
+  check('aqi-src: any other source string passes through (renderer treats as model)', r6.ok && r6.payload.d.source === 'cams-model-estimate', r6.error);
+}
+
 /* ---------------- 5. malformed fences → fallback, never prose ---------------- */
 {
   const p = createStreamParser();

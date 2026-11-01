@@ -238,6 +238,14 @@
   border-radius: 999px;
   padding: 2px 7px;
 }
+/* v0.8.46 — the ground-truth pill: the card's number IS the live CPCB
+   reading. Same green grammar as the source dots (settings) — green means
+   a real sensor answered, grey means a model spoke. */
+.aqi-src-station {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
 .aqi-note { color: var(--muted); font-size: 0.76rem; margin-top: 4px; line-height: 1.4; }
 
 .sun-card { padding: 12px 15px; border-radius: 15px 15px 15px 4px; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }

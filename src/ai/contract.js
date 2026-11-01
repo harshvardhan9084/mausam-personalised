@@ -232,6 +232,10 @@ export const REGISTRY = {
         category: str(pick(d, 'category', 'cat'), 'Unknown'),
         dominant: str(pick(d, 'dominant', 'pollutant', 'dominantPollutant')),
         advice: str(pick(d, 'advice', 'note', 'text')),
+        /* v0.8.46 — the card knows its source: 'station' = the number is the
+           live CPCB reading (ground truth), anything else/absent = the CAMS
+           model estimate. The tag renders honestly for either. */
+        source: str(pick(d, 'source', 'src')),
       };
     },
   },

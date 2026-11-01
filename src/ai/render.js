@@ -445,12 +445,15 @@ const R = {
        could disagree with the dashboard dial for the same value. */
     const color = p.d.aqi != null ? aqiBandColor(p.d.aqi) : (cat?.color ?? 'var(--aqi-u)');
     /* v0.8.24 — the card carries the same honesty tag as the dashboard dial:
-       this number is a CAMS model estimate, not an official station reading. */
+       this number is a CAMS model estimate, not an official station reading.
+       v0.8.46 — unless it IS the station reading: source='station' flips the
+       tag to the green ground-truth pill (same grammar as the source dots). */
+    const station = p.d.source === 'station';
     return el('div.aqi-card.card.mu-aqi',
       el('div.aqi-big', { style: { color } }, p.d.aqi != null ? String(Math.round(p.d.aqi)) : '—'),
       el('div',
         el('div.aqi-cat', { style: { color } }, p.d.aqi != null ? aqiCat(p.d.aqi, getLang()) : (p.d.category || aqiCat(null, getLang()))),
-        el('div.aqi-src', null, t('aqi_model_tag')),
+        el('div.aqi-src' + (station ? ' aqi-src-station' : ''), null, station ? t('aqi_station_tag') : t('aqi_model_tag')),
         el('div.aqi-note', null,
           (p.d.aqi != null ? aqiAdvice(p.d.aqi, getLang()) : '') || p.d.advice || (p.d.dominant ? `${t('aqi_dominant')}: ${p.d.dominant}` : t('aqi_summary'))
         )
