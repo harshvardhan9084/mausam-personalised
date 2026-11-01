@@ -52,7 +52,7 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
   transition: all var(--t-fast);
 }
 .profile-edit:hover { color: var(--text); border-color: var(--accent); transform: scale(1.06); }
-.profile-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.profile-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-out); }
 
 /* ---------------- personal greeting + alert ---------------- */
 
@@ -110,7 +110,7 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
   font-size: 0.8rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.imd-key-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.imd-key-input:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 
 .imd-actions { display: flex; gap: 8px; margin-top: 8px; }
 .imd-actions .btn { font-size: 0.78rem; padding: 6px 12px; }

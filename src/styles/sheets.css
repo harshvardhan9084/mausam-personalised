@@ -59,7 +59,7 @@
   color: var(--text);
   font-size: 0.85rem;
 }
-.set-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.set-input:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 .set-input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
 
 .key-row { display: flex; gap: 8px; }
@@ -127,7 +127,7 @@
   padding: 7px 9px;
   font-size: 0.82rem;
 }
-.you-select:focus { outline: 2px solid var(--accent); }
+.you-select:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .you-chip { opacity: 0.75; }

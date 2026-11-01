@@ -49,12 +49,14 @@ a:hover { text-decoration: underline; }
 
 ::selection { background: var(--accent); color: var(--text-on-accent); }
 
-/* Visible focus for keyboard users only */
+/* Visible focus for keyboard users only. v0.8.48: the outline borrows the
+   element's own radius (native outline-follows-radius) — the old hard-coded
+   border-radius: 4px here made square-cornered links GROW corners while
+   focused, and component radii fight it in the cascade. Offset is a token. */
 :focus { outline: none; }
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: var(--ring-out);
 }
 
 /* Thin scrollbars */

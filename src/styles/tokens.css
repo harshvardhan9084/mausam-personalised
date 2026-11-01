@@ -59,6 +59,17 @@
   --t-slow: 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
   --press:      scale(0.96);  /* chips, icon buttons, small controls */
   --press-soft: scale(0.98);  /* cards, rows, large tappable surfaces */
+
+  /* v0.8.48 — focus ring grammar: geometry + the on-accent contrast color,
+     so keyboard focus reads as one voice everywhere. Rings float outside
+     loose controls (--ring-out), hug inside dense cards/rows (--ring-in),
+     sit tight on text fields (--ring-field). Controls FILLED with the
+     accent ring in --ring-on-accent — the same max-contrast color their
+     own label uses — so a ring never drowns in its own fill. */
+  --ring-out:   2px;                 /* chips, standalone links, floating buttons */
+  --ring-in:    -2px;                /* dense cards inside grids and rows */
+  --ring-field: 1px;                 /* text inputs, selects, chart bars */
+  --ring-on-accent: var(--text-on-accent);  /* .chat-fab, .chat-send */
 }
 
 [data-theme='light'] {

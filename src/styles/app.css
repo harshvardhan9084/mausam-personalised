@@ -343,7 +343,7 @@
 }
 /* bars are real buttons (tap = hour detail) */
 button.aqi-trend-bar { appearance: none; border: 0; padding: 0; cursor: pointer; }
-button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 .aqi-trend-bar[aria-expanded='true'] { opacity: 1; box-shadow: 0 0 0 1.5px var(--text); }
 .aqi-trend-labels {
   position: relative;
@@ -554,7 +554,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   transform: translateY(0);
   pointer-events: auto;
 }
-.chat-scroll-down:focus-visible { outline: 2px solid var(--accent); }
+.chat-scroll-down:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-out); }
 
 .chat-mic {
   width: 42px;
@@ -648,7 +648,7 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
   color: var(--text);
   cursor: pointer;
 }
-.chat-hist-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chat-hist-open:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-in); }
 .chat-hist-glyph {
   flex-shrink: 0;
   display: grid;
@@ -1182,7 +1182,10 @@ textarea.chat-input {
   padding: 10px 14px 10px 36px;
   font-size: 0.9rem;
 }
-.crop-filter:focus { border-color: var(--accent); outline: none; }
+.crop-filter:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
+/* v0.8.48 field grammar: every text field speaks twice — border tints
+   accent AND the tight ring floats 1px out. .crop-filter was the lone
+   border-only holdout. */
 .crop-filter-glyph { font-size: 1rem; }
 
 /* ---------- settings version row ---------- */
@@ -1278,6 +1281,16 @@ textarea.chat-input {
 .chat-fab:active, .profile-edit:active { transform: var(--press); }
 .alert-close, .chat-copy { transition: opacity var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
 .alert-close:active, .chat-copy:active { transform: var(--press); }
+
+/* ---------- v0.8.48: the disabled grammar ----------
+   The state layer's last unwritten rule: a control that cannot respond
+   must LOOK like it. Until now the header refresh button went
+   [disabled] during a refresh with zero visual change — users re-tapped
+   a dead button. One app-wide pair, placed after the press layer so
+   transform:none wins the cascade: dim + default cursor + no squish.
+   .chat-send:disabled keeps its own (older, specific) opacity. */
+[disabled] { opacity: 0.5; cursor: default; }
+[disabled]:active { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .page.active, .tab-btn.active .tab-ico { animation: none; }

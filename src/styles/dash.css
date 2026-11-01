@@ -540,7 +540,7 @@
   border-radius: 8px;
 }
 .ten-row:hover { background: color-mix(in srgb, var(--surface-2) 72%, transparent); }
-.ten-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ten-row:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-in); }
 .ten-row .ten-chev {
   width: 14px; height: 14px;
   color: var(--muted);
@@ -702,7 +702,7 @@
 /* v0.8.33 — the digest is a control: it jumps to the full AQI card. */
 .digest-card { cursor: pointer; transition: border-color var(--t-fast); }
 .digest-card:hover { border-color: var(--accent); }
-.digest-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.digest-card:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-out); }
 
 #home-scroll .dash-sec.sec-digest { display: none; }
 @media (min-width: 900px) {
