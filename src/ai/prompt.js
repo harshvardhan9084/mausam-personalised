@@ -97,7 +97,9 @@ export function compactSnapshot(state) {
           if (v.ok) {
             out.airQuality = {
               modelAqi,
-              liveStation: { name: station.station.name, distanceKm: station.station.distanceKm, aqi: station.aqi },
+              /* v0.8.45: ageMin rides along — a receipt the model can cite
+                 ("reading 22 min ago") exactly like the board's ledger. */
+              liveStation: { name: station.station.name, distanceKm: station.station.distanceKm, aqi: station.aqi, ageMin: station.ageMin ?? null },
               verdict: v.verdict,
               delta: v.delta,
               rule: v.verdict === 'agree' ? 'same CPCB band within tolerance' : 'the live station is ground truth — trust it over the model',
@@ -264,7 +266,7 @@ Presentation guidance:
 - What to wear/carry → ALWAYS answer with a \`wear-list\` (one-line reason per item) plus one short intro sentence
 - Planning/timing questions → \`window-card\` with slots + Good/Fair/Poor rating
 - Air quality → \`aqi-card\` + one practical line. The AQI you get is a CAMS MODEL ESTIMATE, not an official reading — around Indian cities it reads FAR below real CPCB stations (Delhi in Oct–Feb: model often ~30 while stations read 200+ Poor). ALWAYS call it a "model estimate", never present it as the official number, and point users to official station data for health decisions when it matters
-- "Is this verified / accurate?" or any trust question → use the \`verification\` block: it carries the independent witnesses (settled-day temperature from NASA POWER × ERA5 reanalyses; live CPCB station AQI vs the model). You may draw it with a \`verify-card\` fence — rows of {label, detail, verdict: ok|warn|info}. NEVER claim verification the block doesn't show; when the block is null, say the independent checks have not landed yet. Trust rule: air → the live station wins; temperature → both witnesses are reanalyses, the forecast model leads until a day settles
+- "Is this verified / accurate?" or any trust question → use the \`verification\` block: it carries the independent witnesses (settled-day temperature from NASA POWER × ERA5 reanalyses; live CPCB station AQI vs the model). You may draw it with a \`verify-card\` fence — rows of {label, detail, verdict: ok|warn|info}. NEVER claim verification the block doesn't show; when the block is null, say the independent checks have not landed yet. Trust rule: air → the live station wins; temperature → both witnesses are reanalyses, the forecast model leads until a day settles. When liveStation carries ageMin, cite the reading's age as a receipt ("reading 22 min ago") — a claim is only as good as its freshness
 - Another city → \`now-card\` for that city, or \`compare-table\` if comparing
 - Warnings (storm, heat, AQI severe) → \`alert\`
 - Farming questions → use the soilNow + next10days blocks: moisture bands (0.0–0.15 dry → irrigate, 0.15–0.35 good, >0.35 wet), spray when wind < 15 km/h and rain < 30%

@@ -12,6 +12,7 @@ import { runTool } from '../src/ai/tools.js';
 import { offlineChat, isVerifyQuestion, verifyLedgerRows, verifyCardFence } from '../src/ai/offline.js';
 import { compactSnapshot } from '../src/ai/prompt.js';
 import { compareAqi } from '../src/core/crosscheck.js';
+import { freshAgo } from '../src/utils/format.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, name, extra) => { if (cond) { pass++; } else { fail++; console.error('  ✗ ' + name + (extra ? ` — ${extra}` : '')); } };
@@ -138,6 +139,30 @@ ok(pb.ok && pb.payload.d.rows.length === 2 && pb.payload.t.length > 0, 'round-tr
 ok(verifyCardFence({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84 } } }) === '', 'no witnesses → empty fence, never an empty ledger');
 ok(verifyCardFence(null) === '' && verifyLedgerRows(null).length === 0, 'null state is silent, not a crash');
 ok(verifyCardFence(STATE_FULL) === verifyCardFence(STATE_FULL), 'fence is deterministic (same state → same ledger)');
+
+/* ---------------- v0.8.45 — the receipts: freshAgo grammar + ledger ride-along ---------------- */
+ok(freshAgo(null) === null && freshAgo(undefined) === null, 'freshAgo: null/undefined → null (caller omits, never "— min ago")');
+ok(freshAgo(Infinity) === null && freshAgo(-5) === null && freshAgo('x') === null, 'freshAgo: Infinity/negative/garbage → null');
+ok(freshAgo(0) === '0 min ago', 'freshAgo: 0 → "0 min ago"');
+ok(freshAgo(59) === '59 min ago', 'freshAgo: 59 → minutes');
+ok(freshAgo(60) === '1 hr ago', 'freshAgo: 60 → "1 hr ago" (boundary)');
+ok(freshAgo(90) === '1.5 hr ago', 'freshAgo: 90 → "1.5 hr ago" (one decimal)');
+ok(freshAgo(240) === '4 hr ago', 'freshAgo: 240 → "4 hr ago" (station gate edge)');
+ok(freshAgo(59.4) === '59 min ago', 'freshAgo: 59.4 rounds to minutes');
+const STATION_AGED = { ...STATION_LIVE, ageMin: 22 };
+const rowsAged = verifyLedgerRows({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84 }, bundle: { witness: WITNESS_OK, station: STATION_AGED } }, location: { name: 'Hapur' } });
+ok(rowsAged[1].detail.includes('· 22 min ago'), 'ledger AQI row carries the station receipt (· 22 min ago)');
+ok(!rowsFull[1].detail.includes('min ago'), 'no ageMin → no receipt (never "— min ago")');
+ok(verifyCardFence({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84 }, bundle: { witness: WITNESS_OK, station: STATION_AGED } }, location: { name: 'Hapur' } }).includes('22 min ago'), 'fence round-trips the receipt too');
+{
+  /* the air ANSWER cites the ground truth when the station spoke */
+  let said = '';
+  await offlineChat({
+    userText: 'air quality right now?', onText: (chunk) => { said += chunk; }, signal: new AbortController().signal,
+    getState: () => ({ snapshot: { now: {}, hours: [], days: [], currentAqi: { aqi: 84, dominant: 'pm25' }, bundle: { station: STATION_AGED } }, location: { name: 'Hapur' } }),
+  });
+  ok(said.includes('ITO, New Delhi - CPCB') && said.includes('AQI 244') && said.includes('22 min ago'), 'air answer leads with the live station + receipt', said.slice(0, 120));
+}
 
 console.log(`=== verify flow: ${pass} passed, ${fail} failed ===`);
 process.exit(fail ? 1 : 0);

@@ -11,7 +11,7 @@
  */
 
 import { el, clear } from '../utils/dom.js';
-import { temp, wind, hourLabel, relativeTime, visibility, dateLabel, dayLabel } from '../utils/format.js';
+import { temp, wind, hourLabel, relativeTime, freshAgo, visibility, dateLabel, dayLabel } from '../utils/format.js';
 import { compass, wxText } from '../api/wmo.js';
 import {
   computeAlerts, computeInsights, computeForYou,
@@ -458,9 +458,10 @@ function crosscheckCard(s) {
           icon(v.verdict === 'agree' ? 'check' : 'warn', 'xcheck-ico'),
           el('div.xcheck-body',
             el('b', null, t('xcheck_aqi_label')),
-            el('span', null, v.verdict === 'agree'
+            el('span', null, (v.verdict === 'agree'
               ? t('xcheck_aqi_ok', { m: modelAqi, name: station.station.name, st: station.aqi, d: v.delta })
-              : t('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi })),
+              : t('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi }))
+              + (freshAgo(station.ageMin) ? ` · ${freshAgo(station.ageMin)}` : '')),
           ),
         ));
       }
@@ -541,8 +542,7 @@ function aqiCardV2(s, loc = null) {
         el('span', null, t('aqi_station_vals', {
           a: st.aqi, c: aqiCat(st.aqi, getLang()),
           pm: st.conc?.pm2_5 != null ? Math.round(st.conc.pm2_5) : '—',
-          m: st.ageMin ?? '—',
-        })),
+        }) + (freshAgo(st.ageMin) ? ` · ${freshAgo(st.ageMin)}` : '')),
       ),
     ));
     /* trust verdict: when the official monitor sits far above the model,

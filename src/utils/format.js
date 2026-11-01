@@ -74,14 +74,30 @@ export function dateLabel(dateISO) {
   return d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
-/** "2 hours ago" style relative label. */
+/** "2 hours ago" style relative label from a timestamp (hero pill).
+ *  v0.8.45: delegates to freshAgo so the pill speaks the SAME localized
+ *  receipt grammar as the station row and the Cross-checked ledger —
+ *  before this, Hindi users read "अपडेट 2 min ago". */
 export function relativeTime(ms) {
-  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.floor(m / 60);
-  return `${h} hr ago`;
+  const m = (Date.now() - ms) / 60000;
+  if (Number.isFinite(m) && m < 1) return t('fresh_now');
+  return freshAgo(m) ?? t('fresh_now');
+}
+
+/** v0.8.45 — THE receipt grammar: how old is a reading, in the user's
+ *  language. Takes MINUTES (the age the data layer computed at fetch
+ *  time — rendering can happen later), returns localized text, and
+ *  returns null for anything unknowable so callers OMIT the receipt
+ *  instead of printing "— min ago" (the bug the station row shipped
+ *  with whenever freshestAge() had no matching sensor).
+ *  Boundaries: 0→"0 min ago" · 59→"59 min ago" · 60→"1 hr ago" ·
+ *  90→"1.5 hr ago" · 240→"4 hr ago". */
+export function freshAgo(ageMin) {
+  if (ageMin == null || !Number.isFinite(ageMin) || ageMin < 0) return null;
+  const m = Math.round(ageMin);
+  if (m < 60) return t('fresh_min_ago', { n: m });
+  const h = Math.round(ageMin / 6) / 10;
+  return t('fresh_hours_ago', { n: h });
 }
 
 /**

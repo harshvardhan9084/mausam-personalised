@@ -52,7 +52,10 @@ const dict = {
   aqi_model_tag: ['CPCB scale · model estimate', 'CPCB पैमाना · मॉडल अनुमान'],
   /* v0.8.40 — live station ground truth (OpenAQ · CPCB/DPCC/UPPCB monitors) */
   aqi_station_title: ['Live station: {name} · {km} km', 'लाइव स्टेशन: {name} · {km} किमी'],
-  aqi_station_vals:  ['Station AQI {a} ({c}) · PM2.5 {pm} µg/m³ · {m} min ago', 'स्टेशन AQI {a} ({c}) · PM2.5 {pm} µg/m³ · {m} मिनट पहले'],
+  /* v0.8.45: the age receipt is appended in code via freshAgo() — it must
+     vanish entirely (never print "— min ago") when freshestAge() found
+     no matching sensor, and it must localize as one grammar. */
+  aqi_station_vals:  ['Station AQI {a} ({c}) · PM2.5 {pm} µg/m³', 'स्टेशन AQI {a} ({c}) · PM2.5 {pm} µg/m³'],
   aqi_gap_title:     ['The station reads far above the model', 'स्टेशन मॉडल से कहीं ऊपर बता रहा है'],
   aqi_gap_body:      ['Official monitor {st} vs model estimate {model}. When they disagree this much, trust the station — mask up outdoors.', 'सरकारी मॉनिटर {st} बनाम मॉडल अनुमान {model}। इतना फ़र्क़ हो तो स्टेशन को मानें — बाहर मास्क लगाएँ।'],
   fires_title:       ['Farm fires around your district', 'आपके ज़िले के आस-पास खेत की आग'],
@@ -71,6 +74,12 @@ const dict = {
   xcheck_aqi_ok:     ['Model {m} · {name} station {st} — same band (Δ {d})', 'मॉडल {m} · {name} स्टेशन {st} — एक ही श्रेणी (Δ {d})'],
   xcheck_aqi_mild:   ['Model {m} · {name} station {st} — the station is ground truth', 'मॉडल {m} · {name} स्टेशन {st} — स्टेशन ही सच है'],
   xcheck_aqi_only:   ['Model {m} — no fresh monitor within 25 km, so nothing to check it against', 'मॉडल {m} — 25 किमी में कोई ताज़ा स्टेशन नहीं, जिससे जाँच हो सके'],
+  /* v0.8.45 — the receipt grammar (utils/format.js freshAgo): every claim
+     carries its own age, in the reader's language, or carries nothing. */
+  fresh_now:         ['just now', 'अभी'],
+  fresh_min_ago:     ['{n} min ago', '{n} मिनट पहले'],
+  fresh_hours_ago:   ['{n} hr ago', '{n} घंटे पहले'],
+  mt_aqi_station:    ['Nearest CPCB monitor {name} ({km} km): AQI {st}', 'सबसे नज़दीकी CPCB मॉनिटर {name} ({km} किमी): AQI {st}'],
   /* v0.8.31 — the rail digest: the whole day as one glanceable line, parked
      beside the AQI card where the desktop rail used to run out of content. */
   sec_digest:    ['Today in one line', 'आज एक नज़र में'],

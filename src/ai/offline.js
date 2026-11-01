@@ -11,7 +11,7 @@
  * default and the graceful fallback.
  */
 
-import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel } from '../utils/format.js';
+import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel, freshAgo } from '../utils/format.js';
 import { runScore, eventScore, driveScore, dayScore, bestWindows, band } from '../core/scoring.js';
 import { isPollutionSeason, aqiCat } from '../core/aqi-cpcb.js';
 /* v0.8.42 — verification answers use the SAME agreement math as the
@@ -490,6 +490,16 @@ function buildAqi(state) {
      it matters (any low-ish reading in the season), not as a footnote. */
   if (a.aqi < 150 && isPollutionSeason()) advice.push(tr('mt_aqi_advlow'));
   advice.push(tr('mt_aqi_dominant', { p: a.dominant ?? '—' }));
+  /* v0.8.45: when the live CPCB monitor spoke, the air answer leads with
+     the ground truth — number, distance and the SAME receipt grammar the
+     board and the verify ledger use — instead of quoting only the model. */
+  const st = state.station ?? s.bundle?.station ?? null;
+  if (st?.ok && st.aqi != null) {
+    let line = tr('mt_aqi_station', { name: st.station.name, km: st.station.distanceKm, st: st.aqi });
+    const fresh = freshAgo(st.ageMin);
+    if (fresh) line += ` · ${fresh}`;
+    advice.unshift(line);
+  }
   return {
     text: tr('mt_aqi_text', { place: placeName(state), a: a.aqi, cat: aqiCat(a.aqi, getLang()) }),
     comps: [fence('aqi-card', { aqi: a.aqi, category: a.category, dominant: a.dominant, advice: a.advice }, tr('mt_card_aqi')),
@@ -630,11 +640,15 @@ export function verifyLedgerRows(state) {
   if (modelAqi != null && stOk) {
     const v = compareAqi(modelAqi, station.aqi);
     if (v.ok) {
+      /* v0.8.45: the receipt rides along — a station answer is only as
+         convincing as its age, and the board's own row shows the same. */
+      const fresh = freshAgo(station.ageMin);
       rows.push({
         label: tr('xcheck_aqi_label'),
-        detail: v.verdict === 'agree'
+        detail: (v.verdict === 'agree'
           ? tr('xcheck_aqi_ok', { m: modelAqi, name: station.station.name, st: station.aqi, d: v.delta })
-          : tr('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi }),
+          : tr('xcheck_aqi_mild', { m: modelAqi, name: station.station.name, st: station.aqi }))
+          + (fresh ? ` · ${fresh}` : ''),
         verdict: v.verdict === 'agree' ? 'ok' : 'warn',
       });
     }
