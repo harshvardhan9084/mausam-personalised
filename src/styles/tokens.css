@@ -70,6 +70,22 @@
   --ring-in:    -2px;                /* dense cards inside grids and rows */
   --ring-field: 1px;                 /* text inputs, selects, chart bars */
   --ring-on-accent: var(--text-on-accent);  /* .chat-fab, .chat-send */
+
+  /* v0.8.49 — the type ramp: TEXT sizes are tokens now. 243 declarations
+     speaking 24 ad-hoc sub-1.1rem values (steps as small as 0.01rem —
+     invisible drift, real inconsistency: the same honesty tag rendered at
+     0.58rem in chat and 0.62rem on the dashboard) collapse onto six steps.
+     Max shift ±0.75px at the 15px body — sub-pixel rhythm repair.
+     Deliberately NOT tokens: display numerals (hero/dial/now-temp ≥1.2rem —
+     per-surface typographic voices, incl. the 1.55/1.3 hero responsive pair),
+     icon glyph sizes, SVG text (8px/9px), the 15px body root. rem against
+     the 16px html root, independent of the body's 15px. */
+  --text-2xs: 0.64rem;   /* micro tags, honesty pills, chart captions */
+  --text-xs:  0.73rem;   /* section labels, badges, meta rows */
+  --text-sm:  0.8rem;    /* secondary body, chips */
+  --text-md:  0.86rem;   /* default body-in-cards */
+  --text-lg:  0.92rem;   /* lead text, input labels */
+  --text-xl:  1.05rem;   /* card titles, emphasis */
 }
 
 [data-theme='light'] {

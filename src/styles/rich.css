@@ -5,7 +5,7 @@
 
 .mu-cardwrap { display: flex; flex-direction: column; gap: 6px; }
 .mu-title {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--muted);
@@ -26,9 +26,9 @@
 .mu-now-main { display: flex; align-items: center; gap: 12px; }
 .mu-now-icon { font-size: 2.1rem; }
 .mu-now-temp { font-size: 1.7rem; font-weight: 760; letter-spacing: -0.03em; }
-.mu-now-cond { color: var(--muted); font-size: 0.82rem; }
-.mu-now-side { text-align: right; color: var(--muted); font-size: 0.78rem; line-height: 1.65; }
-.mu-now-place { flex-basis: 100%; color: var(--muted); font-size: 0.74rem; border-top: 1px dashed var(--border); padding-top: 7px; }
+.mu-now-cond { color: var(--muted); font-size: var(--text-sm); }
+.mu-now-side { text-align: right; color: var(--muted); font-size: var(--text-sm); line-height: 1.65; }
+.mu-now-place { flex-basis: 100%; color: var(--muted); font-size: var(--text-xs); border-top: 1px dashed var(--border); padding-top: 7px; }
 
 /* ---------- hourly timeline ---------- */
 .mu-hourly {
@@ -48,10 +48,10 @@
   padding: 7px 6px;
 }
 .mu-hour.wet { border-color: color-mix(in srgb, var(--blue) 55%, var(--border)); background: color-mix(in srgb, var(--blue) 9%, transparent); }
-.mu-hour-t { font-size: 0.66rem; color: var(--muted); }
-.mu-hour-i { font-size: 1.05rem; margin: 2px 0; }
-.mu-hour-v { font-weight: 700; font-size: 0.84rem; }
-.mu-hour-p { font-size: 0.64rem; color: var(--sky); }
+.mu-hour-t { font-size: var(--text-2xs); color: var(--muted); }
+.mu-hour-i { font-size: var(--text-xl); margin: 2px 0; }
+.mu-hour-v { font-weight: 700; font-size: var(--text-md); }
+.mu-hour-p { font-size: var(--text-2xs); color: var(--sky); }
 
 /* ---------- charts ---------- */
 .mu-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 15px 15px 15px 4px; padding: 12px 10px 6px; }
@@ -68,15 +68,15 @@
   align-items: center;
   padding: 7px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 .mu-day:last-child { border-bottom: none; }
-.mu-day-l { color: var(--muted); font-weight: 650; font-size: 0.76rem; }
+.mu-day-l { color: var(--muted); font-weight: 650; font-size: var(--text-xs); }
 .mu-day-i { font-size: 1rem; text-align: center; }
 .mu-day-bar { height: 6px; border-radius: 4px; background: var(--surface-2); position: relative; overflow: hidden; }
 .mu-day-fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, var(--sky), var(--orange)); }
-.mu-day-v { font-weight: 650; font-size: 0.76rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.mu-day-p { color: var(--sky); font-size: 0.7rem; text-align: right; }
+.mu-day-v { font-weight: 650; font-size: var(--text-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mu-day-p { color: var(--sky); font-size: var(--text-xs); text-align: right; }
 
 /* ---------- metrics grid ---------- */
 .mu-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
@@ -87,8 +87,8 @@
   padding: 9px 6px;
   text-align: center;
 }
-.mu-metric-v { font-weight: 700; font-size: 0.86rem; white-space: nowrap; }
-.mu-metric-l { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
+.mu-metric-v { font-weight: 700; font-size: var(--text-md); white-space: nowrap; }
+.mu-metric-l { font-size: var(--text-2xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; }
 
 /* ---------- advice ---------- */
 .mu-advice {
@@ -101,12 +101,12 @@
 .mu-advice.mu-tone-good   { border-left-color: var(--green);  background: color-mix(in srgb, var(--green) 8%, var(--surface)); }
 .mu-advice.mu-tone-warn   { border-left-color: var(--yellow); background: color-mix(in srgb, var(--yellow) 8%, var(--surface)); }
 .mu-advice.mu-tone-danger { border-left-color: var(--red);    background: color-mix(in srgb, var(--red) 8%, var(--surface)); }
-.mu-advice-t { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; }
+.mu-advice-t { font-weight: 700; font-size: var(--text-md); margin-bottom: 6px; }
 .mu-advice-list { display: flex; flex-direction: column; gap: 5px; }
-.mu-advice-row { font-size: 0.8rem; line-height: 1.5; display: flex; gap: 7px; }
+.mu-advice-row { font-size: var(--text-sm); line-height: 1.5; display: flex; gap: 7px; }
 
 .mu-alert { margin: 0; }
-.mu-alert-src { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+.mu-alert-src { font-size: var(--text-xs); color: var(--muted); margin-top: 4px; }
 /* v0.8.20 — chat alerts reuse the dashboard's alert language: stroke glyph
    in the title, tone color from the same severity classes. */
 .mu-alert .alert-title { display: flex; align-items: center; gap: 7px; font-weight: 700; margin-bottom: 2px; }
@@ -153,17 +153,17 @@
   border-radius: 50%;
   padding: 6px;
 }
-.mu-dry-text { display: flex; flex-direction: column; gap: 1px; font-size: 0.84rem; }
+.mu-dry-text { display: flex; flex-direction: column; gap: 1px; font-size: var(--text-md); }
 .mu-dry-text b { font-weight: 680; }
-.mu-dry-text span { color: var(--muted); font-size: 0.78rem; }
+.mu-dry-text span { color: var(--muted); font-size: var(--text-sm); }
 
 /* ---------- compare table ---------- */
 .mu-tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 15px 15px 15px 4px; padding: 4px 8px; }
-.mu-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.mu-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .mu-table th {
   text-align: left;
   padding: 8px 9px;
-  font-size: 0.66rem;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--muted);
@@ -183,7 +183,7 @@
 
 /* ---------- windows ---------- */
 .mu-windows { display: flex; flex-direction: column; gap: 7px; }
-.mu-verdict { font-size: 0.78rem; color: var(--muted); padding: 0 2px; }
+.mu-verdict { font-size: var(--text-sm); color: var(--muted); padding: 0 2px; }
 
 /* ---------- aqi ---------- */
 .mu-aqi { border-radius: 15px 15px 15px 4px; }
@@ -194,17 +194,17 @@
   border: 1px dashed color-mix(in srgb, var(--yellow) 45%, var(--border));
   border-radius: 15px 15px 15px 4px;
   padding: 11px 13px;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 .mu-fallback-head { color: var(--yellow); font-weight: 650; margin-bottom: 6px; }
 .mu-fallback-body { display: flex; flex-direction: column; gap: 4px; }
 .mu-fallback-row {
   display: flex; justify-content: space-between; gap: 12px;
-  font-size: 0.76rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px;
+  font-size: var(--text-xs); border-bottom: 1px dashed var(--border); padding-bottom: 4px;
 }
 .mu-fallback-row:last-child { border-bottom: none; padding-bottom: 0; }
 .mu-fallback-row b { font-weight: 650; text-align: right; overflow-wrap: anywhere; }
-.mu-fallback-raw { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.7rem; color: var(--muted); overflow-wrap: anywhere; }
+.mu-fallback-raw { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--text-xs); color: var(--muted); overflow-wrap: anywhere; }
 
 /* ---------- prose in chat ---------- */
 .chat-stream .chat-p { margin-bottom: 6px; }
@@ -235,7 +235,7 @@
 .chat-cards > * { animation: msgIn 0.25s ease; }
 
 .chat-meta {
-  font-size: 0.66rem;
+  font-size: var(--text-2xs);
   color: var(--muted);
   padding: 0 4px;
   min-height: 0.8em;
@@ -253,14 +253,14 @@
 /* welcome block */
 .chat-welcome { background: var(--surface); border: 1px solid var(--border); border-radius: 15px 15px 15px 4px; padding: 13px 14px; }
 .chat-welcome-title { font-weight: 700; margin-bottom: 4px; }
-.chat-welcome-text { font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+.chat-welcome-text { font-size: var(--text-md); color: var(--muted); line-height: 1.55; }
 .chat-suggestions { margin-top: 2px; }
 
 /* header actions */
 .chat-head-actions { display: flex; align-items: center; gap: 2px; }
 .chat-new {
   background: none; border: none; color: var(--muted);
-  font-size: 0.9rem; cursor: pointer; padding: 8px; border-radius: 8px;
+  font-size: var(--text-lg); cursor: pointer; padding: 8px; border-radius: 8px;
   transition: color var(--t-fast), background var(--t-fast), transform var(--t-fast);
   display: grid; place-items: center;
 }
