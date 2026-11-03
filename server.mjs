@@ -130,24 +130,50 @@ function safeJoin(root, urlPath) {
   return full;
 }
 
-/* ---------------- /api/chat ---------------- */
+/* ---------------- /api/chat + /api/chat/stream ---------------- */
 
-async function handleChat(req, res) {
+async function readChatPayload(req) {
   let payload;
   try {
     payload = JSON.parse(await readBody(req));
   } catch {
-    return sendJSON(res, 400, { error: 'Invalid JSON body.' });
+    return { error: [400, 'Invalid JSON body.'] };
   }
-
-  /* v0.8.50 — bounded context: cap the number of client-supplied turns so
-     a runaway history cannot balloon the prompt (each message is already
-     byte-capped at 24 000 below). */
   let { system, messages } = payload ?? {};
   if (!Array.isArray(messages) || !messages.length) {
-    return sendJSON(res, 400, { error: 'messages[] required.' });
+    return { error: [400, 'messages[] required.'] };
   }
   if (messages.length > 40) messages = messages.slice(-40);
+  return { system, messages };
+}
+
+/** Shared message shaping: system rides as an assistant preface (SDK has
+ *  no system role), every message byte-capped. */
+function buildZaiMessages(system, messages) {
+  const out = [];
+  if (system) out.push({ role: 'assistant', content: system });
+  for (const m of messages) {
+    if (m && typeof m.content === 'string' && m.content.trim()) {
+      out.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content.slice(0, 24000) });
+    }
+  }
+  return out;
+}
+
+/* v0.8.51 "the stream is real" — /api/chat/stream. Same contract as
+ * /api/chat but the model's tokens are forwarded AS THEY ARRIVE as
+ * Server-Sent Events:
+ *
+ *   data: {"choices":[{"delta":{"content":"tok"}}]}   (verbatim SDK frames)
+ *   data: [DONE]
+ *
+ * plus one error frame `data: {"error":"..."}` if the model dies
+ * mid-stream. Byte-passthrough (no re-framing) keeps multi-byte UTF-8
+ * safe; the client (src/ai/zai.js) parses the same delta shape. */
+async function handleChatStream(req, res) {
+  const parsed = await readChatPayload(req);
+  if (parsed.error) return sendJSON(res, parsed.error[0], { error: parsed.error[1] });
+  const { system, messages } = parsed;
 
   let zai;
   try {
@@ -160,13 +186,116 @@ async function handleChat(req, res) {
     });
   }
 
-  const zaiMessages = [];
-  if (system) zaiMessages.push({ role: 'assistant', content: system });
-  for (const m of messages) {
-    if (m && typeof m.content === 'string' && m.content.trim()) {
-      zaiMessages.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content.slice(0, 24000) });
-    }
+  let upstream;
+  const MODEL_TIMEOUT_MS = 40_000;
+  try {
+    upstream = await Promise.race([
+      zai.chat.completions.create({
+        messages: buildZaiMessages(system, messages),
+        stream: true,
+        thinking: { type: 'disabled' },
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error(`model timeout after ${MODEL_TIMEOUT_MS / 1000}s`)), MODEL_TIMEOUT_MS)),
+    ]);
+  } catch (err) {
+    console.error('[api/chat/stream] SDK error:', err?.message ?? err);
+    const timedOut = /timeout/i.test(String(err?.message ?? ''));
+    return sendJSON(res, timedOut ? 504 : 502, { error: 'The Z.ai model could not answer right now.', detail: String(err?.message ?? err).slice(0, 200) });
   }
+
+  /* Non-stream fallback: if the upstream ignored stream:true the SDK
+     resolved a plain completion object — serve it as one SSE frame. */
+  if (typeof upstream?.getReader !== 'function') {
+    const text = upstream?.choices?.[0]?.message?.content ?? '';
+    res.writeHead(200, sseHeaders());
+    res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`);
+    res.write('data: [DONE]\n\n');
+    return res.end();
+  }
+
+  res.writeHead(200, sseHeaders());
+  if (res.socket?.setNoDelay) res.socket.setNoDelay(true); // ship every token promptly
+
+  let clientGone = false;
+  req.on('close', () => { clientGone = true; });
+  const reader = upstream.getReader();
+  /* [DONE] bookkeeping: upstream already terminates with its own
+     `data: [DONE]`; scan (tail-safe against chunk splits) so finish()
+     never appends a second terminator. */
+  const scanDec = new TextDecoder();
+  let scanTail = '';
+  let sawDone = false;
+  const noteDone = (value) => {
+    if (sawDone) return;
+    const text = scanTail + scanDec.decode(value, { stream: true });
+    if (text.includes('data: [DONE]')) sawDone = true;
+    scanTail = text.slice(-16);
+  };
+  let deadline = setTimeout(() => {
+    if (!clientGone) safeWrite(res, `data: ${JSON.stringify({ error: 'model timeout — stream cut at 40s' })}\n\n`);
+    finish();
+  }, MODEL_TIMEOUT_MS);
+
+  const finish = () => {
+    clearTimeout(deadline);
+    try { reader.cancel(); } catch { /* already closed */ }
+    if (!clientGone && !sawDone && !res.writableEnded) { try { res.write('data: [DONE]\n\n'); } catch { /* socket gone */ } }
+    try { res.end(); } catch { /* socket gone */ }
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done || clientGone || res.destroyed) break;
+      // raw byte passthrough — upstream framing (and UTF-8 splits) survive intact
+      if (value) noteDone(value);
+      if (!safeWrite(res, Buffer.from(value))) break;
+    }
+  } catch (err) {
+    if (!clientGone) safeWrite(res, `data: ${JSON.stringify({ error: String(err?.message ?? 'upstream stream failed').slice(0, 160) })}\n\n`);
+  } finally {
+    finish();
+  }
+}
+
+function sseHeaders() {
+  return {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*',
+  };
+}
+
+function safeWrite(res, chunk) {
+  if (res.destroyed || res.writableEnded) return false;
+  try {
+    res.write(chunk);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+async function handleChat(req, res) {
+  const parsed = await readChatPayload(req); // v0.8.51 — shared with /api/chat/stream
+  if (parsed.error) return sendJSON(res, parsed.error[0], { error: parsed.error[1] });
+  const { system, messages } = parsed;
+
+  let zai;
+  try {
+    zai = await getZai();
+  } catch (err) {
+    sdkState = 'missing';
+    return sendJSON(res, 503, {
+      error: 'z-ai-web-dev-sdk is not available on this server. Run: npm install z-ai-web-dev-sdk',
+      detail: String(err?.message ?? err).slice(0, 200),
+    });
+  }
+
+  const zaiMessages = buildZaiMessages(system, messages);
 
   try {
     /* v0.8.50 — upstream deadline: the client aborts at 45 s; without a
@@ -287,6 +416,16 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/api/chat' && req.method === 'POST') {
     return handleChat(req, res);
+  }
+  if (urlPath === '/api/chat/stream' && req.method === 'POST') {
+    return handleChatStream(req, res);
+  }
+  /* API paths are POST-only and must never SPA-fallback into HTML — a
+     wrong-method hit answers 405 so clients (and the zai.js legacy
+     fallback) read an honest protocol signal, not a cached shell. */
+  if (urlPath.startsWith('/api/') && req.method !== 'POST') {
+    res.writeHead(405, { 'Allow': 'POST', 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Method Not Allowed');
   }
 
   // ---- static files ----

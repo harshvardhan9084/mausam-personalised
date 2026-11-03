@@ -149,8 +149,21 @@ function init() {
     }
   });
 
-  /* scroll-to-latest visibility */
-  msgs.addEventListener('scroll', updateScrollBtn, { passive: true });
+  /* scroll-to-latest visibility + stream-follow intent. Release the pin
+     only when scrollTop genuinely DECREASES (the reader's own upward
+     scroll): the programmatic pin's own scroll event reads live geometry,
+     so a distance check alone mistakes fast token growth for a reader
+     scroll-away and strands the answer below the fold. */
+  let lastTop = 0;
+  msgs.addEventListener('scroll', () => {
+    updateScrollBtn();
+    if (busy) {
+      const dist = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight;
+      if (dist < 60) followStream = true; // reader walked back to the stream head
+      else if (msgs.scrollTop < lastTop - 2) followStream = false; // reader scrolled up to read
+    }
+    lastTop = msgs.scrollTop;
+  }, { passive: true });
   window.addEventListener('resize', updateScrollBtn);
   new ResizeObserver(updateScrollBtn).observe(msgs);
 
@@ -450,6 +463,13 @@ function nearBottom() {
   return msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 140;
 }
 
+/* v0.8.51 — reader intent: real streams grow faster than the 140px
+   stick threshold (one card pop ≈ 300px), so the old pin released
+   mid-stream and the answer drifted below the fold. Now the stream
+   follows by default; the reader's OWN upward scroll releases it until
+   they come back to the stream head. */
+let followStream = true;
+
 function updateScrollBtn() {
   if (!scrollBtn) return;
   const away = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight > 260;
@@ -457,7 +477,7 @@ function updateScrollBtn() {
 }
 
 function stickToBottom(force = false) {
-  if (force || nearBottom()) msgs.scrollTop = msgs.scrollHeight;
+  if (force || nearBottom() || (busy && followStream)) msgs.scrollTop = msgs.scrollHeight;
   updateScrollBtn();
 }
 
@@ -664,6 +684,7 @@ async function send(raw, { isRetry = false } = {}) {
   if (countEl) countEl.textContent = '';
   setBusy(true);
   controller = new AbortController();
+  followStream = true; // v0.8.51 — a fresh turn follows the stream again
   const turn = botTurn({ withTyping: true });
   setProviderLabel('');
 
@@ -675,6 +696,7 @@ async function send(raw, { isRetry = false } = {}) {
     if (firstContent) return;
     firstContent = true;
     turn.dropTyping();
+    turn.streamBox.classList.add('is-live'); // v0.8.51 — stream head caret on
   };
   const flushStream = () => {
     if (rafPending) return;
@@ -706,6 +728,7 @@ async function send(raw, { isRetry = false } = {}) {
       await turn.type(renderFallback(rawJson, reason));
     },
     onDone: (info) => {
+      turn.streamBox.classList.remove('is-live');
       turn.dropTyping();
       clear(turn.streamBox).appendChild(proseNode(streamed));
       if (!streamed.trim() && !turn.cards.childElementCount) {
@@ -725,6 +748,7 @@ async function send(raw, { isRetry = false } = {}) {
       controller = null;
     },
     onError: async (err) => {
+      turn.streamBox.classList.remove('is-live');
       turn.dropTyping();
       clear(turn.streamBox);
       if (!streamed.trim()) turn.streamBox.remove();

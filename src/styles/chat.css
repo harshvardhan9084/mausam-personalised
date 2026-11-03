@@ -360,3 +360,24 @@
   margin: 6px 0;
 }
 .chat-inline-card { margin: 6px 0; }
+
+/* ================================================================
+   v0.8.51 — the stream is real: a caret at the head of the text
+   while it arrives (dropped when the turn settles)
+================================================================ */
+.chat-stream.is-live .chat-text > :last-child::after {
+  content: '';
+  display: inline-block;
+  width: 0.44em;
+  height: 0.95em;
+  margin-left: 3px;
+  vertical-align: -0.12em;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: caret-blink 0.9s steps(1, end) infinite;
+}
+@keyframes caret-blink { 0%, 54% { opacity: 1; } 55%, 100% { opacity: 0.15; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-stream.is-live .chat-text > :last-child::after { animation: none; }
+}
