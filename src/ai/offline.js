@@ -80,7 +80,7 @@ const fence = (c, d, title) => block({ v: 1, c, t: title ?? undefined, d });
 /* ---------------- intents ---------------- */
 
 const INTENTS = [
-  { id: 'greet', kw: ['hello', 'hi ', 'hey', 'namaste', 'namaskar', 'yo ', 'kaise', 'kya haal', 'good morning', 'good evening', 'good night', 'नमस्ते', 'नमस्कार', 'कैसे हो', 'क्या हाल', 'सुप्रभात', 'शुभ संध्या'] },
+  { id: 'greet', kw: ['hello', ' hi ', 'hey', 'namaste', 'namaskar', ' yo ', 'kaise', 'kya haal', 'good morning', 'good evening', 'good night', 'नमस्ते', 'नमस्कार', 'कैसे हो', 'क्या हाल', 'सुप्रभात', 'शुभ संध्या'] },
   { id: 'help', kw: ['help', 'what can you do', 'kya kar sakte', 'options', 'who are you', 'tum kaun', 'commands', 'मदद', 'क्या कर सकते', 'कौन हो'] },
   { id: 'thanks', kw: ['thank', 'thanks', 'shukriya', 'dhanyavad', 'great job', 'nice work', 'awesome', 'धन्यवाद', 'शुक्रिया', 'थैंक'] },
   { id: 'rain', kw: ['rain', 'barish', 'baarish', 'umbrella', 'chhata', 'chatri', 'shower', 'drizzle', 'wet', ' precipitation', 'mm', 'बारिश', 'बरसात', 'बौछार', 'उमड़', 'गिरेगी', 'गिरेगा'] },
@@ -96,6 +96,14 @@ const INTENTS = [
   /* v0.8.42 — "is this verified / can I trust it": the conversation earns
      the same witnesses the board's Cross-checked ledger shows. */
   { id: 'verify', kw: ['verif', 'accura', 'trust', 'cross-check', 'crosscheck', 'cross check', 'witness', 'real data', 'real number', 'which source', 'sources', 'सत्यापित', 'पक्का', 'भरोसा', 'गवाह', 'स्रोत'] },
+  /* v0.8.50 — Mausam Core grows up: field/agronomy, UV exposure and
+     day-over-day trend join the intent set. The live models already
+     answer these from the system prompt; the keyless engine could not —
+     a Hinglish spray question even derailed into a failed city lookup
+     ("patwar" parsed as a place). Verify keeps supremacy over both. */
+  { id: 'farm', kw: ['spray', 'irrigat', 'khet', 'fasal', 'crop', 'farm', 'field', 'harvest', 'sow', 'pesticide', 'urea', 'khad', 'fertilis', 'fertiliz', 'बुवाई', 'कटाई', 'सिंचाई', 'खेत', 'फसल', 'छिड़काव', 'खाद', 'किसान'] },
+  { id: 'uv', kw: ['uv', 'sunburn', 'sunscreen', 'यूवी', 'सनबर्न'] },
+  { id: 'trend', kw: ['yesterday', 'than today', 'compared to', 'difference', 'warmer', 'colder', 'hotter', 'cooler', 'beeta', 'guzra', 'बीता', 'गुज़रा', 'अंतर', 'तुलना'] },
 ];
 
 function classify(text) {
@@ -117,6 +125,14 @@ function classify(text) {
      on Devanagari — the lesson v0.8.27 already encoded). */
   const STRONG_VERIFY = /\b(verif|accura|trust|cross.?check|witness|disagree|who wins|which source|real data|real number)\b|सत्यापित|पक्का|भरोसा|गवाह|स्रोत/;
   if (STRONG_VERIFY.test(q)) best = { id: 'verify', score: 100 };
+  /* v0.8.50 — a spray/irrigation question with a stray place-sounding word
+     ("patwar me paani") is FARMING, never a city lookup; the city guard in
+     offlineChat() respects this override. Verify stays supreme. */
+  const STRONG_FARM = /\b(spray|irrigat|harvest|pesticide|urea|fertilis|fertiliz|khet|fasal|sow)\b|खेत|फसल|सिंचाई|छिड़काव|खाद/;
+  if (best.id !== 'verify' && STRONG_FARM.test(q)) best = { id: 'farm', score: 98 };
+  /* "hotter than today?" must not drown in the week intent's 'tomorrow'. */
+  const STRONG_TREND = /\b(hotter|colder|warmer|cooler)\s+than\b|\bthan\s+(yesterday|today)\b|\bcompared to\b|\bdifference between\b|बीता कल|गुज़रा कल/;
+  if (best.id !== 'verify' && best.id !== 'farm' && STRONG_TREND.test(q)) best = { id: 'trend', score: 97 };
   return best;
 }
 
@@ -130,6 +146,12 @@ function classify(text) {
     weather)? Delegates to classify() so the two can never drift apart. */
 export function isVerifyQuestion(text) {
   return classify(String(text ?? '')).id === 'verify';
+}
+
+/** v0.8.50 — test seam: which intent would this text get? (classify() stays
+    internal; the offline-intent suite pins behaviour, not spelling.) */
+export function classifyIntent(text) {
+  return classify(String(text ?? '')).id;
 }
 
 /* --- city extraction for weather-in-X / compare questions --- */
@@ -148,13 +170,16 @@ const DEV_CITIES = [
   ['पुणे', 'Pune'], ['आगरा', 'Agra'], ['मेरठ', 'Meerut'], ['नोएडा', 'Noida'], ['शिमला', 'Shimla'],
 ];
 
-const CITY_STOP = new Set(['Best', 'Tomorrow', 'Today', 'Will', 'What', 'How', 'Is', 'It', 'Hey', 'Hello', 'Mausam', 'IMD', 'The', 'And', 'For', 'Should', 'Air', 'Rain', 'Plan', 'Weekend', 'Week', 'Carry', 'Umbrella', 'Good', 'Thanks', 'Please', 'Can', 'Could', 'Do', 'Does', 'Am', 'PM', 'When', 'Where', 'Why', 'If', 'My', 'Me', 'We', 'Us', 'This', 'That', 'There', 'Then', 'Now', 'Kal', 'Aaj', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
+/* v0.8.50 — weather vocabulary and units joined the stop-list: "What is
+   AQI?" used to geocode the acronym and answer with Qaisumah, Saudi
+   Arabia (real probe). Acronyms + topic nouns must never be places. */
+const CITY_STOP = new Set(['Best', 'Tomorrow', 'Today', 'Will', 'What', 'How', 'Is', 'It', 'Hey', 'Hello', 'Mausam', 'IMD', 'The', 'And', 'For', 'Should', 'Air', 'Rain', 'Plan', 'Weekend', 'Week', 'Carry', 'Umbrella', 'Good', 'Thanks', 'Please', 'Can', 'Could', 'Do', 'Does', 'Am', 'PM', 'When', 'Where', 'Why', 'If', 'My', 'Me', 'We', 'Us', 'This', 'That', 'There', 'Then', 'Now', 'Kal', 'Aaj', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'AQI', 'UV', 'Uv', 'PM10', 'PM25', 'ET0', 'Humidity', 'Temperature', 'Feels', 'Wind', 'Gusts', 'Sunrise', 'Sunset', 'Forecast', 'Rainfall', 'Weather', 'Visibility', 'Monsoon', 'Heatwave', 'Smog']);
 const PHRASE_STOP = /\b(run|walk|time|hour|day|week|me|my|i|you|today|tomorrow|evening|morning|night|out|clothes|wear|umbrella|air|rain|laundry|commute|office|plan|picnic|jacket|mask|sunscreen)\b/i;
 
 function extractCities(text, currentName) {
   const cities = [];
   const push = (c) => {
-    const city = String(c ?? '').replace(/\b(weather|mausam|forecast|temp|temperature|rain)\b/gi, '').trim();
+    const city = String(c ?? '').replace(/\b(weather|mausam|forecast|temp|temperature|rain|aqi|uv|humidity|gusts?|sunrise|sunset|pm2(?:5|10)?)\b/gi, '').trim();
     if (city.length >= 3 && !PHRASE_STOP.test(city) && city.toLowerCase() !== String(currentName ?? '').toLowerCase() && !CITY_STOP.has(city.replace(/\b\w/g, (m) => m.toUpperCase()))) {
       cities.push(city);
     }
@@ -336,17 +361,19 @@ function buildRain(state) {
   return { text, comps };
 }
 
-function buildTemp(state) {
+function buildTemp(state, q = '') {
   const s = state?.snapshot;
   if (!s) return buildDefault(state);
   const h24 = nextHours(state, 24);
   const feels = s.now.hi ?? s.now.feels;
+  const explain = EXPLAIN_RX.test(q) && /feel/i.test(q) ? `${tr('mt_feels_def')} ` : '';
   const maxH = h24.reduce((a, h) => ((h.temperature_2m ?? -99) > (a.temperature_2m ?? -99) ? h : a), h24[0] ?? {});
   const minH = h24.reduce((a, h) => ((h.temperature_2m ?? 99) < (a.temperature_2m ?? 99) ? h : a), h24[0] ?? {});
   let verdict;
   if ((s.now.temp ?? 0) >= 38) verdict = tr('mt_temp_hot', { t: t(s.now.temp, true), f: t(feels, true) });
   else if ((s.now.temp ?? 99) <= 10) verdict = tr('mt_temp_cold', { t: t(s.now.temp, true), f: t(feels, true) });
   else verdict = tr('mt_temp_norm', { place: placeName(state), t: t(s.now.temp, true), f: t(feels, true), wx: esc(wxText(s.now.wx, LANG())).toLowerCase() });
+  verdict = explain + verdict;
   if (maxH?.time && minH?.time && maxH.time !== minH.time) {
     verdict += tr('mt_temp_range', { lo: t(minH.temperature_2m), t1: hourLabel(minH.time), hi: t(maxH.temperature_2m), t2: hourLabel(maxH.time) });
   }
@@ -476,11 +503,17 @@ function buildCommute(state, you) {
   return { text, comps: [fence('window-card', { verdict: tr('mt_winverdict_commute'), windows }, tr('mt_card_commute')), fence('chips', { items: [tr('sugg_rain'), tr('sugg_wear')] })] };
 }
 
-function buildAqi(state) {
+/* v0.8.50 — "what is X?" teach-first mode: definition rides in front of
+   the live value, so the keyless engine explains concepts the way the
+   models do. Only fires on explicit explain phrasings. */
+const EXPLAIN_RX = /\b(what is|what's|whats|explain|meaning of|kya hai|kya hota|samjhao|samjha)\b/i;
+
+function buildAqi(state, q = '') {
   const s = state?.snapshot;
   if (!s) return buildDefault(state);
   const a = s.currentAqi;
   if (a?.aqi == null) return { text: tr('mt_aqi_none'), comps: [] };
+  const explain = EXPLAIN_RX.test(q) ? `${tr('mt_aqi_def')} ` : '';
   const advice = [];
   if (a.aqi >= 200) advice.push(tr('mt_aqi_adv200'));
   if (a.aqi >= 300) advice.push(tr('mt_aqi_adv300'));
@@ -501,7 +534,7 @@ function buildAqi(state) {
     advice.unshift(line);
   }
   return {
-    text: tr('mt_aqi_text', { place: placeName(state), a: a.aqi, cat: aqiCat(a.aqi, getLang()) }),
+    text: `${explain}${tr('mt_aqi_text', { place: placeName(state), a: a.aqi, cat: aqiCat(a.aqi, getLang()) })}`,
     comps: [fence('aqi-card', { aqi: a.aqi, category: a.category, dominant: a.dominant, advice: a.advice }, tr('mt_card_aqi')),
             fence('advice', { tone: a.aqi >= 250 ? 'danger' : a.aqi >= 150 ? 'warn' : 'good', items: advice }),
             fence('chips', { items: [tr('sugg_run'), tr('sugg_wear')] })],
@@ -549,6 +582,119 @@ function buildWeek(state) {
     text,
     comps: [fence('daily-list', { days: s.days.map((d, i) => ({ label: dayLab(d, i), date: d.date, icon: d.wx?.icon, hi: Math.round(d.temp_max ?? 0), lo: Math.round(d.temp_min ?? 0), pop: Math.round(d.precip_prob_max ?? 0) })) }, tr('mt_card_week7')),
             fence('chips', { items: [tr('sugg_weekend'), tr('mt_week_pack', { d: dayLab(worst, worst.i) })] })],
+  };
+}
+
+/* ---------------- v0.8.50 — Mausam Core grows up ----------------
+   Three answer builders the live models had but the keyless engine
+   never did: field/agronomy (soil moisture + spray windows), UV
+   exposure, and day-over-day trend. All draw from the SAME snapshot
+   fields the system prompt teaches the models, through the SAME
+   MausamUI contract — one brain, two sizes. */
+
+function soilNow(state) {
+  const h0 = state?.snapshot?.hours?.[0];
+  if (!h0 || h0.soil_moisture_0_to_1cm == null) return null;
+  return {
+    top: h0.soil_moisture_0_to_1cm,
+    root: h0.soil_moisture_3_to_9cm ?? h0.soil_moisture_0_to_1cm,
+    tempC: h0.soil_temperature_0_to_7cm,
+    et0: h0.et0_fao_evapotranspiration,
+  };
+}
+
+/** Spray-window score: calm wind + dry hours + the cooler edges of the
+    day. Same bestWindows() machinery the sport/outing planners use. */
+function sprayScore(h) {
+  const wind = h.wind ?? 99;
+  const pop = h.precipitation_probability ?? 0;
+  const hr = Number(String(h.time ?? '').slice(11, 13));
+  let sc = 0;
+  if (wind <= 15) sc += 55; else if (wind <= 25) sc += 20;
+  if (pop < 30) sc += 40;
+  if (hr >= 6 && hr <= 10) sc += 8;
+  else if (hr >= 16 && hr <= 19) sc += 6;
+  return sc;
+}
+
+function buildFarm(state) {
+  const s = state?.snapshot;
+  if (!s) return buildDefault(state);
+  const soil = soilNow(state);
+  const hours = nextHours(state, 12);
+  const wins = hours.length >= 3 ? windowsFor(state, sprayScore, 2, 2, 12) : [];
+  const maxPop12 = Math.max(0, ...hours.map((h) => h.precipitation_probability ?? 0));
+  const comps = [];
+  let text;
+  if (soil) {
+    const top = soil.top.toFixed(2);
+    const root = soil.root.toFixed(2);
+    if (soil.top < 0.15) text = tr('mt_farm_dry', { top, root });
+    else if (soil.top > 0.35) text = tr('mt_farm_wet', { top });
+    else text = tr('mt_farm_ok', { top, root });
+    comps.push(fence('metrics-grid', { items: [
+      { label: tr('mt_m_soiltop'), value: top, icon: 'droplet' },
+      { label: tr('mt_m_soilroot'), value: root, icon: 'droplet' },
+      ...(soil.tempC != null ? [{ label: tr('mt_m_soiltemp'), value: t(soil.tempC), icon: 'thermo' }] : []),
+      ...(soil.et0 != null ? [{ label: tr('mt_m_et0'), value: `${soil.et0.toFixed(2)} mm/h`, icon: 'sun' }] : []),
+    ] }, tr('mt_card_soil')));
+  } else {
+    text = tr('mt_farm_nosoil');
+  }
+  comps.push(fence('advice', { tone: 'info', title: tr('mt_farm_spray_title'), items: [
+    tr('mt_farm_adv_wind', { w: w(15) }),
+    tr('mt_farm_adv_rain', { p: 30, p2: Math.round(maxPop12) }),
+    soil && soil.top < 0.15 ? tr('mt_farm_adv_irr', { time: tr('mt_farm_evening') }) : tr('mt_farm_adv_hold'),
+  ] }));
+  if (wins.length) comps.push(fence('window-card', { verdict: tr('mt_farm_winverdict'), windows: wins }, tr('mt_card_spray')));
+  comps.push(fence('chips', { items: [tr('sugg_rain'), tr('sugg_air')] }));
+  return { text, comps };
+}
+
+function buildUv(state, q = '') {
+  const s = state?.snapshot;
+  if (!s) return buildDefault(state);
+  const uv = s.now.uv;
+  const uvMax = s.days?.[0]?.uv_max ?? uv;
+  if (uv == null && uvMax == null) return buildDefault(state);
+  const lead = uv ?? uvMax;
+  const bandKey = lead >= 11 ? 'mt_uv_extreme' : lead >= 8 ? 'mt_uv_vhigh' : lead >= 6 ? 'mt_uv_high' : lead >= 3 ? 'mt_uv_moderate' : 'mt_uv_low';
+  const one = (v) => (v == null ? '—' : String(Math.round(v * 10) / 10));
+  const text = `${EXPLAIN_RX.test(q) ? `${tr('mt_uv_def')} ` : ''}${tr('mt_uv_text', { place: placeName(state), u: one(uv), m: one(uvMax), band: tr(bandKey) })}`;
+  return {
+    text,
+    comps: [fence('metrics-grid', { items: [
+      { label: tr('mt_m_uv'), value: one(uv), icon: 'sun' },
+      { label: tr('mt_m_uvmax'), value: one(uvMax), icon: 'sun' },
+    ] }, tr('mt_card_uv')),
+      fence('advice', { tone: lead >= 8 ? 'warn' : 'info', title: tr('mt_card_uv'), items: [tr('mt_uv_adv1'), tr('mt_uv_adv2')] }),
+      fence('chips', { items: [tr('sugg_wear'), tr('sugg_run')] })],
+  };
+}
+
+function buildTrend(state) {
+  const s = state?.snapshot;
+  const days = s?.days;
+  if (!days || days.length < 2) return buildDefault(state);
+  const a = days[0];
+  const b = days[1];
+  const dMax = Math.round((b.temp_max ?? 0) - (a.temp_max ?? 0));
+  const dMin = Math.round((b.temp_min ?? 0) - (a.temp_min ?? 0));
+  const dPop = Math.round((b.precip_prob_max ?? 0) - (a.precip_prob_max ?? 0));
+  const sign = (v) => `${v > 0 ? '+' : ''}${v}°`;
+  const head = Math.abs(dMax) < 2 ? tr('mt_trend_same') : dMax > 0 ? tr('mt_trend_warm', { d: sign(dMax) }) : tr('mt_trend_cool', { d: sign(dMax) });
+  const text = `${head} ${tr('mt_trend_text', { lo: sign(dMin), p: sign(dPop) })}`;
+  return {
+    text,
+    comps: [fence('compare-table', {
+      columns: ['', tr('today'), tr('tomorrow')],
+      rows: [
+        [tr('mt_trend_high'), t(a.temp_max), t(b.temp_max)],
+        [tr('mt_trend_low'), t(a.temp_min), t(b.temp_min)],
+        [tr('mt_trend_rain'), `${Math.round(a.precip_prob_max ?? 0)}%`, `${Math.round(b.precip_prob_max ?? 0)}%`],
+      ],
+    }, tr('mt_card_trend')),
+      fence('chips', { items: [tr('sugg_weekend'), tr('sugg_run')] })],
   };
 }
 
@@ -731,7 +877,7 @@ export async function offlineChat(opts) {
     /\b(?:weather|mausam|forecast|temp|temperature|rain)\s+(?:in|at|for)\s+\S/i.test(q) ||
     DEV_CITIES.some(([dv]) => q.includes(dv)) ||
     (() => { const w = q.split(/\s+/); for (let i = 1; i < w.length; i++) { const x = w[i].replace(/[^A-Za-z]/g, ''); if (/^[A-Z][a-zA-Z]{2,}$/.test(x) && !CITY_STOP.has(x)) return true; } return false; })();
-  if (cityish && !/^(greet|help|thanks)$/.test(intent.id)) {
+  if (cityish && !/^(greet|help|thanks|farm|uv)$/.test(intent.id)) {
     try {
       built = await buildCity(state, q);
     } catch { built = null; }
@@ -746,16 +892,19 @@ export async function offlineChat(opts) {
       case 'help': built = buildHelp(); break;
       case 'thanks': built = buildThanks(state); break;
       case 'rain': built = buildRain(state); break;
-      case 'temp': built = buildTemp(state); break;
+      case 'temp': built = buildTemp(state, q); break;
       case 'wear': built = buildWear(state); break;
       case 'plan': built = buildPlan(state, q); break;
       case 'commute': built = buildCommute(state, youShim); break;
-      case 'aqi': built = buildAqi(state); break;
+      case 'aqi': built = buildAqi(state, q); break;
       case 'sun': built = buildSun(state); break;
       case 'hours': built = buildHours(state); break;
       case 'week': built = buildWeek(state); break;
       case 'wind': built = buildWind(state); break;
       case 'verify': built = buildVerify(state, q); break;
+      case 'farm': built = buildFarm(state); break;
+      case 'uv': built = buildUv(state, q); break;
+      case 'trend': built = buildTrend(state); break;
       default: built = buildDefault(state); break;
     }
   }

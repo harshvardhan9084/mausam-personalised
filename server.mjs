@@ -140,10 +140,14 @@ async function handleChat(req, res) {
     return sendJSON(res, 400, { error: 'Invalid JSON body.' });
   }
 
-  const { system, messages } = payload ?? {};
+  /* v0.8.50 — bounded context: cap the number of client-supplied turns so
+     a runaway history cannot balloon the prompt (each message is already
+     byte-capped at 24 000 below). */
+  let { system, messages } = payload ?? {};
   if (!Array.isArray(messages) || !messages.length) {
     return sendJSON(res, 400, { error: 'messages[] required.' });
   }
+  if (messages.length > 40) messages = messages.slice(-40);
 
   let zai;
   try {
@@ -165,15 +169,22 @@ async function handleChat(req, res) {
   }
 
   try {
-    const completion = await zai.chat.completions.create({
-      messages: zaiMessages,
-      thinking: { type: 'disabled' },
-    });
+    /* v0.8.50 — upstream deadline: the client aborts at 45 s; without a
+       server-side race a hung SDK call would pin this request forever. */
+    const MODEL_TIMEOUT_MS = 40_000;
+    const completion = await Promise.race([
+      zai.chat.completions.create({
+        messages: zaiMessages,
+        thinking: { type: 'disabled' },
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error(`model timeout after ${MODEL_TIMEOUT_MS / 1000}s`)), MODEL_TIMEOUT_MS)),
+    ]);
     const text = completion?.choices?.[0]?.message?.content ?? '';
     sendJSON(res, 200, { text, provider: 'zai' });
   } catch (err) {
     console.error('[api/chat] SDK error:', err?.message ?? err);
-    sendJSON(res, 502, { error: 'The Z.ai model could not answer right now.', detail: String(err?.message ?? err).slice(0, 200) });
+    const timedOut = /timeout/i.test(String(err?.message ?? ''));
+    sendJSON(res, timedOut ? 504 : 502, { error: 'The Z.ai model could not answer right now.', detail: String(err?.message ?? err).slice(0, 200) });
   }
 }
 
