@@ -1,5 +1,5 @@
 /**
- * crops.js — the Crop Calendar Engine (replaces the old rain-radar tab).
+ * crops.js — the Crop Calendar Engine.
  *
  * A keyless, on-device guide for India's major crops: sowing windows,
  * growth stages, harvest timing, and a live weather-fit check built from
@@ -331,7 +331,7 @@ function seasonInfo(today) {
  * Live weather-fit lines for one crop row, using the dashboard snapshot.
  * Each line: {tone:'good'|'info'|'warn'|'bad', icon, text}
  */
-export function weatherFit(crop, row, snapshot, today = new Date()) {
+export function weatherFit(crop, row, snapshot, _today = new Date()) {
   const fit = [];
   const days = snapshot?.days ?? [];
   const hours = snapshot?.hours ?? [];

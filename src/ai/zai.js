@@ -20,8 +20,8 @@ const CHAT_TIMEOUT_MS = 45_000;
 
 /** @returns {Promise<boolean>} whether /api/chat is available here */
 export async function probeZai() {
-  if (['localhost', '127.0.0.1', '0.0.0.0'].includes(location.hostname) === false &&
-      !/\.space-z\.ai$/.test(location.hostname) &&
+  if (!['localhost', '127.0.0.1', '0.0.0.0'].includes(location.hostname) &&
+      !location.hostname.endsWith('.space-z.ai') &&
       !/preview-/.test(location.hostname)) {
     return false; // GitHub Pages & friends: never probe
   }

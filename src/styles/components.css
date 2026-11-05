@@ -209,39 +209,7 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 .w-rain { font-size: var(--text-2xs); color: var(--sky); margin-top: 3px; }
 .w-score { font-size: var(--text-xs); margin-top: 4px; font-weight: 700; }
 
-/* ---------- Tables ---------- */
-.irr-table { width: 100%; border-collapse: collapse; font-size: var(--text-md); }
-.irr-table th {
-  text-align: left;
-  padding: 8px 12px;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  font-weight: 700;
-}
-.irr-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-.irr-table tr:last-child td { border-bottom: none; }
-
-.table-wrap { overflow-x: auto; }
-
-/* ---------- Commute / window rows / destinations ---------- */
-.commute-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-}
-.commute-time-label {
-  font-size: var(--text-xs);
-  color: var(--muted);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 700;
-}
-.commute-status { font-size: var(--text-xl); font-weight: 800; margin-bottom: 8px; }
+/* ---------- Window rows ---------- */
 
 .window-row {
   display: flex;
@@ -255,25 +223,6 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 .window-time  { font-weight: 700; font-size: var(--text-lg); }
 .window-score { font-size: 1.2rem; font-weight: 800; }
 .window-note  { font-size: var(--text-xs); color: var(--muted); }
-
-.dest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.dest-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-  position: relative;
-}
-.dest-name { font-weight: 700; margin-bottom: 6px; font-size: var(--text-lg); padding-right: 20px; }
-.dest-temp { font-size: 1.4rem; font-weight: 800; }
-.dest-cond { font-size: var(--text-xs); color: var(--muted); }
-.dest-alert { font-size: var(--text-xs); margin-top: 6px; }
-.dest-remove {
-  position: absolute; top: 8px; right: 8px;
-  background: none; border: none; color: var(--muted);
-  cursor: pointer; font-size: var(--text-md); padding: 2px 4px; border-radius: 4px;
-}
-.dest-remove:hover { color: var(--red); }
 
 /* ---------- Modal ---------- */
 .modal-overlay {
@@ -441,33 +390,7 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast), transform var(--t-fast);
 }
 .seg-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 700; }
-.settings-item {
-  display: flex; justify-content: space-between; align-items: center;
-  width: 100%;
-  padding: 9px 10px;
-  background: none; border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: var(--text-md);
-  gap: 10px;
-}
-.settings-item:hover { background: var(--bg-soft); }
 
-/* ---------- Persona cards ---------- */
-.persona-card {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px 14px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color var(--t-med), transform var(--t-fast), box-shadow var(--t-med);
-  font-family: inherit;
-}
-.persona-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
-.p-icon { font-size: 2rem; margin-bottom: 10px; }
-.p-name { font-weight: 700; font-size: var(--text-lg); }
-.p-desc { font-size: var(--text-xs); color: var(--muted); margin-top: 4px; }
 
 /* ---------- Skeleton / error / offline ---------- */
 @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
@@ -542,7 +465,6 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   .row-2, .row-3, .row-4 { grid-template-columns: 1fr 1fr; }
   .week-grid { grid-template-columns: repeat(4, 1fr); }
   .hero-big { font-size: 1.3rem; }
-  .irr-table th:nth-child(2), .irr-table td:nth-child(2) { display: none; }
 }
 @media (max-width: 400px) {
   .row-2, .row-3 { grid-template-columns: 1fr; }

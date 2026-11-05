@@ -205,20 +205,6 @@
 }
 .win-why { color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
 
-.week-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: thin; }
-.week-cell {
-  flex: 0 0 auto;
-  min-width: 64px;
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  padding: 8px 6px;
-}
-.wc-day { font-size: var(--text-xs); font-weight: 650; }
-.wc-icon { font-size: 1.15rem; margin: 3px 0; }
-.wc-temp { font-size: var(--text-xs); }
-.wc-rain { font-size: var(--text-2xs); color: var(--muted); margin-top: 2px; }
 
 .aqi-card { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 15px 15px 15px 4px; }
 /* v0.8.22 — the big value used to wrap its own digits ('84' rendered as
@@ -272,14 +258,6 @@
 .chat-list-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .profile-card { display: flex; align-items: center; gap: 13px; padding: 13px 16px; border-radius: 15px 15px 15px 4px; }
-.pc-emoji {
-  width: 44px; height: 44px; border-radius: 13px;
-  background: var(--accent-dim);
-  display: grid; place-items: center;
-  font-size: 1.4rem;
-}
-.pc-name { font-weight: 700; }
-.pc-sub { color: var(--muted); font-size: var(--text-sm); margin-top: 1px; text-transform: capitalize; }
 
 .chat-error {
   background: color-mix(in srgb, var(--red) 9%, transparent);

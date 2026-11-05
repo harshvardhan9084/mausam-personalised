@@ -21,6 +21,7 @@ import { t, getLang } from '../core/i18n.js';
 import { getProfile } from '../core/profile.js';
 import { store } from '../core/storage.js';
 import { icon, setIcon, skyIcon } from './icons.js';
+import { popIn } from './motion.js';
 
 const MAX_LEN = 500;
 const MAX_HISTORY = 16;      // messages kept in the LLM context
@@ -178,8 +179,7 @@ export function focusMitraInput() {
 }
 
 /**
- * v0.8.37 "every advisory answers back" — the cross-tab handoff primitive.
- * main.js routes a `mausam:ask` event here AFTER navigating to this tab,
+ * The cross-tab handoff primitive. main.js routes a `mausam:ask` event here AFTER navigating to this tab,
  * so the page is guaranteed wired and init()ed. While a turn is already
  * streaming we never drop the question: it is pre-filled into the
  * composer and focused, so the user just presses send — an advisory tap
@@ -506,24 +506,21 @@ function renderBotText(text, cards = []) {
   const pump = (delta) => {
     for (const e of parser.push(delta)) {
       if (e.type === 'text') { acc += e.text; }
-      else if (e.type === 'component') cardsBox.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
+      else if (e.type === 'component') mountChatCard(cardsBox, e.payload, send);
       else if (e.type === 'fallback') cardsBox.appendChild(renderFallback(e.raw, e.reason));
       else if (e.type === 'code') cardsBox.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
     }
   };
   pump(String(text ?? ''));
   for (const e of parser.end()) {
-    if (e.type === 'component') cardsBox.appendChild(renderPayload(e.payload, { onSend: (m) => send(m) }) ?? document.createComment(''));
+    if (e.type === 'component') mountChatCard(cardsBox, e.payload, send);
     else if (e.type === 'fallback') cardsBox.appendChild(renderFallback(e.raw, e.reason));
     else if (e.type === 'code') cardsBox.appendChild(el('pre.chat-code', null, String(e.text).replace(/\s+$/, '')));
   }
   /* tool-call payloads that rode along with this reply */
   if (Array.isArray(cards)) {
     for (const p of cards) {
-      try {
-        const node = renderPayload(p, { onSend: (m) => send(m) });
-        if (node) cardsBox.appendChild(node);
-      } catch { /* skip a broken stored payload */ }
+      mountChatCard(cardsBox, p, send); // skips a broken stored payload
     }
   }
   if (acc.trim() || cardsBox.childElementCount) {
@@ -543,6 +540,15 @@ function setBusy(on) {
 
 function setProviderLabel(badge) {
   providerLabel.textContent = badge ? ` · ${badge}` : '';
+}
+
+/** Append a rendered MausamUI card to a chat card box, with the arrival
+ *  pop. A payload the renderer rejects becomes a comment — never a crash. */
+function mountChatCard(box, payload, send) {
+  let node = null;
+  try { node = renderPayload(payload, { onSend: (m) => send(m) }); } catch { node = null; }
+  if (node) { box.appendChild(node); popIn(node); }
+  else box.appendChild(document.createComment(''));
 }
 
 function botTurn({ withTyping = false } = {}) {
@@ -567,6 +573,7 @@ function botTurn({ withTyping = false } = {}) {
     async type(node, delay = 80) {
       dropTyping();
       cards.appendChild(node);
+      popIn(node);
       await new Promise((r) => setTimeout(r, delay));
       stickToBottom();
     },
@@ -785,7 +792,6 @@ async function send(raw, { isRetry = false } = {}) {
 
 async function runChatTurnWithFallback(events) {
   if (events.forceOffline) {
-    const state = events.getState?.() ?? {};
     const { offlineChat } = await import('../ai/offline.js');
     const parser = createStreamParser();
     events.onOpen?.({ provider: 'offline', badge: 'Mausam Core · on-device' });

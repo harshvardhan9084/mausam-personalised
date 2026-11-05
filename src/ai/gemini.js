@@ -25,7 +25,7 @@ const MAX_TOOL_ROUNDS = 3;
 export async function geminiChat(opts) {
   const {
     system, history = [], userText, apiKey, model,
-    toolDecls = [], runTool, onText, signal,
+    toolDecls = [], runTool, onText, signal: _signal,
   } = opts;
 
   if (!apiKey) {

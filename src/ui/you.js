@@ -8,7 +8,6 @@
 
 import { el, clear } from '../utils/dom.js';
 import { icon } from './icons.js';
-import { store } from '../core/storage.js';
 import { t } from '../core/i18n.js';
 import {
   INTERESTS, SENSITIVITIES, PACKS,
@@ -222,7 +221,7 @@ function field(label, control) {
 
 function toggleInterest(id, btn) {
   const list = new Set(draft.interests ?? []);
-  list.has(id) ? list.delete(id) : list.add(id);
+  if (list.has(id)) list.delete(id); else list.add(id);
   draft.interests = [...list];
   btn.classList.toggle('on');
 }

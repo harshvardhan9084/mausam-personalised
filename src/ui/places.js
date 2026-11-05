@@ -33,16 +33,10 @@ function getJSONMini(url) {
 
 /**
  * Kick off (or reuse) the probe for one place; returns a promise resolving
- * to {temp, code, isDay}. Literal commas in the list param — the forecast
- * API rejects %2C-encoded lists.
- * v0.8.23: exported so the Change-location modal's saved-place rows can
- * join the same live-sky language (one probe, one cache, every surface).
+ * to {temp, code, isDay}. One probe, one cache, every surface — the
+ * Change-location modal's saved-place rows share it with the header.
  */
 export function probePlace(place) {
-  return probe(place);
-}
-
-function probe(place) {
   const key = `${place.lat.toFixed(2)},${place.lon.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL) return Promise.resolve(hit);
@@ -129,7 +123,7 @@ export function renderPlaces(mount, ctx) {
   );
   rail.appendChild(curChip);
   if (cur) {
-    probe(cur).then((r) => {
+    probePlace(cur).then((r) => {
       fillWx(curWx, r);
       const t = curChip.querySelector('.place-temp');
       if (t && r.temp != null) t.textContent = fmtTemp(r.temp, ctx.units);
@@ -157,7 +151,7 @@ export function renderPlaces(mount, ctx) {
       }, '✕'),
     );
     rail.appendChild(chip);
-    probe(p).then((r) => {
+    probePlace(p).then((r) => {
       fillWx(wx, r);
       const t = chip.querySelector('.place-temp');
       if (t && r.temp != null) {

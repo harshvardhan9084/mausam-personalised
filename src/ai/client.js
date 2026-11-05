@@ -34,7 +34,7 @@ export function aiSettings() {
 }
 
 /** Resolve which provider to use right now (may probe the network once). */
-export async function resolveProvider(state) {
+export async function resolveProvider(_state) {
   const cfg = aiSettings();
   const explicit = cfg.provider;
 

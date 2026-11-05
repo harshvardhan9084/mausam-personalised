@@ -17,15 +17,17 @@ import {
   computeAlerts, computeInsights, computeForYou,
   computeDayTimeline, computeFarmCards, computeBestDays,
 } from '../core/insights.js';
-import { hero, sectionTitle, card, statTiles, kvList, hourlyStrip, weekGrid, simpleWeekCell, nowRow, skyBucket, askable } from './shared.js';
+import { sectionTitle, card, statTiles, hourlyStrip, weekGrid, simpleWeekCell, nowRow, skyBucket, askable } from './shared.js';
 import { icon, skyIcon, tipIcon } from './icons.js';
 import { renderPlaces } from './places.js';
 import { store } from '../core/storage.js';
 import { pickName, pickAdmin1 } from '../core/placename.js';
+import { countUp } from './motion.js';
 import { getProfile } from '../core/profile.js';
 import { t, getLang } from '../core/i18n.js';
 import { aqiNeedsSeasonNotice, stationAqiUrl, aqiCat, aqiAdvice, aqiBandColor } from '../core/aqi-cpcb.js';
 import { compareAqi } from '../core/crosscheck.js';
+let heroCountLast = null; // last hero temperature rendered (count-up only on change)
 
 /** Clock-aware time-of-day formatter — every surface honors the Clock setting
  *  (12-hour default) instead of raw 24-hour ISO slices. (v0.8.16: the sun &
@@ -314,7 +316,6 @@ function shareWeather(s, units, loc) {
   const n = s.now;
   const today = s.days?.[0];
   const aqi = s.currentAqi;
-  const locale = dateLocale();
   const lines = [
     `${loc ? pickName(loc) : 'Here'}: ${temp(n.temp, units, true)}, ${wxText(n.wx, getLang())}`,
     today ? `H ${temp(today.temp_max, units)} / L ${temp(today.temp_min, units)} · ${Math.round(today.precip_prob_max ?? 0)}% rain` : null,
@@ -335,7 +336,7 @@ function shareWeather(s, units, loc) {
    NOWCAST — next 2 hours, 15-minute steps
 ================================================================ */
 
-function nowcastCard(s, units) {
+function nowcastCard(s, _units) {
   const m = s.minutely;
   if (!m?.mm?.length) return null;
   const steps = m.mm.slice(0, 8);
@@ -959,6 +960,17 @@ export function renderDashboard(root, snapshot, units, ctx) {
   heroCard.classList.add('sky');
   heroCard.setAttribute('data-sky', skyBucket(s.now?.weather_code, s.now?.is_day));
   root.appendChild(el('div', { class: 'dash-hero' }, heroCard));
+  // Hero temperature settles into place — only when the value actually
+  // changed (refreshes that land on the same reading stay silent).
+  {
+    const tempEl = heroCard.querySelector('.hero-now-temp');
+    const txt = tempEl?.textContent ?? '';
+    const num = Number((txt.match(/-?\d+(?:\.\d+)?/) ?? [])[0]);
+    if (tempEl && Number.isFinite(num) && Math.round(num) !== heroCountLast) {
+      heroCountLast = Math.round(num);
+      countUp(tempEl);
+    }
+  }
 
   /* ---------- your places — labelled, one composed bar (v0.8.19) ----------
      The last unlabelled home section joins the uppercase micro-label voice,

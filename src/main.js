@@ -10,7 +10,6 @@
  */
 
 import { el, clear, wireModalHistory } from './utils/dom.js';
-import { relativeTime } from './utils/format.js';
 import { fetchWeatherBundle } from './api/open-meteo.js';
 import { fetchImdBundle } from './api/imd.js';
 import { fetchFloodBundle, fetchMarineBundle, fetchClimateDelta } from './api/extras.js';
@@ -24,6 +23,7 @@ import { getProfile } from './core/profile.js';
 import { computeAlerts } from './core/insights.js';
 import { wireHeader } from './ui/header.js';
 import { wireSettingsPage, renderSettings } from './ui/settings.js';
+import { pageEnter, settle } from './ui/motion.js';
 import { wireYouPage, renderYou } from './ui/you.js';
 import { wireMitraPage, showMitra, focusMitraInput, askMitra } from './ui/mitra.js';
 import { wireCropsPage, showCrops } from './ui/crops.js';
@@ -93,9 +93,11 @@ function publishChromeMetrics() {
   if (nav) root.style.setProperty('--nav-h', `${Math.round(nav.getBoundingClientRect().height)}px`);
 }
 publishChromeMetrics();
+const chromeHeaderEl = document.querySelector('.app-header');
+const chromeNavEl = document.querySelector('.tab-nav');
 const chromeRO = new ResizeObserver(() => publishChromeMetrics());
-document.querySelector('.app-header') && chromeRO.observe(document.querySelector('.app-header'));
-document.querySelector('.tab-nav') && chromeRO.observe(document.querySelector('.tab-nav'));
+if (chromeHeaderEl) chromeRO.observe(chromeHeaderEl);
+if (chromeNavEl) chromeRO.observe(chromeNavEl);
 window.addEventListener('resize', publishChromeMetrics);
 window.addEventListener('load', publishChromeMetrics);
 
@@ -150,6 +152,7 @@ function go(page) {
   if (page === 'mitra') showMitra();
   if (page === 'you') renderYou();
   if (page === 'settings') renderSettings();
+  pageEnter(page); // staged entrance for the incoming tab's sections
   moveTabPill();
 }
 
@@ -164,6 +167,9 @@ window.addEventListener('resize', () => moveTabPill(true));
 window.addEventListener('load', () => moveTabPill(true));
 document.fonts?.ready?.then(() => moveTabPill(true)).catch(() => {});
 moveTabPill(true);
+pageEnter(PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+// Visual-regression hooks: screenshots/tests capture the resting state.
+window.__mausamSettle = settle;
 export function navigate(page) { go(page); }
 
 /* ================= "mausam:ask" — advisory → Mitra handoff =================

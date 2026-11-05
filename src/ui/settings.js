@@ -129,7 +129,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.51'),
+      el('span.ver-badge', null, 'v0.8.52'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),
@@ -243,7 +243,7 @@ function buildInstallSection() {
     kids.push(el('div.key-actions',
       el('button.btn.btn-primary', {
         type: 'button',
-        onclick: async (e2) => {
+        onclick: async () => {
           try {
             evt.prompt();
             const { outcome } = await evt.userChoice;

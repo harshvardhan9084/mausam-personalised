@@ -1237,7 +1237,7 @@ textarea.chat-input {
    transform feedback is intentional under prefers-reduced-motion too —
    it is state, not animation.
    NOTE: classes whose base rules already transition transform/all (.chip,
-   .chat-send, .chat-mic, .accent-swatch, .persona-card, .delta-pill,
+   .chat-send, .chat-mic, .accent-swatch, .delta-pill,
    .hero-share, .you-btn, .place-chip, .tab-btn, .pack-chip, .city-btn)
    get ONLY the :active rule here — re-declaring `transition` last in the
    cascade would erase their existing color/shadow transitions. */
@@ -1245,7 +1245,7 @@ textarea.chat-input {
   transition: transform var(--t-fast);
 }
 .btn:active, .chip:active, .seg-btn:active, .accent-swatch:active,
-.persona-card:active, .hero-share:active, .delta-pill:active,
+.hero-share:active, .delta-pill:active,
 .you-btn:active, .place-chip:active, .aqi-trend-bar:active,
 .modal-close:active, .chat-new:active, .chat-send:active,
 .chat-mic:active, .chat-scroll-down:active {
@@ -1264,12 +1264,12 @@ textarea.chat-input {
    rules already transition transform/all get ONLY the :active rule here.
    Under prefers-reduced-motion the press stays (state, not animation). */
 .chat-hist-open, .chat-hist-del, .explore-hit, .explore-from,
-.chat-close, .dest-remove, .place-forget, .persona-badge {
+.chat-close, .place-forget {
   transition: transform var(--t-fast), background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
 }
 .chat-hist-open:active, .chat-hist-del:active, .explore-hit:active,
-.explore-from:active, .chat-close:active, .dest-remove:active,
-.place-forget:active, .persona-badge:active {
+.explore-from:active, .chat-close:active,
+.place-forget:active {
   transform: var(--press);
 }
 .settings-item, button.hour-card, .digest-card {

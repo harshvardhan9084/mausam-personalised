@@ -1,15 +1,13 @@
 /**
- * crops.js — the Crops tab: a rich crop-calendar engine (v0.7).
+ * crops.js — the Crops tab: a rich crop-calendar engine.
  *
- * Replaces the old rain-radar tab. Pan-India crop calendar (sowing →
- * stages → harvest) crossed with the LIVE weather snapshot the app
- * already holds: soil moisture, 7-day rain, day/night temps, wind.
- * Zero extra API calls, works offline, bilingual, and every user can
- * pin the crops they actually grow (volatile selection, saved locally).
- *
- * v0.7: a filter field (also the tab's "/" target) narrows chips and
- * cards live; chips and cards re-render without stealing the field's
- * focus.
+ * Pan-India crop calendar (sowing → stages → harvest) crossed with the
+ * LIVE weather snapshot the app already holds: soil moisture, 7-day
+ * rain, day/night temps, wind. Zero extra API calls, works offline,
+ * bilingual, and every user can pin the crops they actually grow
+ * (volatile selection, saved locally). A filter field (also the tab's
+ * "/" target) narrows chips and cards live; re-renders never steal the
+ * field's focus.
  */
 
 import { el, clear } from '../utils/dom.js';

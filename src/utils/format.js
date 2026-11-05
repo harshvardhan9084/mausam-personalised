@@ -48,7 +48,7 @@ export function visibility(metres) {
 export function parseLocalISO(iso) {
   if (!iso) return { h24: '—', h12: '—', date: null };
   const timePart = iso.slice(11, 16);
-  const [h, m] = timePart.split(':').map(Number);
+  const [h] = timePart.split(':').map(Number);
   const suffix = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return { h24: timePart, h12: `${h12} ${suffix}`, date: new Date(iso) };

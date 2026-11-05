@@ -124,8 +124,8 @@ export function hasProfile() {
 function normalize(p) {
   const base = emptyProfile();
   const out = { ...base, ...p };
-  out.schedule = { ...base.schedule, ...(p.schedule ?? {}) };
-  out.sensitive = { ...base.sensitive, ...(p.sensitive ?? {}) };
+  out.schedule = { ...base.schedule, ...p.schedule };
+  out.sensitive = { ...base.sensitive, ...p.sensitive };
   out.interests = (p.interests ?? []).filter((x) => typeof x === 'string');
   out.customTags = (p.customTags ?? []).map((x) => String(x).slice(0, 40)).filter(Boolean).slice(0, 12);
   out.tone = ['simple', 'detailed', 'fun'].includes(p.tone) ? p.tone : 'simple';

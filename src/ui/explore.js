@@ -186,7 +186,7 @@ async function getPlaceData(p, signal) {
  */
 export function openCompare(ctx) {
   const ctl = new AbortController();
-  const { overlay, box } = buildModal(t('cmp_title'), () => ctl.abort(), 'is-compare');
+  const { box } = buildModal(t('cmp_title'), () => ctl.abort(), 'is-compare');
   const added = []; // session-only extra places from search
   const listWrap = el('div.cmp-list');
   const verdict = el('div.cmp-verdict');
@@ -305,7 +305,7 @@ function aqiToneClass(aqi) {
  */
 export function openJourney(ctx) {
   const ctl = new AbortController();
-  const { overlay, box } = buildModal(t('jny_title'), () => ctl.abort(), 'is-journey');
+  const { box } = buildModal(t('jny_title'), () => ctl.abort(), 'is-journey');
   const units = ctx?.units ?? 'metric';
 
   let from = ctx?.location ?? null;
@@ -330,7 +330,7 @@ export function openJourney(ctx) {
     ['now', '3h', 'morning', 'evening'].map((k) =>
       el(`button.chip${depart === k ? '.on' : ''}`, {
         type: 'button', dataset: { dep: k },
-        onclick: (e) => {
+        onclick: () => {
           depart = k;
           depSeg.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.dep === k));
         },

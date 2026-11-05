@@ -65,7 +65,6 @@ const STATE_NO_SOIL = {
 
 async function ask(state, text) {
   let full = '';
-  const comps = [];
   await offlineChat({
     userText: text,
     onText: (d) => { full += d; },

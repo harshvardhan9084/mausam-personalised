@@ -24,15 +24,6 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
 
 /* ---------------- profiles grid ---------------- */
 
-.persona-card { position: relative; border: 1px solid var(--border); }
-.persona-card[style*('--pc')] { border-color: color-mix(in srgb, var(--pc) 38%, var(--border)); }
-.persona-card .p-icon { font-size: 1.9rem; }
-
-.persona-card.persona-new {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
 .p-icon-new { opacity: 0.85; }
 
 .profile-edit {
@@ -70,9 +61,6 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
 }
 .dash-greet-sub { color: var(--muted); font-size: var(--text-md); }
 
-.personal-alert { margin: 0 0 16px; animation: alertIn 0.35s ease; }
-@keyframes alertIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.personal-alert .alert-title { font-weight: 650; margin-bottom: 2px; }
 
 /* ---------------- data-source badge (header) ---------------- */
 
@@ -95,37 +83,6 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
 .src-pill.imd .src-dot { background: var(--accent); }
 .src-pill.warn .src-dot { background: var(--yellow); }
 
-/* ---------------- IMD settings section ---------------- */
-
-.settings-menu { width: min(320px, 92vw); }
-
-.imd-key-input {
-  width: 100%;
-  margin-top: 6px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--text-sm);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.imd-key-input:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
-
-.imd-actions { display: flex; gap: 8px; margin-top: 8px; }
-.imd-actions .btn { font-size: var(--text-sm); padding: 6px 12px; }
-
-.imd-status { font-size: var(--text-xs); margin-top: 8px; line-height: 1.45; }
-.imd-status.ok { color: var(--green); }
-.imd-status.bad { color: var(--red); }
-.imd-status.busy { color: var(--muted); }
-.imd-help { font-size: var(--text-xs); color: var(--muted); margin-top: 6px; line-height: 1.5; }
-.imd-help a { color: var(--accent); }
-
-/* ---------------- header profile badge tweak ---------------- */
-
-.persona-badge { cursor: pointer; }
-.persona-badge:hover { border-color: var(--accent); }
 
 /* ---------------- mobile header: one tight row ----------------
  * v0.8: the old two-row layout burned ~36px of every screen. The brand
@@ -146,5 +103,4 @@ body[data-accent='yellow'] { --accent: var(--accent-yellow); --accent-dim: color
 /* ---------------- reduced motion ---------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .personal-alert { animation: none; }
-}
+  }

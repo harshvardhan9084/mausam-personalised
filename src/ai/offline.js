@@ -323,7 +323,7 @@ function buildHelp() {
   };
 }
 
-function buildThanks(state) {
+function buildThanks(_state) {
   return { text: tr('mt_thanks'), comps: [] };
 }
 
@@ -458,7 +458,6 @@ function buildPlan(state, text0) {
       target = scored.find((x) => (kw === 'tomorrow' && x.i === 1) || (kw === 'day after' && x.i === 2) || (x.label && x.label.toLowerCase().includes(kw.slice(0, 3)))) ?? [...scored].sort((a, b) => b.score - a.score)[0];
     }
     const best = [...scored].sort((a, b) => b.score - a.score)[0];
-    const bd = band(target.score);
     let text = tr('mt_day_pick', { day: dayLab(target, target.i), wx: esc(wxText(target.wx, LANG())).toLowerCase(), lo: t(target.temp_min), hi: t(target.temp_max), p: Math.round(target.precip_prob_max ?? 0) });
     text += target.i === best.i ? tr('mt_day_bestpick') : tr('mt_day_flex', { day: dayLab(best, best.i), wx: esc(wxText(best.wx, LANG())).toLowerCase(), p: Math.round(best.precip_prob_max ?? 0) });
     return {

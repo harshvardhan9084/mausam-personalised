@@ -42,12 +42,10 @@ const BREAKPOINTS = {
   },
 };
 
-/** CPCB AQI category descriptors.
- *  v0.8.22 — colors are CSS custom properties (--aqi-1..6, --aqi-u) defined
- *  per theme in tokens.css: one band vocabulary for the dashboard dial +
- *  48h bars, the chat aqi-card, and the compare cells (they used to be
- *  hardcoded hexes here plus two divergent re-implementations elsewhere,
- *  so the same AQI value painted different colours per surface/theme). */
+/** CPCB AQI category descriptors. Colors are CSS custom properties
+ *  (--aqi-1..6, --aqi-u) defined per theme in tokens.css — one band
+ *  vocabulary shared by the dashboard dial, 48h bars, the chat aqi-card
+ *  and the compare cells. */
 export const AQI_CATEGORIES = [
   { max: 50,  label: ['Good', 'अच्छा'],          color: 'var(--aqi-1)', advice: ['Air is clean. Ideal for outdoor activity.', 'हवा साफ़ है — बाहर के लिए बेहतरीन समय।'] },
   { max: 100, label: ['Satisfactory', 'संतोषजनक'], color: 'var(--aqi-2)', advice: ['Minor breathing discomfort possible for sensitive people.', 'संवेदनशील लोगों को हल्की सांस की परेशानी हो सकती है।'] },

@@ -10,9 +10,9 @@
  * Run: node scripts/test_ground_truth.mjs
  */
 
-import { ppbToUg, pickFreshSensors, concFromReadings, fetchStationAqi, ageMinutes } from '../src/api/openaq.js';
+import { ppbToUg, pickFreshSensors, concFromReadings, fetchStationAqi, ageMinutes, haversineKm, nearestFromSnapshot } from '../src/api/openaq.js';
 import { computeCPCBAqi } from '../src/core/aqi-cpcb.js';
-import { parseFirmsCsv, countRecent, fetchFires } from '../src/api/firms.js';
+import { parseFirmsCsv, countRecent, fetchFires, filterBbox } from '../src/api/firms.js';
 
 let pass = 0, fail = 0, skipped = 0;
 const fails = [];
@@ -112,9 +112,7 @@ const counts = countRecent(spots, new Date('2026-10-31T14:00:00Z'));
 check('firms: count24=1, count48=2', counts.c24 === 1 && counts.c48 === 2, JSON.stringify(counts));
 check('firms: garbage CSV → []', parseFirmsCsv('Invalid MAP_KEY').length === 0);
 
-/* ---------------- v0.8.44: the courier snapshot tier ---------------- */
-import { haversineKm, nearestFromSnapshot } from '../src/api/openaq.js';
-import { filterBbox } from '../src/api/firms.js';
+/* ---------------- the courier snapshot tier ---------------- */
 import { packOpenaqSnapshot, packFirmsSnapshot, pickMonitors } from './refresh-snapshot.mjs';
 
 check('haversine: Delhi → Hapur ≈ 56.8 km', Math.abs(haversineKm(28.6139, 77.2090, 28.7304, 77.7757) - 56.8) < 0.3, String(haversineKm(28.6139, 77.2090, 28.7304, 77.7757)));

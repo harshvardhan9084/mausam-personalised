@@ -1,6 +1,6 @@
 /**
  * dom.js — minimal hyperscript-style DOM helper + fragment utilities.
- * Replaces the MVP's innerHTML-string approach with safe element building.
+ * Builds elements programmatically (no innerHTML strings, no injection).
  */
 
 /**

@@ -326,7 +326,7 @@ export function parseBlock(rawJSON) {
   // e.g. {"v":1,"c":"wear-list","items":[…]} — rewrap everything except
   // the envelope keys as the payload data.
   if (parsed.d == null) {
-    const { v, c, t, ...rest } = parsed;
+    const { v: _v, c: _c, t: _t, ...rest } = parsed;
     if (Object.keys(rest).length) parsed = { ...parsed, d: rest };
   }
   const v = toNum(parsed.v);

@@ -18,8 +18,6 @@ import { t, getLang } from './i18n.js';
 import { aqiCat, aqiAdvice } from './aqi-cpcb.js';
 
 const hh = (iso) => Number(iso?.slice(11, 13));
-const clampRound = (v) => Math.round(Math.max(0, Math.min(100, v ?? 0)));
-
 /* ================================================================
    ALERTS — stacked, only when it genuinely matters
 ================================================================ */

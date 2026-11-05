@@ -45,14 +45,6 @@ const inflight = new Set();
 
 const coordKey = (loc) => `${Number(loc?.lat ?? 0).toFixed(2)},${Number(loc?.lon ?? 0).toFixed(2)}`;
 
-/** Does this place still owe us a name in `lang`? */
-function needsAlt(loc, lang) {
-  return Boolean(
-    loc && loc.name != null && loc.lat != null &&
-    scriptOf(loc.name) !== lang && !loc.nameAlt
-  );
-}
-
 async function reverseResolve(loc, lang) {
   // 1) BigDataCloud reverse geocode — city/locality level, localised.
   try {
