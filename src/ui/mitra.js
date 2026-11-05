@@ -282,12 +282,17 @@ function ensureChat() {
  *  `cards` carries MausamUI payloads that came from tool calls — they are
  *  not part of the streamed text, so without them restored chats would
  *  silently lose every tool-driven chart. */
-function persistMsg(role, text, cards = null) {
+function persistMsg(role, text, cards = null, receipts = null) {
   if (!text || !String(text).trim()) return;
   ensureChat();
   const entry = { role, text: String(text).slice(0, 8000) };
   if (role === 'model' && Array.isArray(cards) && cards.length) {
     entry.cards = cards.slice(0, 6);
+  }
+  /* v0.8.54 — the receipt strip persists with the reply, frozen at answer
+     time (freshness as it WAS, never re-aged on restore). */
+  if (role === 'model' && Array.isArray(receipts) && receipts.length) {
+    entry.receipts = receipts.slice(0, 4).map((r) => ({ k: r.k, label: r.label, fresh: r.fresh ?? null }));
   }
   msgsTurn.push(entry);
   if (role === 'user' && !chatTitle) chatTitle = String(text).slice(0, 64);
@@ -434,7 +439,7 @@ function openChat(id) {
   clear(msgs);
   for (const m of chat.msgs) {
     if (m.role === 'user') renderUserText(m.text);
-    else renderBotText(m.text, m.cards);
+    else renderBotText(m.text, m.cards, m.receipts);
     msgsTurn.push({ role: m.role, text: m.text });
     llmHistory.push({ role: m.role === 'user' ? 'user' : 'model', text: m.text });
   }
@@ -493,13 +498,15 @@ function renderUserText(text, enter = false) {
 }
 
 /** Re-render stored bot text (prose + MausamUI fences + tool cards →
- *  real components). Restored replies get the same copy + listen actions. */
-function renderBotText(text, cards = []) {
+ *  real components). Restored replies get the same copy + listen actions
+ *  and — v0.8.54 — the receipt strip frozen at answer time. */
+function renderBotText(text, cards = [], receipts = null) {
   const streamBox = el('div.chat-stream.chat-text', { 'aria-live': 'off' });
   const cardsBox = el('div.chat-cards');
+  const srcBox = el('div.chat-src', { hidden: true });
   const metaActions = el('span.chat-meta-actions');
   const meta = el('div.chat-meta', null, el('span'), metaActions);
-  const wrap = el('div', null, streamBox, cardsBox, meta);
+  const wrap = el('div', null, streamBox, cardsBox, srcBox, meta);
   bubble('bot', wrap);
   const parser = createStreamParser();
   let acc = '';
@@ -528,6 +535,7 @@ function renderBotText(text, cards = []) {
     addCopyAction({ metaActions }, () => acc.trim());
     addListenAction({ metaActions }, () => acc.trim());
   }
+  renderReceipts(srcBox, receipts);
 }
 
 function setBusy(on) {
@@ -551,13 +559,35 @@ function mountChatCard(box, payload, send) {
   else box.appendChild(document.createComment(''));
 }
 
+/** v0.8.54 — the receipt strip: one chip per source the answer truly used,
+ *  in the SAME dot grammar as Settings → Data sources (green dot = the
+ *  source answered) with the honest age the data layer computed. Status,
+ *  not actions — spans, never buttons. Restored replies render the strip
+ *  frozen at answer time (the age as it WAS when answered — more honest
+ *  than re-aging a stale transcript). */
+function renderReceipts(box, receipts) {
+  if (!box) return;
+  const list = (Array.isArray(receipts) ? receipts : []).filter((r) => r && r.label);
+  if (!list.length) return;
+  box.hidden = false;
+  clear(box).appendChild(el('span.chat-src-lead', { 'aria-hidden': 'true' }, t('srcs_title')));
+  for (const r of list.slice(0, 4)) {
+    box.appendChild(el('span.chat-src-chip', { title: r.fresh ?? r.label },
+      el('span.chat-src-dot', { 'aria-hidden': 'true' }),
+      r.label,
+      r.fresh ? el('span.chat-src-age', null, `· ${r.fresh}`) : null,
+    ));
+  }
+}
+
 function botTurn({ withTyping = false, enter = false } = {}) {
   const streamBox = el('div.chat-stream.chat-text', { 'aria-live': 'polite' });
   const cards = el('div.chat-cards');
+  const srcBox = el('div.chat-src', { hidden: true });
   const metaBadge = el('span');
   const metaActions = el('span.chat-meta-actions');
   const meta = el('div.chat-meta', null, metaBadge, metaActions);
-  const wrap = el('div', null, streamBox, cards, meta);
+  const wrap = el('div', null, streamBox, cards, srcBox, meta);
   const b = bubble('bot', wrap, enter);
   let typing = null;
   if (withTyping) {
@@ -569,7 +599,7 @@ function botTurn({ withTyping = false, enter = false } = {}) {
     typing = null;
   };
   return {
-    streamBox, cards, meta, metaActions, bubble: b, dropTyping,
+    streamBox, cards, srcBox, meta, metaActions, bubble: b, dropTyping,
     async type(node, delay = 80) {
       dropTyping();
       cards.appendChild(node);
@@ -742,6 +772,7 @@ async function send(raw, { isRetry = false } = {}) {
         clear(turn.streamBox).appendChild(el('span', null, '(no content — try again)'));
       }
       turn.setMeta(info?.aborted ? `${info.badge ?? ''} · stopped` : info?.badge ?? '');
+      if (!info?.aborted) renderReceipts(turn.srcBox, info?.receipts);
       if (streamed.trim() && !info?.aborted) {
         addCopyAction(turn, () => streamed.trim());
         addListenAction(turn, () => streamed.trim());
@@ -750,7 +781,7 @@ async function send(raw, { isRetry = false } = {}) {
       llmHistory.push({ role: 'model', text: streamed || '(card-only answer)' });
       if (llmHistory.length > MAX_HISTORY * 2) llmHistory.splice(0, llmHistory.length - MAX_HISTORY * 2);
       persistMsg('user', text);
-      persistMsg('model', streamed, turnCards);
+      persistMsg('model', streamed, turnCards, info?.receipts);
       setBusy(false);
       controller = null;
     },
@@ -804,13 +835,13 @@ async function runChatTurnWithFallback(events) {
       }
     };
     try {
-      await offlineChat({ userText: events.userText, onText: pump, signal: events.signal, getState: events.getState });
+      const r = await offlineChat({ userText: events.userText, onText: pump, signal: events.signal, getState: events.getState });
       for (const e of parser.end()) {
         if (e.type === 'component') events.onComponent?.(e.payload);
         else if (e.type === 'fallback') events.onFallback?.(e.raw, e.reason);
         else if (e.type === 'code') events.onCode?.(e.text);
       }
-      events.onDone?.({ provider: 'offline', badge: 'Mausam Core · on-device' });
+      events.onDone?.({ provider: 'offline', badge: 'Mausam Core · on-device', receipts: r?.receipts });
     } catch (err) {
       if (err?.name !== 'AbortError') events.onError?.({ kind: 'unknown', provider: 'offline', title: 'Mausam Core failed', text: err?.message ?? 'Unexpected error.' });
       else events.onDone?.({ provider: 'offline', badge: 'Mausam Core · on-device', aborted: true });

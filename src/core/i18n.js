@@ -793,6 +793,14 @@ const dict = {
   src_off:       ['off', 'बंद'],
   src_imd_nokey: ['no key — add one above', 'कुंजी नहीं — ऊपर जोड़ें'],
   src_imd_ok:    ['key set', 'कुंजी सेव'],
+  /* v0.8.54 — Mitra's receipt strip: the chat's per-answer "who said this",
+     in the SAME dot grammar as the Data sources rows above. Short chip
+     labels (the settings labels are rows; these ride inside a bubble). */
+  srcs_title:    ['Sources', 'स्रोत'],
+  srcs_forecast: ['Forecast · Open-Meteo', 'पूर्वानुमान · Open-Meteo'],
+  srcs_air:      ['Air model · Open-Meteo', 'वायु मॉडल · Open-Meteo'],
+  srcs_station:  ['Live station', 'लाइव स्टेशन'],
+  srcs_witness:  ['Witness · POWER × ERA5', 'गवाह · POWER × ERA5'],
   /* v0.8.44 — the source rows tell the truth while waiting, and say WHY
      when a source has nothing to say. */
   src_checking:  ['checking…', 'जाँच जारी…'],

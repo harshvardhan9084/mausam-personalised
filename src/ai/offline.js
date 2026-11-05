@@ -11,7 +11,7 @@
  * default and the graceful fallback.
  */
 
-import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel, freshAgo } from '../utils/format.js';
+import { temp as fmtTemp, wind as fmtWind, hourLabel, dateLabel, freshAgo, relativeTime } from '../utils/format.js';
 import { runScore, eventScore, driveScore, dayScore, bestWindows, band } from '../core/scoring.js';
 import { isPollutionSeason, aqiCat } from '../core/aqi-cpcb.js';
 /* v0.8.42 — verification answers use the SAME agreement math as the
@@ -123,7 +123,12 @@ function classify(text) {
      "is the AQI verified?" is about EVIDENCE, not about air quality.
      Devanagari alternatives sit outside \b (word boundaries never fire
      on Devanagari — the lesson v0.8.27 already encoded). */
-  const STRONG_VERIFY = /\b(verif|accura|trust|cross.?check|witness|disagree|who wins|which source|real data|real number)\b|सत्यापित|पक्का|भरोसा|गवाह|स्रोत/;
+  /* v0.8.54 FIX — the stems are PREFIXES of real words ('verif' only ever
+     appears inside 'verified'/'verification'), so the trailing \b made
+     them unmatchable and an explicit "...verified hai?" fell through the
+     tie-break to whichever intent sits first (aqi). Evidence words now
+     win on their own strength, as the supremacy rule always intended. */
+  const STRONG_VERIFY = /\b(verif\w*|accura\w*|trust\w*|cross.?check\w*|witness\w*|disagree\w*|who wins|which source|real data|real number)\b|सत्यापित|पक्का|भरोसा|गवाह|स्रोत/;
   if (STRONG_VERIFY.test(q)) best = { id: 'verify', score: 100 };
   /* v0.8.50 — a spray/irrigation question with a stray place-sounding word
      ("patwar me paani") is FARMING, never a city lookup; the city guard in
@@ -152,6 +157,136 @@ export function isVerifyQuestion(text) {
     internal; the offline-intent suite pins behaviour, not spelling.) */
 export function classifyIntent(text) {
   return classify(String(text ?? '')).id;
+}
+
+/* ---------------- v0.8.54 "the receipt strip" — per-source provenance ----------------
+   The board answers "who said this" on every card; the chat only said it in
+   the provider badge. Now every Mausam Core answer carries the SAME receipt
+   grammar the Settings → Data sources rows use: one chip per source that
+   actually fed THIS intent, with the age the data layer already computed.
+   Chips exist only when their source truly contributed — never decoration. */
+
+const RECEIPT_LABEL = { forecast: 'srcs_forecast', air: 'srcs_air', station: 'srcs_station', witness: 'srcs_witness' };
+
+function receiptChip(k, fresh) {
+  return { k, label: tr(RECEIPT_LABEL[k] ?? k), fresh: fresh ?? null, tone: 'ok' };
+}
+
+/** Which snapshot sources does each intent actually read? Kept in ONE
+    place next to the builders so the chip can never claim a source the
+    answer did not touch. verify draws its own ledger card — no chips. */
+const INTENT_SOURCES = {
+  greet: ['forecast'], help: [], thanks: [],
+  rain: ['forecast'], temp: ['forecast'], wear: ['forecast', 'air'],
+  plan: ['forecast', 'air'], commute: ['forecast'],
+  aqi: ['air', 'station'], sun: ['forecast'], hours: ['forecast'],
+  week: ['forecast'], wind: ['forecast'], farm: ['forecast'],
+  uv: ['forecast'], trend: ['forecast'], default: ['forecast'], verify: [],
+};
+
+/** Receipt chips for a set of intents — union of their sources, each with
+    the honest age. The station chip appears ONLY when the live monitor
+    actually answered (st.ageMin is the reading's real age, not fetch age).
+    v0.8.54 — also accepts RAW source keys ('forecast','air','station',
+    'witness'): the Z.ai preview path declares what the model was FED, not
+    which intent won, so it calls with keys directly. Unknown ids that are
+    neither intents nor source keys contribute nothing (honest silence). */
+export function answerReceipts(state, ids) {
+  const s = state?.snapshot;
+  if (!s || !Array.isArray(ids) || !ids.length) return [];
+  const keys = [];
+  for (const id of ids) {
+    const mapped = INTENT_SOURCES[id];
+    if (mapped) { for (const k of mapped) if (!keys.includes(k)) keys.push(k); }
+    else if (RECEIPT_LABEL[id] && !keys.includes(id)) keys.push(id);
+  }
+  if (!keys.length) return [];
+  const out = [];
+  for (const k of keys) {
+    if (k === 'forecast' || k === 'air') {
+      out.push(receiptChip(k, s.fetchedAt != null ? relativeTime(s.fetchedAt) : null));
+    } else if (k === 'station') {
+      const st = state.station ?? s.bundle?.station ?? null;
+      if (st?.ok && st.aqi != null) out.push(receiptChip(k, freshAgo(st.ageMin)));
+    } else if (k === 'witness') {
+      const wi = state.witness ?? s.bundle?.witness ?? null;
+      if (wi?.ok) out.push(receiptChip(k, wi.fetchedAt != null ? relativeTime(wi.fetchedAt) : null));
+    }
+  }
+  return out.slice(0, 4);
+}
+
+/* ---------------- v0.8.54 — compound questions, one composed answer ----------------
+   "Will it rain today and what's the AQI?" used to answer HALF of itself:
+   classify() picks ONE winner by score, and a single keyword tie broke
+   toward whichever intent sits first in INTENTS. Real users ask two things
+   in one breath — Hinglish especially ("... aur ...", "... ya ...").
+   Compound mode splits the question into clauses, classifies each clause
+   with the SAME classify(), and composes the winners' full answers in
+   clause order — same builders, same cards, one turn. Supremacy rules
+   survive: verify on the FULL question still wins, city questions still
+   override, and a clause that is small talk is dropped, not amplified. */
+
+const TOPICAL = new Set(['rain', 'temp', 'wear', 'plan', 'commute', 'aqi', 'sun', 'hours', 'week', 'wind', 'farm', 'uv', 'trend']);
+
+/* ASCII conjunctions take \b; Devanagari never fires \b (the v0.8.27
+   lesson), so और/या are matched with explicit space guards. */
+const CLAUSE_SPLIT = /\?|।|\.|;|!|,|(?:\s+और\s+)|(?:\s+या\s+)|(?:\s+\b(?:and|aur|ya|or|also|plus)\s+)/gi;
+
+export function compoundIntents(q) {
+  const text = String(q ?? '');
+  if (!text.trim()) return [];
+  const clauses = text.split(CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length >= 3);
+  const out = [];
+  for (const clause of clauses) {
+    const id = classify(clause).id;
+    if (TOPICAL.has(id) && !out.some((x) => x.id === id)) out.push({ id, clause });
+  }
+  return out;
+}
+
+/** One topical intent → its full single-topic answer (the SAME builder the
+    single path uses). Conversational/verify/default ids return null. */
+function singleBuild(id, state, q) {
+  const p = state.profile ?? state.you ?? null;
+  const youShim = p ? { name: p.name, commute: { am: p.schedule?.leaveAm ?? p.commute?.am, pm: p.schedule?.backPm ?? p.commute?.pm } } : null;
+  switch (id) {
+    case 'rain': return buildRain(state);
+    case 'temp': return buildTemp(state, q);
+    case 'wear': return buildWear(state);
+    case 'plan': return buildPlan(state, q);
+    case 'commute': return buildCommute(state, youShim);
+    case 'aqi': return buildAqi(state, q);
+    case 'sun': return buildSun(state);
+    case 'hours': return buildHours(state);
+    case 'week': return buildWeek(state);
+    case 'wind': return buildWind(state);
+    case 'farm': return buildFarm(state);
+    case 'uv': return buildUv(state, q);
+    case 'trend': return buildTrend(state);
+    default: return null;
+  }
+}
+
+/** Compose 2–3 topical answers: prose paragraphs in clause order, cards in
+    the same order, and exactly ONE suggestion-chips row (the last part's)
+    so a two-topic turn doesn't grow three stacked chip menus. */
+function buildCompound(state, q, found) {
+  const parts = (found ?? []).slice(0, 3)
+    .map((f) => singleBuild(f.id, state, f.clause))
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  const text = parts.map((p) => p.text).join('\n\n');
+  const comps = [];
+  let pendingChips = null;
+  for (const p of parts) {
+    for (const c of (p.comps ?? []).filter(Boolean)) {
+      if (c.includes('"c":"chips"')) { pendingChips = c; continue; }
+      if (comps.length < 4) comps.push(c);
+    }
+  }
+  if (pendingChips) comps.push(pendingChips);
+  return { text, comps };
 }
 
 /* --- city extraction for weather-in-X / compare questions --- */
@@ -716,6 +851,12 @@ function buildWind(state) {
 async function buildCity(state, text0) {
   const cities = extractCities(text0, state?.location?.name);
   if (!cities.length) return null;
+  /* v0.8.54 — a city answer's provenance is the CITY snapshot it fetched
+     (its own fetchedAt), not the home snapshot the chips would otherwise
+     quote. Composed here because answerReceipts() reads the HOME state. */
+  const cityReceipt = (snap) => (snap?.fetchedAt != null
+    ? [receiptChip('forecast', relativeTime(snap.fetchedAt))]
+    : []);
   if (/compare|vs|versus|better|and\b/i.test(text0) && cities.length >= 2) {
     const [a, b] = cities;
     const [sa, sb] = await Promise.all([
@@ -734,6 +875,7 @@ async function buildCity(state, text0) {
       text: tr('mt_city_vs', { a: sa.locationLabel, b: sb.locationLabel }),
       comps: [fence('compare-table', { columns: ['', sa.locationLabel.split(',')[0], sb.locationLabel.split(',')[0]], rows }, tr('mt_card_compare')),
               fence('chips', { items: [tr('mt_sugg_weatherof', { c: sa.locationLabel.split(',')[0] }), tr('mt_sugg_weatherof', { c: sb.locationLabel.split(',')[0] })] })],
+      receipts: cityReceipt(sa),
     };
   }
   const snap = await fetchCitySnapshot(cities[0]).catch(() => null);
@@ -748,6 +890,7 @@ async function buildCity(state, text0) {
       humidity: n.humidity, wind: n.wind,
     }, tr('mt_card_rightnow', { c: cities[0] })),
       fence('chips', { items: [tr('mt_sugg_cmpwith', { a: cities[0], b: state?.location?.name ?? tr('mt_place_fallback') }), tr('mt_sugg_rainthere')] })],
+    receipts: cityReceipt(snap),
   };
 }
 
@@ -869,6 +1012,7 @@ export async function offlineChat(opts) {
 
   const intent = classify(q);
   let built = null;
+  let builtIds = null; // intents the final answer actually served (→ receipts)
 
   // city questions override topical intents — a Devanagari metro name in the
   // question is just as cityish as "weather in Mumbai" (v0.8.27)
@@ -882,6 +1026,17 @@ export async function offlineChat(opts) {
     } catch { built = null; }
   }
 
+  /* v0.8.54 — compound mode: ≥2 distinct topical clauses compose one answer.
+     verify keeps supremacy (evidence is not a second topic); greet/help/
+     thanks clauses are dropped by TOPICAL, never amplified. */
+  if (!built && intent.id !== 'verify') {
+    const found = compoundIntents(q);
+    if (found.length >= 2) {
+      built = buildCompound(state, q, found);
+      if (built) builtIds = found.map((f) => f.id);
+    }
+  }
+
   if (!built) {
     // v1-shape shim so buildGreet/buildCommute keep working with the v2 profile
     const p = state.profile ?? state.you ?? null;
@@ -890,27 +1045,21 @@ export async function offlineChat(opts) {
       case 'greet': built = buildGreet(state, youShim); break;
       case 'help': built = buildHelp(); break;
       case 'thanks': built = buildThanks(state); break;
-      case 'rain': built = buildRain(state); break;
-      case 'temp': built = buildTemp(state, q); break;
-      case 'wear': built = buildWear(state); break;
-      case 'plan': built = buildPlan(state, q); break;
-      case 'commute': built = buildCommute(state, youShim); break;
-      case 'aqi': built = buildAqi(state, q); break;
-      case 'sun': built = buildSun(state); break;
-      case 'hours': built = buildHours(state); break;
-      case 'week': built = buildWeek(state); break;
-      case 'wind': built = buildWind(state); break;
       case 'verify': built = buildVerify(state, q); break;
-      case 'farm': built = buildFarm(state); break;
-      case 'uv': built = buildUv(state, q); break;
-      case 'trend': built = buildTrend(state); break;
-      default: built = buildDefault(state); break;
+      default: built = singleBuild(intent.id, state, q) ?? buildDefault(state); break;
     }
+    builtIds = [intent.id];
   }
 
   const full = `${built.text}\n${built.comps.filter(Boolean).join('\n')}`;
   await stream(full, onText, signal);
-  return { usedTools: [] };
+  /* v0.8.54 — the receipt strip: exactly the sources this answer used.
+     A city build quotes its own snapshot's freshness; verify draws its
+     ledger card (the chips would repeat it). */
+  const receipts = Array.isArray(built.receipts)
+    ? built.receipts
+    : answerReceipts(state, builtIds ?? []);
+  return { usedTools: [], receipts };
 }
 
 export function offlineErrorCopy() {

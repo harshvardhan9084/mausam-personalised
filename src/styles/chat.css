@@ -363,3 +363,49 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-stream.is-live .chat-text > :last-child::after { animation: none; }
 }
+
+/* ================================================================
+   v0.8.54 "the receipt strip" — Mitra answers the reader's next
+   question ("who said this, how old is it") with the SAME dot
+   grammar the Settings → Data sources rows own: green dot = the
+   source answered, chip label, honest age. Status, not actions.
+   Tokens only — the ramp sizes and theme vars keep both themes.
+================================================================ */
+.chat-src {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.chat-src[hidden] { display: none; }
+.chat-src-lead {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  opacity: 0.75;
+}
+.chat-src-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-2xs);
+  font-weight: 650;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.chat-src-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+}
+.chat-src-age { font-weight: 600; opacity: 0.85; }

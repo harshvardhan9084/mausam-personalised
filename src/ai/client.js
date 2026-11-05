@@ -18,7 +18,7 @@ import { buildSystemPrompt, trimHistory } from './prompt.js';
 import { TOOL_DECLARATIONS, runTool } from './tools.js';
 import { geminiChat, geminiErrorCopy } from './gemini.js';
 import { probeZai, zaiChat, zaiErrorCopy } from './zai.js';
-import { offlineChat, offlineErrorCopy, isVerifyQuestion, verifyCardFence } from './offline.js';
+import { offlineChat, offlineErrorCopy, isVerifyQuestion, verifyCardFence, answerReceipts } from './offline.js';
 import { createStreamParser } from './render.js';
 
 export const PROVIDERS = {
@@ -83,6 +83,11 @@ export async function runChatTurn(ev) {
      fill a missing verification card without ever doubling one. */
   let sawVerifyCard = false;
   let verifyToolCalled = false;
+  /* v0.8.54 — per-source receipts (Mausam Core path) or the snapshot-context
+     receipt (Z.ai preview path, which is fed the whole snapshot tool-less).
+     Gemini is left badge-only: its tool calls make provenance model-dependent,
+     and an honest row beats a wrong one. */
+  let offlineReceipts = null;
   const handleEvents = (events) => {
     for (const e of events) {
       if (e.type === 'text') ev.onText?.(e.text);
@@ -133,11 +138,20 @@ export async function runChatTurn(ev) {
     } else if (res.id === 'zai') {
       await zaiChat({ system, history, userText: ev.userText, onText, signal: ev.signal });
     } else {
-      await offlineChat({ userText: ev.userText, onText, signal: ev.signal, getState: ev.getState });
+      /* v0.8.54 — the offline engine returns the receipt strip (exactly the
+         sources this answer read); it rides onDone into the chat bubble. */
+      const r = await offlineChat({ userText: ev.userText, onText, signal: ev.signal, getState: ev.getState });
+      offlineReceipts = Array.isArray(r?.receipts) ? r.receipts : [];
     }
     handleEvents(parser.end());
     autoVerifyLedger();
-    ev.onDone?.({ provider: res.id, badge: providerBadge(res) });
+    /* v0.8.54 — receipts: the offline path's own answer receipts, or for the
+       tool-less Z.ai preview path the snapshot sources the model was FED
+       (forecast + air + witness, each only when it truly exists). */
+    const receipts = res.id === 'zai'
+      ? answerReceipts(state, ['forecast', 'air', 'witness'])
+      : offlineReceipts;
+    ev.onDone?.({ provider: res.id, badge: providerBadge(res), receipts });
   } catch (err) {
     if (err?.name === 'AbortError') {
       handleEvents(parser.end());

@@ -43,6 +43,7 @@ const H = (i, over = {}) => ({
 const STATE_FARM = {
   snapshot: {
     now: { temp: 26, feels: 28, wx: { icon: 'clear-day', label: 'Clear' }, uv: 4, humidity: 55, wind: 8 },
+    fetchedAt: Date.now(), /* v0.8.54 — real snapshots always carry it; the receipt strip quotes it */
     hours: Array.from({ length: 24 }, (_, i) => H(i)),
     days: [
       { label: 'Today', date: '2026-11-03', temp_max: 30, temp_min: 18, precip_prob_max: 20, wx: { icon: 'clear-day' }, uv_max: 5 },
@@ -131,6 +132,68 @@ ok(/Air Quality Index/.test(aqiPlain), 'aqi kya hai: explicit explain phrasing s
 /* ---------------- regression: city lookups untouched ---------------- */
 ok(classifyIntent('hello') === 'greet', 'regression: greet intact');
 ok(!isVerifyQuestion('Will it rain today?'), 'regression: rain is not verify');
+
+/* ---------------- v0.8.54 — compound questions, one composed answer ----------------
+   classify() picks ONE winner, so "rain AND aqi in one breath" used to
+   answer half of itself. compoundIntents() splits clauses, keeps topical
+   winners in order; offlineChat composes their full answers. */
+const { compoundIntents, answerReceipts } = await import('../src/ai/offline.js');
+
+const found = compoundIntents('Will it rain today and what is the AQI?');
+ok(found.length === 2 && found[0].id === 'rain' && found[1].id === 'aqi', 'compound: rain+aqi split in clause order', JSON.stringify(found));
+const foundHi = compoundIntents('बारिश होगी और AQI कैसा है?');
+ok(foundHi.length === 2 && foundHi[0].id === 'rain' && foundHi[1].id === 'aqi', 'compound: Devanagari और splits too', JSON.stringify(foundHi));
+ok(compoundIntents('Will it rain today?').length <= 1, 'compound: single topic stays single');
+ok(compoundIntents('hello and thanks').length === 0, 'compound: small-talk clauses are dropped, not amplified');
+
+async function askFull(state, text) {
+  let full = '';
+  const ret = await offlineChat({ userText: text, onText: (d) => { full += d; }, getState: () => state, signal: undefined });
+  return { full, ret };
+}
+const comp = await askFull(STATE_FARM, 'Will it rain today and what is the AQI?');
+ok(/rain/i.test(comp.full) && /Air Quality Index|AQI/i.test(comp.full), 'compound answer: both prose parts present');
+const compFences = fences(comp.full);
+ok(compFences.some((f) => f.c === 'rain-bars'), 'compound: rain card drawn');
+ok(compFences.some((f) => f.c === 'aqi-card'), 'compound: aqi card drawn');
+ok(compFences.filter((f) => f.c === 'chips').length === 1, 'compound: exactly ONE chips row (no stacked menus)');
+const compHi = await askFull(STATE_FARM, 'बारिश होगी और AQI कैसा है?');
+/* the ENGINE streams in getLang() — EN in this node harness; the Devanagari
+   CLAUSE SPLIT itself is pinned by the foundHi assertion above. */
+ok(/rain/i.test(compHi.full) && /AQI/i.test(compHi.full), 'compound from a Hindi question: both parts served (engine language = harness lang)');
+
+/* verify keeps supremacy over compound mode */
+const compVerify = await askFull(STATE_FARM, 'aqi kya hai aur kya ye verified hai?');
+ok(compVerify.ret.receipts.length === 0 && !compVerify.ret.receipts?.length, 'compound: verify answers carry no chips (ledger card is the receipt)');
+ok(!compoundIntents('aqi kya hai aur kya ye verified hai?').some((f) => f.id === 'verify'), 'compound: verify clause never enters TOPICAL composition');
+
+/* ---------------- v0.8.54 — the receipt strip ----------------
+   Chips exist only when the source truly fed the answer; aqi adds the
+   station chip ONLY when the live monitor answered. */
+const rRain = await askFull(STATE_FARM, 'Will it rain today?');
+ok(rRain.ret.receipts?.length === 1 && rRain.ret.receipts[0].k === 'forecast', 'receipts: rain → forecast only', JSON.stringify(rRain.ret.receipts));
+ok(typeof rRain.ret.receipts[0].fresh === 'string' && rRain.ret.receipts[0].fresh.length > 0, 'receipts: forecast chip carries the honest age');
+const rAqi = await askFull(STATE_FARM, 'what is the AQI?');
+ok(rAqi.ret.receipts?.some((r) => r.k === 'air'), 'receipts: aqi → air model chip');
+ok(!rAqi.ret.receipts?.some((r) => r.k === 'station'), 'receipts: station chip absent when no monitor spoke');
+const rWear = await askFull(STATE_FARM, 'what should I wear?');
+ok(rWear.ret.receipts?.some((r) => r.k === 'air') && rWear.ret.receipts?.some((r) => r.k === 'forecast'), 'receipts: wear → forecast + air (mask rule)');
+const rHelp = await askFull(STATE_FARM, 'help');
+ok(rHelp.ret.receipts?.length === 0, 'receipts: help quotes no data → no chips');
+const STATION_STATE = {
+  ...STATE_FARM,
+  station: { ok: true, aqi: 91, ageMin: 34, station: { name: 'Hapur CPCB', distanceKm: 2.1 } },
+};
+const rAqiSt = await askFull(STATION_STATE, 'what is the AQI?');
+ok(rAqiSt.ret.receipts?.some((r) => r.k === 'station' && /34/.test(r.fresh ?? '')), 'receipts: station chip with the reading age when the monitor spoke');
+const compRec = comp.ret.receipts ?? [];
+ok(compRec.some((r) => r.k === 'forecast') && compRec.some((r) => r.k === 'air'), 'receipts: compound unions its parts (forecast+air)');
+ok(answerReceipts(STATE_FARM, []).length === 0 && answerReceipts(null, ['rain']).length === 0, 'receipts: honest empty on no-state / no-ids');
+/* raw source keys — the Z.ai preview path declares what the model was FED */
+const zaiCtx = answerReceipts(STATE_FARM, ['forecast', 'air', 'witness']);
+ok(zaiCtx.some((r) => r.k === 'forecast') && zaiCtx.some((r) => r.k === 'air'), 'receipts: zai context keys → forecast+air chips');
+ok(!zaiCtx.some((r) => r.k === 'witness'), 'receipts: witness chip only when the witness spoke');
+ok(answerReceipts(STATE_FARM, ['nonsense-key']).length === 0, 'receipts: unknown keys contribute nothing');
 
 console.log(`\noffline-intents: ${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);
