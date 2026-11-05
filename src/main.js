@@ -137,23 +137,31 @@ function moveTabPill(instant = false) {
 
 function go(page) {
   if (!PAGES.includes(page)) page = 'home';
+  const same = page === currentPage;
   currentPage = page;
-  for (const p of PAGES) {
-    $(`page-${p}`)?.classList.toggle('active', p === page);
-    $(`tab-${p}`)?.classList.toggle('active', p === page);
-    $(`tab-${p}`)?.setAttribute('aria-current', p === page ? 'page' : 'false');
-  }
-  document.title = PAGE_TITLE[page] ?? 'Mausam';
-  window.scrollTo({ top: 0 });
-  // keep the URL in sync so manifest shortcuts (#mitra, #crops…) and back
-  // buttons behave; replaceState avoids polluting history on every tab tap
-  try { history.replaceState(null, '', `#${page}`); } catch { /* file:// etc. */ }
-  if (page === 'crops') showCrops();
-  if (page === 'mitra') showMitra();
-  if (page === 'you') renderYou();
-  if (page === 'settings') renderSettings();
-  pageEnter(page); // staged entrance for the incoming tab's sections
-  moveTabPill();
+  const apply = () => {
+    for (const p of PAGES) {
+      $(`page-${p}`)?.classList.toggle('active', p === page);
+      $(`tab-${p}`)?.classList.toggle('active', p === page);
+      $(`tab-${p}`)?.setAttribute('aria-current', p === page ? 'page' : 'false');
+    }
+    document.title = PAGE_TITLE[page] ?? 'Mausam';
+    window.scrollTo({ top: 0 });
+    // keep the URL in sync so manifest shortcuts (#mitra, #crops…) and back
+    // buttons behave; replaceState avoids polluting history on every tab tap
+    try { history.replaceState(null, '', `#${page}`); } catch { /* file:// etc. */ }
+    if (page === 'crops') showCrops();
+    if (page === 'mitra') showMitra();
+    if (page === 'you') renderYou();
+    if (page === 'settings') renderSettings();
+    pageEnter(page); // staged entrance for the incoming tab's sections
+    moveTabPill();
+  };
+  // Real tab switches dissolve the OLD page through the View Transitions
+  // API (its frozen snapshot fades while pageEnter staggers the live new
+  // page in beneath it). Re-renders of the current page stay instant.
+  if (!same && document.startViewTransition) document.startViewTransition(apply);
+  else apply();
 }
 
 for (const p of PAGES) {

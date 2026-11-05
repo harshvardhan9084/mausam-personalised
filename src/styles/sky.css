@@ -228,11 +228,10 @@
   to { opacity: 1; transform: none; }
 }
 
-.page.active { animation: pageIn 0.26s cubic-bezier(0.2, 0.7, 0.3, 1); }
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: none; }
-}
+/* pageIn is retired — motion.js pageEnter owns tab entrances in every
+   browser; the duplicate here also ran the same keyframe at a different
+   duration (drift). The old page's dissolve lives in app.css's View
+   Transitions rules. */
 
 /* ---------------- responsive + motion safety ---------------- */
 

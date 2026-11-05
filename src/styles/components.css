@@ -241,6 +241,17 @@ button.hour-card:focus-visible { outline: 2px solid var(--accent); outline-offse
   padding: 16px;
 }
 .modal-overlay.active { display: flex; }
+
+/* Entrances: the scrim fades, the box rises a hand-width and settles —
+   the same arrival grammar as chat turns and the tab dissolve. Sheets
+   reuse .modal-box so bottom sheets rise the same way. Closing stays
+   instant (no exit choreography to fight the dismiss gesture). */
+@media (prefers-reduced-motion: no-preference) {
+  .modal-overlay.active { animation: ov-in var(--t-fast) both; }
+  .modal-overlay.active .modal-box { animation: box-in var(--t-med) both; }
+}
+@keyframes ov-in { from { opacity: 0; } }
+@keyframes box-in { from { opacity: 0; transform: translateY(10px); } }
 .modal-box {
   background: var(--surface);
   border: 1px solid var(--border);

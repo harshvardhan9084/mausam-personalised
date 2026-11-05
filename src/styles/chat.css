@@ -85,7 +85,11 @@
   scrollbar-width: thin;
 }
 
-.chat-msg { max-width: 88%; animation: msgIn 0.2s ease; }
+/* Turns animate in ONLY on the live send path (.msg-in added by bubble());
+   restored history re-renders silently — a tab switch must not replay the
+   whole conversation. Component cards keep their popIn() arrival. */
+.chat-msg { max-width: 88%; }
+.chat-msg.msg-in { animation: msgIn var(--t-med) ease-out; }
 @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .chat-msg.bot { align-self: flex-start; }
 .chat-msg.user { align-self: flex-end; }
@@ -320,7 +324,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chat-panel.active, .chat-msg { animation: none; }
+  .chat-panel.active, .chat-msg.msg-in { animation: none; }
 }
 
 /* ================================================================

@@ -481,15 +481,15 @@ function stickToBottom(force = false) {
   updateScrollBtn();
 }
 
-function bubble(role, node) {
-  const b = el(`div.chat-msg.${role}`, null, node);
+function bubble(role, node, enter = false) {
+  const b = el(`div.chat-msg.${role}${enter ? '.msg-in' : ''}`, null, node);
   msgs.appendChild(b);
   requestAnimationFrame(() => stickToBottom());
   return b;
 }
 
-function renderUserText(text) {
-  bubble('user', el('div.chat-user-text', null, text));
+function renderUserText(text, enter = false) {
+  bubble('user', el('div.chat-user-text', null, text), enter);
 }
 
 /** Re-render stored bot text (prose + MausamUI fences + tool cards →
@@ -551,14 +551,14 @@ function mountChatCard(box, payload, send) {
   else box.appendChild(document.createComment(''));
 }
 
-function botTurn({ withTyping = false } = {}) {
+function botTurn({ withTyping = false, enter = false } = {}) {
   const streamBox = el('div.chat-stream.chat-text', { 'aria-live': 'polite' });
   const cards = el('div.chat-cards');
   const metaBadge = el('span');
   const metaActions = el('span.chat-meta-actions');
   const meta = el('div.chat-meta', null, metaBadge, metaActions);
   const wrap = el('div', null, streamBox, cards, meta);
-  const b = bubble('bot', wrap);
+  const b = bubble('bot', wrap, enter);
   let typing = null;
   if (withTyping) {
     typing = el('div.typing', null, el('span'), el('span'), el('span'));
@@ -685,14 +685,14 @@ async function send(raw, { isRetry = false } = {}) {
   if (inputHistory.length > 20) inputHistory.shift();
   historyIdx = -1;
 
-  renderUserText(text);
+  renderUserText(text, true);
   input.value = '';
   input.style.height = '';
   if (countEl) countEl.textContent = '';
   setBusy(true);
   controller = new AbortController();
   followStream = true; // v0.8.51 — a fresh turn follows the stream again
-  const turn = botTurn({ withTyping: true });
+  const turn = botTurn({ withTyping: true, enter: true });
   setProviderLabel('');
 
   let streamed = '';
@@ -825,7 +825,7 @@ function submit() { send(input.value); }
 /* ---------------- welcome ---------------- */
 
 function welcome() {
-  const turn = botTurn();
+  const turn = botTurn({ enter: true });
   const s = getState();
   const n = s?.snapshot?.now;
   const name = getProfile()?.name;

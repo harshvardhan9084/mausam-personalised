@@ -13,6 +13,21 @@
 .page { display: none; }
 .page.active { display: block; }
 
+/* The OLD page's dissolve: tab switches run through the View Transitions
+   API (main.js). The outgoing snapshot fades on --t-fast while the live
+   incoming page is already staggering in beneath it (motion.js pageEnter)
+   — so the new side gets NO animation here; adding one compounded the
+   arrival. Browsers without the API just switch; reduced-motion keeps
+   everything instant. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: vt-out var(--t-fast) both; }
+  ::view-transition-new(root) { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+@keyframes vt-out { to { opacity: 0; } }
+
 .page-scroll {
   padding: 18px 14px 10px;
   max-width: 760px;
@@ -948,12 +963,11 @@ button.aqi-trend-bar:focus-visible { outline: 2px solid var(--accent); outline-o
    10-day list, composer, crops filter, settings about
 ================================================================ */
 
-/* ---------- page transition (re-runs on display:none → block) ---------- */
-.page.active { animation: pageIn 0.22s var(--t-med); }
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
+/* ---------- page transition ---------- */
+/* The CSS pageIn rise is retired: motion.js pageEnter owns tab entrances in
+   EVERY browser (WAAPI), and running both double-charged the arrival. What
+   CSS still adds is the OLD page's dissolve via the View Transitions API —
+   see the top of this file. */
 
 /* ---------- pull-to-refresh indicator ---------- */
 #ptr-indicator {
