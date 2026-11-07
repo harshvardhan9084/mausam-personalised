@@ -236,7 +236,11 @@ const CLAUSE_SPLIT = /\?|।|\.|;|!|,|(?:\s+और\s+)|(?:\s+या\s+)|(?:\s+\b
 export function compoundIntents(q) {
   const text = String(q ?? '');
   if (!text.trim()) return [];
-  const clauses = text.split(CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length >= 3);
+  /* v0.8.55 — a fragment that classifies on its own survives however short
+     it is ("aqi and uv?" kept losing UV to the old length>=3 filter). The
+     ≥2-distinct-topics gate below still guards composition, so a lone
+     short topic can never fire a compound by itself. */
+  const clauses = text.split(CLAUSE_SPLIT).map((c) => c.trim()).filter((c) => c.length >= 3 || classify(c).score > 0);
   const out = [];
   for (const clause of clauses) {
     const id = classify(clause).id;
@@ -276,7 +280,11 @@ function buildCompound(state, q, found) {
     .map((f) => singleBuild(f.id, state, f.clause))
     .filter(Boolean);
   if (parts.length < 2) return null;
-  const text = parts.map((p) => p.text).join('\n\n');
+  /* v0.8.55 — the localized bridge: a bare '\n\n' reads like two answers
+     pasted together; 'Also —' / 'और यह भी —' reads like ONE answer that
+     took both halves seriously (same connective grammar a model uses). */
+  const bridge = tr('mt_cx_bridge');
+  const text = parts.map((p) => p.text).filter(Boolean).join(`\n\n${bridge} `);
   const comps = [];
   let pendingChips = null;
   for (const p of parts) {
@@ -454,7 +462,9 @@ function buildGreet(state, you) {
 function buildHelp() {
   return {
     text: tr('mt_help_intro'),
-    comps: [fence('chips', { items: [tr('sugg_rain'), tr('mt_sugg_hours12'), tr('sugg_wear'), tr('sugg_run'), tr('mt_sugg_aqinow'), tr('sugg_city'), tr('mt_sugg_picnic'), tr('mt_sugg_sunset')] })],
+    /* v0.8.55 — the compound example rides second, teaching the
+       two-topics-one-turn power right where the capabilities are listed. */
+    comps: [fence('chips', { items: [tr('sugg_rain'), tr('mt_sugg_compound'), tr('mt_sugg_hours12'), tr('sugg_wear'), tr('sugg_run'), tr('mt_sugg_aqinow'), tr('sugg_city'), tr('mt_sugg_picnic'), tr('mt_sugg_sunset')] })],
   };
 }
 

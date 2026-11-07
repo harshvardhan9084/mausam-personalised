@@ -691,12 +691,14 @@ function addListenAction(turn, getText) {
 function suggestions() {
   const p = getProfile();
   const ints = p?.interests ?? [];
-  const out = [t('sugg_rain'), t('sugg_wear')];
+  /* v0.8.55 — the compound chip rides second: right after "Will it rain?",
+     the empty state teaches the "two questions, one turn" power. */
+  const out = [t('sugg_rain'), t('mt_sugg_compound'), t('sugg_wear')];
   if (ints.includes('farming')) out.unshift(t('sugg_farm'));
   if (ints.includes('wedding')) out.unshift(t('sugg_wedding'));
   if (ints.includes('laundry') || ints.includes('cooking')) out.push(t('sugg_laundry'));
   if (ints.includes('fitness') || ints.includes('cycling')) out.splice(1, 0, t('sugg_run'));
-  out.push(t('sugg_air'), t('sugg_verify'), t('sugg_city'), t('sugg_weekend'));
+  out.push(t('sugg_air'), t('sugg_verify'), t('sugg_city'));
   return out.slice(0, 6);
 }
 

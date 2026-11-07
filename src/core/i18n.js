@@ -640,6 +640,9 @@ const dict = {
   mt_sugg_hourly: ['Hourly forecast', 'प्रति-घंटा हाल'],
   mt_sugg_out: ['Best time to be outdoors?', 'बाहर का सही समय?'],
   mt_sugg_aqinow: ['Air quality now', 'अभी हवा की गुणवत्ता'],
+  /* v0.8.55 — compound questions, taught + bridged. */
+  mt_sugg_compound: ['Rain and air quality?', 'बारिश और AQI?'],
+  mt_cx_bridge: ['Also —', 'और यह भी —'],
   mt_sugg_sunset: ['When is sunset?', 'सूर्यास्त कब है?'],
   mt_sugg_picnic: ['Plan my Sunday picnic', 'रविवार की पिकनिक बनाओ'],
   mt_reason_rain: ['{p}% rain', '{p}% बारिश'],
