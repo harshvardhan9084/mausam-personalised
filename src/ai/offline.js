@@ -1076,5 +1076,43 @@ export function offlineErrorCopy() {
   return { title: tr('mt_err_title'), text: tr('mt_err_text') };
 }
 
+/* v0.8.56 — the chips read the sky (ported from the converged parallel
+   cycle, rebased onto the v0.8.54/55 compound engine). The welcome and
+   post-turn chips stop being a fixed list and read the LIVE snapshot:
+   the rain chip names the concrete hour rain reaches 40% (or asks about
+   the week when the sky is dry), the air chip carries the live AQI
+   number once it is worth asking about, UV and spray chips appear only
+   when their data exists. Every generated phrase is classified back to
+   the intent that answers it — pinned by the offline-intents suite in
+   EN and hi — so a tap always lands on a real answer, never a dead end.
+   Evergreens fill the remaining slots and the verify chip always
+   survives (the honesty signature of the conversation). The v0.8.55
+   compound teach-chip rides on top of this base in mitra.js. */
+export function suggestChips(state) {
+  const s = state?.snapshot;
+  const out = [];
+  if (s) {
+    const rs = rainStory(state);
+    if (rs) {
+      if (rs.firstWet && rs.maxPop >= 40) out.push(tr('mt_chip_rainby', { time: hourLabel(rs.firstWet.time) }));
+      else if (rs.maxPop < 25) out.push(tr('mt_chip_weeklook'));
+      else out.push(tr('sugg_rain'));
+    }
+    const aqi = s.currentAqi?.aqi;
+    if (aqi != null && aqi >= 150) out.push(tr('mt_chip_aqin', { a: aqi }));
+    else out.push(tr('sugg_air'));
+    const uvv = s.now?.uv;
+    if (uvv != null && uvv >= 6) out.push(tr('mt_chip_uv'));
+    if (soilNow(state)) out.push(tr('mt_chip_spray'));
+  }
+  const fill = [tr('sugg_wear'), tr('sugg_run'), tr('sugg_city'), tr('sugg_weekend')];
+  for (const f of fill) {
+    if (out.length >= 5) break;
+    if (!out.includes(f)) out.push(f);
+  }
+  out.push(tr('sugg_verify'));
+  return [...new Set(out)];
+}
+
 /** Keep runTool reachable for future expansions. */
 export { runTool };

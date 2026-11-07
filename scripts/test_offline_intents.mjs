@@ -17,7 +17,7 @@ import { parseBlock } from '../src/ai/contract.js';
    minimal global before its dynamic import (static imports hoist, so the
    engine itself is pulled in after the stub exists). */
 globalThis.window = { __mausamState: { units: 'metric' } };
-const { offlineChat, classifyIntent, isVerifyQuestion } = await import('../src/ai/offline.js');
+const { offlineChat, classifyIntent, isVerifyQuestion, suggestChips } = await import('../src/ai/offline.js');
 
 let pass = 0, fail = 0;
 const ok = (cond, name, extra) => { if (cond) { pass++; } else { fail++; console.error('  ✗ ' + name + (extra ? ` — ${extra}` : '')); } };
@@ -194,6 +194,45 @@ const zaiCtx = answerReceipts(STATE_FARM, ['forecast', 'air', 'witness']);
 ok(zaiCtx.some((r) => r.k === 'forecast') && zaiCtx.some((r) => r.k === 'air'), 'receipts: zai context keys → forecast+air chips');
 ok(!zaiCtx.some((r) => r.k === 'witness'), 'receipts: witness chip only when the witness spoke');
 ok(answerReceipts(STATE_FARM, ['nonsense-key']).length === 0, 'receipts: unknown keys contribute nothing');
+
+/* ---------------- v0.8.56 — context-aware chips: classification ----------------
+   Every generated chip phrase must route to the intent that answers it,
+   otherwise a tap dead-ends. EN + hi, all five phrases (verified against
+   the v0.8.54/55 compound engine's classifier). */
+ok(classifyIntent('Will it rain by 9 AM?') === 'rain', 'chip: rain-by routes to rain');
+ok(classifyIntent('How is the week looking?') === 'week', 'chip: weeklook routes to week');
+ok(classifyIntent('AQI 214 — how bad is it?') === 'aqi', 'chip: aqin routes to aqi');
+ok(classifyIntent('How strong is the UV today?') === 'uv', 'chip: uv routes to uv');
+ok(classifyIntent('Best spray window this week?') === 'farm', 'chip: spray routes to farm');
+ok(classifyIntent('शाम 5 बजे तक बारिश होगी?') === 'rain', 'chip hi: rain-by routes to rain');
+ok(classifyIntent('हफ़्ता कैसा जाएगा?') === 'week', 'chip hi: weeklook routes to week');
+ok(classifyIntent('AQI 214 — कितना खराब है?') === 'aqi', 'chip hi: aqin routes to aqi');
+ok(classifyIntent('आज UV कितना तेज़ है?') === 'uv', 'chip hi: uv routes to uv');
+ok(classifyIntent('इस हफ़्ते छिड़काव की खिड़की?') === 'farm', 'chip hi: spray routes to farm');
+
+/* ---------------- v0.8.56 — suggestChips(state) ---------------- */
+const CHIP_WET = {
+  snapshot: {
+    now: { temp: 26, feels: 28, wx: { icon: 'rain', label: 'Rain' }, uv: 8, humidity: 70, wind: 10 },
+    hours: Array.from({ length: 24 }, (_, i) => H(i, { pop: i === 3 ? 65 : 15 })),
+    days: STATE_FARM.snapshot.days,
+    currentAqi: { aqi: 214, category: 'Poor', dominant: 'pm25' },
+  },
+  location: { name: 'Delhi' },
+};
+const wetChips = suggestChips(CHIP_WET);
+ok(wetChips.some((c) => /by 9 AM/.test(c)), 'chips: wet sky names the concrete rain hour', wetChips.join(' | '));
+ok(wetChips.some((c) => c.includes('214')), 'chips: live AQI number rides in the chip');
+ok(wetChips.some((c) => /UV/i.test(c)), 'chips: uv chip appears when uv >= 6');
+ok(wetChips[wetChips.length - 1] === 'Is this data verified?', 'chips: verify signature stays last');
+ok(wetChips.length <= 6 && new Set(wetChips).size === wetChips.length, 'chips: capped at 6, no duplicates');
+ok(wetChips.every((c) => classifyIntent(c) !== 'default'), 'chips: every generated chip routes to a real intent');
+const dryChips = suggestChips(STATE_FARM);
+ok(dryChips.some((c) => c === 'How is the week looking?'), 'chips: dry sky asks about the week');
+ok(dryChips.some((c) => c === 'Best spray window this week?'), 'chips: spray chip when soil speaks');
+ok(!dryChips.some((c) => /by \d/.test(c)), 'chips: no fake rain hour when sky is dry');
+const bareChips = suggestChips({});
+ok(bareChips.includes('What should I wear?') && bareChips.includes('Is this data verified?'), 'chips: no snapshot → honest evergreens');
 
 console.log(`\noffline-intents: ${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

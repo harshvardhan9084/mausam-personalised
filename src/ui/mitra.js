@@ -16,6 +16,7 @@
 
 import { el, clear, trapFocus } from '../utils/dom.js';
 import { runChatTurn } from '../ai/client.js';
+import { suggestChips } from '../ai/offline.js';
 import { renderPayload, renderFallback, proseNode, createStreamParser } from '../ai/render.js';
 import { t, getLang } from '../core/i18n.js';
 import { getProfile } from '../core/profile.js';
@@ -691,15 +692,32 @@ function addListenAction(turn, getText) {
 function suggestions() {
   const p = getProfile();
   const ints = p?.interests ?? [];
-  /* v0.8.55 — the compound chip rides second: right after "Will it rain?",
-     the empty state teaches the "two questions, one turn" power. */
-  const out = [t('sugg_rain'), t('mt_sugg_compound'), t('sugg_wear')];
-  if (ints.includes('farming')) out.unshift(t('sugg_farm'));
-  if (ints.includes('wedding')) out.unshift(t('sugg_wedding'));
-  if (ints.includes('laundry') || ints.includes('cooking')) out.push(t('sugg_laundry'));
-  if (ints.includes('fitness') || ints.includes('cycling')) out.splice(1, 0, t('sugg_run'));
-  out.push(t('sugg_air'), t('sugg_verify'), t('sugg_city'));
-  return out.slice(0, 6);
+  /* v0.8.56 — the chips read the sky: the base set is generated from the
+     LIVE snapshot (concrete rain hour, live AQI number, UV/spray only when
+     their data exists — see offline.js suggestChips). The v0.8.55 compound
+     teach-chip still rides second so the empty state keeps teaching "two
+     questions, one turn"; profile interests personalize on top; duplicates
+     never ship; the verify chip always survives as the honesty signature. */
+  const base = suggestChips(getState());
+  base.splice(Math.min(1, base.length), 0, t('mt_sugg_compound'));
+  if (ints.includes('farming') && !base.includes(t('sugg_farm'))) base.unshift(t('sugg_farm'));
+  if (ints.includes('wedding')) base.unshift(t('sugg_wedding'));
+  if (ints.includes('laundry') || ints.includes('cooking')) base.push(t('sugg_laundry'));
+  if (ints.includes('fitness') || ints.includes('cycling')) base.splice(1, 0, t('sugg_run'));
+  const seen = new Set();
+  const out = [];
+  for (const s2 of base) {
+    if (seen.has(s2)) continue;
+    seen.add(s2);
+    out.push(s2);
+    if (out.length >= 6) break;
+  }
+  const verify = t('sugg_verify');
+  if (!seen.has(verify)) {
+    if (out.length >= 6) out[5] = verify;
+    else out.push(verify);
+  }
+  return out;
 }
 
 /* ---------------- the turn ---------------- */

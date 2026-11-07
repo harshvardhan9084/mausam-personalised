@@ -643,6 +643,14 @@ const dict = {
   /* v0.8.55 — compound questions, taught + bridged. */
   mt_sugg_compound: ['Rain and air quality?', 'बारिश और AQI?'],
   mt_cx_bridge: ['Also —', 'और यह भी —'],
+  /* v0.8.56 — context-aware chips: generated from the LIVE snapshot, each
+     phrased so classify() routes it to the intent that truly answers it
+     (pinned by the offline-intents suite, EN + hi). */
+  mt_chip_rainby:   ['Will it rain by {time}?', '{time} तक बारिश होगी?'],
+  mt_chip_weeklook: ['How is the week looking?', 'हफ़्ता कैसा जाएगा?'],
+  mt_chip_aqin:     ['AQI {a} — how bad is it?', 'AQI {a} — कितना खराब है?'],
+  mt_chip_uv:       ['How strong is the UV today?', 'आज UV कितना तेज़ है?'],
+  mt_chip_spray:    ['Best spray window this week?', 'इस हफ़्ते छिड़काव की खिड़की?'],
   mt_sugg_sunset: ['When is sunset?', 'सूर्यास्त कब है?'],
   mt_sugg_picnic: ['Plan my Sunday picnic', 'रविवार की पिकनिक बनाओ'],
   mt_reason_rain: ['{p}% rain', '{p}% बारिश'],
