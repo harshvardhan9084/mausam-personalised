@@ -19,16 +19,6 @@
   .sheet-box { border-radius: 20px; max-height: 86vh; }
 }
 
-/* ---------- settings blocks ----------
-   v0.8.58: one block rhythm — 16px 2px everywhere (was 14/16 here vs 16/2
-   on .page-block and 13/15 on .you-block; the merged page alternated all
-   three). The duplicate .settings-h rule that lived here is retired to
-   app.css (the canonical eyebrow-voice rule). */
-.settings-block {
-  padding: 16px 2px;
-  border-bottom: 1px solid var(--border);
-}
-.settings-block:last-child { border-bottom: none; }
 .set-seg { margin-bottom: 8px; }
 .set-label {
   font-size: var(--text-2xs);
@@ -61,7 +51,8 @@
 .key-row { display: flex; gap: 8px; }
 .key-row .set-input { flex: 1; }
 .key-row .btn-xs { font-size: var(--text-xs); padding: 6px 10px; white-space: nowrap; }
-.key-actions { display: flex; gap: 8px; margin-top: 10px; }
+.key-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.key-actions .btn { white-space: nowrap; }
 .key-actions .btn { font-size: var(--text-sm); padding: 7px 13px; }
 
 .set-status { font-size: var(--text-xs); margin-top: 8px; line-height: 1.5; min-height: 1em; }
@@ -104,50 +95,7 @@
 }
 .notif-flow-done .notif-flow-head { color: var(--green); }
 
-/* ---------- you sheet ----------
-   v0.8.58 redesign: two label levels, the app's own grammar — section
-   titles are the muted caps eyebrows (.you-block-title), field labels
-   are the sentence-case row voice the settings toggles already speak
-   (.toggle-title: --text-md 600 dark). Caps-on-caps made every field
-   shout; now only sections do, quietly. */
-.you-block { padding: 14px 2px; border-bottom: 1px solid var(--border); }
-.you-block:last-child { border-bottom: none; }
-.you-label {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 8px;
-  line-height: 1.45;
-}
-/* schedule: a calm 2×2 grid instead of a wrapped inline row — four
-   fields scan as one block, labels stay on one line. */
-.you-times {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 14px;
-  margin-top: 12px;
-}
-.you-time {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 700;
-  color: var(--muted);
-}
-.you-select {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: var(--text-sm);
-  width: 100%;
-}
-.you-select:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
-
+/* ---------- you sheet controls (chips live here; rows moved to app.css) ---------- */
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 /* two-state chips: OFF reads as a quiet neutral control, ON carries the
    accent — the old all-accent-tinted grid had no hierarchy at all. */

@@ -1,10 +1,15 @@
 /**
- * settings.js — the Settings page (v0.5).
+ * settings.js — the Settings page (v6, designed).
  *
- * Full tab page. Sections: app language, units, clock, theme, accent
- * colour, AI assistant (provider / reply language / Gemini key+model+test),
- * IMD optional key, rain & heat notifications, data saver, data & privacy
- * (export / import / wipe), about.
+ * A settings page that behaves like one product, not a form dump: seven
+ * zone cards under sentence-case headers, rows inside each card, and the
+ * profile zone (the former You tab) as the page's first citizen with the
+ * live Mitra preview as its signature.
+ *
+ * Zones: Your profile (draft/save via you.js) · The app (language, units,
+ * clock, theme, accent) · Mitra (AI provider / reply language / Gemini
+ * key+model+test) · Data sources (live status, IMD optional key, data
+ * saver) · Rain & heat alerts · Your data (export / import / wipe) · About.
  * The Gemini key lives only in this browser and is sent only to Google.
  */
 
@@ -14,7 +19,7 @@ import { store } from '../core/storage.js';
 import { t, setLang } from '../core/i18n.js';
 import { aiSettings } from '../ai/client.js';
 import { geminiChat } from '../ai/gemini.js';
-import { renderYouInto } from './you.js';
+import { renderYouInto, youActionBar } from './you.js';
 
 const MODEL_OPTIONS = [
   'gemini-3.5-flash-lite',
@@ -48,109 +53,170 @@ function build() {
   clear(mount);
   mount.appendChild(el('div.page-h', null, icon('settings', 'page-ico'), ' ', t('set_title')));
 
-  /* ---------------- you / profile (v0.8.57 — merged from the You tab) ----------------
-   * The volatile profile (starter packs, name, schedule, interests,
-   * sensitivities, tone, notes) now opens the Settings page; its save/reset
-   * hooks stay wired through you.js (renderYouInto keeps the same lifecycle). */
-  mount.appendChild(el('div.you-merged'));
-  renderYouInto(mount.querySelector('.you-merged'));
+  /* ================= your profile — the page's first citizen =================
+     The volatile profile (starter packs, name, schedule, interests,
+     sensitivities, tone, notes) with its save/reset hooks stays wired
+     through you.js (renderYouInto fills the card body; the sticky state
+     bar is a page-level sibling so it survives scrolling past the card). */
+  const profBody = el('div.you-body');
+  mount.appendChild(zone('you', t('you_hello'), t('you_sum_hint'), profBody));
+  renderYouInto(profBody);
+  mount.appendChild(youActionBar());
 
-  /* ---------------- language ---------------- */
-  mount.appendChild(section(t('set_lang'),
-    el('div.seg-group.set-seg',
+  /* ================= the app ================= */
+  mount.appendChild(zone('settings', t('set_zone_app'), t('set_zone_app_d'),
+    rowCtl(t('set_lang'), null, el('div.seg-group.seg-compact',
       segBtn(store.lang.get() === 'en', 'English', () => switchLang('en')),
       segBtn(store.lang.get() === 'hi', 'हिंदी', () => switchLang('hi')),
-    )
-  ));
-
-  /* ---------------- units ---------------- */
-  mount.appendChild(section(t('set_units'),
-    el('div.seg-group.set-seg',
+    )),
+    rowCtl(t('set_units'), null, el('div.seg-group.seg-compact',
       segBtn(store.units.get() !== 'imperial', '°C · km/h', () => setUnits('metric')),
       segBtn(store.units.get() === 'imperial', '°F · mph', () => setUnits('imperial')),
-    )
-  ));
-
-  /* ---------------- clock ---------------- */
-  mount.appendChild(section(t('set_clock'),
-    el('div.seg-group.set-seg',
+    )),
+    rowCtl(t('set_clock'), null, el('div.seg-group.seg-compact',
       segBtn(store.clock.get() !== '24', t('set_misc_12'), () => setClock('12')),
       segBtn(store.clock.get() === '24', t('set_misc_24'), () => setClock('24')),
-    )
-  ));
-
-  /* ---------------- theme ---------------- */
-  mount.appendChild(section(t('set_theme'),
-    el('div.seg-group.set-seg',
+    )),
+    rowCtl(t('set_theme'), null, el('div.seg-group.seg-compact',
       segBtn(store.theme.get() === 'auto', 'Auto', () => setTheme('auto')),
       segBtn(store.theme.get() === 'dark', [icon('moon', 'chip-ico'), ' Dark'], () => setTheme('dark')),
       segBtn(store.theme.get() === 'light', [icon('sun', 'chip-ico'), ' Light'], () => setTheme('light')),
-    )
+    )),
+    rowFull(el('div.set-row-t', null, t('set_accent')),
+      el('div.accent-row',
+        ACCENTS.map(([id, name]) =>
+          el('button.accent-swatch', {
+            type: 'button', title: name, 'aria-label': name,
+            class: (store.accent.get() ?? '') === id ? 'on' : '',
+            onclick: () => { store.accent.set(id); hooks?.onAccentChange?.(id); renderSettings(); },
+          }, el('span.accent-dot', { 'data-accent-id': id }))),
+      ),
+    ),
   ));
 
-  /* ---------------- accent ---------------- */
-  mount.appendChild(section(t('set_accent'),
-    el('div.accent-row',
-      ACCENTS.map(([id, name]) =>
-        el('button.accent-swatch', {
-          type: 'button', title: name, 'aria-label': name,
-          class: (store.accent.get() ?? '') === id ? 'on' : '',
-          onclick: () => { store.accent.set(id); hooks?.onAccentChange?.(id); renderSettings(); },
-        }, el('span.accent-dot', { 'data-accent-id': id }))),
-    )
-  ));
-
-  /* ---------------- AI ---------------- */
+  /* ================= mitra (AI) ================= */
   buildAiSection();
 
-  /* ---------------- IMD ---------------- */
-  buildImdSection();
-
-  /* ---------------- data sources (v0.8.40) ---------------- */
+  /* ================= data sources ================= */
   buildSourcesSection();
 
-  /* ---------------- notifications ---------------- */
+  /* ================= alerts ================= */
   buildNotifSection();
 
-  /* ---------------- install the app ---------------- */
-  buildInstallSection();
-
-  /* ---------------- data saver ---------------- */
-  mount.appendChild(section(t('set_data'),
-    toggleRow(t('set_datasaver'), t('set_datasaver_t'), store.dataSaver.get(), (on) => {
-      store.dataSaver.set(on);
-      hooks?.onDataSaverChange?.(on);
-    })
-  ));
-
-  /* ---------------- data & privacy ---------------- */
-  mount.appendChild(section(t('set_backup'),
-    el('div.key-actions',
+  /* ================= your data ================= */
+  mount.appendChild(zone('lock', t('set_zone_priv'), t('set_zone_priv_d'),
+    rowFull(el('div.key-actions',
       el('button.btn', { type: 'button', onclick: exportData }, icon('download', 'chip-ico'), ' ', t('set_export')),
       el('button.btn', { type: 'button', onclick: importData }, icon('upload', 'chip-ico'), ' ', t('set_import')),
       el('button.btn.btn-danger', { type: 'button', onclick: wipeData }, icon('trash', 'chip-ico'), ' ', t('set_wipe')),
-    ),
-    el('div.privacy-note', null, icon('lock', 'chip-ico'), ' ', t('you_intro')),
+    )),
+    rowFull(el('div.privacy-note', null, icon('lock', 'chip-ico'), ' ', t('you_intro'))),
   ));
 
-  /* ---------------- about ---------------- */
-  mount.appendChild(section(t('set_about'),
-    el('div.ver-row', null,
-      el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.59'),
-      el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
-    ),
-    el('div.set-help', null, t('set_about_t')),
+  /* ================= install + about =================
+     Installed: the green proof card rides in About (no loud install
+     section for a state that already happened). Installable / iOS: the
+     install zone keeps its CTA where the prompt can fire. Otherwise the
+     hint would repeat the About line — no zone at all. */
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  const evt = window.__mausamInstallEvt;
+  const iosHint = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const verRow = () => rowFull(el('div.ver-row', null,
+    el('span.ver-label', null, t('set_version')),
+    el('span.ver-badge', null, 'v0.8.60'),
+    el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
   ));
+  const aboutHelp = rowFull(el('div.set-help', null, t('set_about_t')));
+
+  if (standalone) {
+    mount.appendChild(zone('star', t('set_about'), null,
+      rowFull(el('div.notif-flow.notif-flow-done', { role: 'status' },
+        el('div.notif-flow-head', null, icon('check', 'notif-flow-ico'),
+          el('b', null, t('inst_done'))),
+        el('div.notif-flow-body', null, t('inst_done_b')))),
+      verRow(),
+      aboutHelp,
+    ));
+  } else if (evt?.prompt || iosHint) {
+    mount.appendChild(zone('download', t('inst_row'), null,
+      rowFull(el('div.set-row-d', null, t('inst_row_t'))),
+      evt?.prompt
+        ? rowFull(el('div.key-actions',
+            el('button.btn.btn-primary', {
+              type: 'button',
+              onclick: async () => {
+                try {
+                  evt.prompt();
+                  const { outcome } = await evt.userChoice;
+                  if (outcome === 'accepted') window.__mausamInstallEvt = null;
+                  renderSettings();
+                } catch { /* ignore */ }
+              },
+            }, icon('download', 'chip-ico'), ' ', t('inst_btn'))))
+        : rowFull(el('div.set-row-d', null, t('inst_ios_hint'))),
+    ));
+    mount.appendChild(zone('star', t('set_about'), null, verRow(), aboutHelp));
+  } else {
+    mount.appendChild(zone('star', t('set_about'), null, verRow(), aboutHelp));
+  }
 }
 
-/* ================= builders ================= */
+/* ================= zone + row builders ================= */
 
-function section(title, ...children) {
-  return el('div.settings-block.page-block', el('div.settings-h', null, title), ...children);
+/* A zone: sentence-case header + one-line description, then a card of
+   rows. No eyebrows, no tracked caps — the header carries its own weight. */
+function zone(icoName, title, desc, ...children) {
+  return el('section.set-zone',
+    el('div.set-zone-h',
+      el('div.set-zone-t', null, icon(icoName, 'set-zone-ico'), ' ', title),
+      desc ? el('div.set-zone-d', null, desc) : null,
+    ),
+    el('div.set-card', ...children),
+  );
 }
 
-/* ---------------- data sources section (v0.8.40, live rows v0.8.44) ----------------
+/* label-left / control-right row */
+function rowCtl(title, help, ctl) {
+  return el('div.set-row',
+    el('div.set-row-tx',
+      el('div.set-row-t', null, title),
+      help ? el('div.set-row-d', null, help) : null,
+    ),
+    el('div.set-row-ctl', ctl),
+  );
+}
+
+/* full-width stack row (title, then whatever it labels) */
+function rowFull(...children) {
+  return el('div.set-rowcol', ...children);
+}
+
+/* title+help left, switch right — the settings-row voice */
+function toggleRow(title, help, on, onChange) {
+  const knob = el('span.toggle-knob');
+  const btn = el('button.toggle', {
+    type: 'button', role: 'switch', 'aria-checked': String(on), class: on ? 'on' : '',
+    onclick: () => {
+      const next = !btn.classList.contains('on');
+      btn.classList.toggle('on', next);
+      btn.setAttribute('aria-checked', String(next));
+      onChange(next);
+    },
+  }, knob);
+  return el('div.set-row',
+    el('div.set-row-tx',
+      el('div.set-row-t', null, title),
+      help ? el('div.set-row-d', null, help) : null,
+    ),
+    btn,
+  );
+}
+
+function segBtn(active, label, onclick) {
+  return el('button.seg-btn', { type: 'button', class: active ? 'active' : '', onclick }, label);
+}
+
+/* ================= data sources zone (v0.8.40, live rows v0.8.44) =================
  * The rows are STATUS, not switches. Three honest states share one dot
  * grammar: green = the source answered and its data is on the card,
  * amber pulse = the fetch is in flight right now, grey = the source has
@@ -225,67 +291,54 @@ if (typeof document !== 'undefined') {
 }
 
 function buildSourcesSection() {
+  const status = el('div.set-status', { role: 'status' });
+  const input = el('input.set-input.mono', {
+    type: 'password', placeholder: 'api.imd.gov.in key (optional)',
+    autocomplete: 'off', spellcheck: 'false', value: store.imdKey.get() ?? '',
+    oninput: () => setStatus(status, '', ''),
+  });
+
+  const saverRow = toggleRow(t('set_datasaver'), t('set_datasaver_t'), store.dataSaver.get(), (on) => {
+    store.dataSaver.set(on);
+    hooks?.onDataSaverChange?.(on);
+  });
+
   srcRowsBox = el('div.src-rows');
   srcRowsBox.append(...sourceRows()); // initial paint, unguarded — v0.8.44 lesson: isConnected is false before append
-  mount.appendChild(section(t('set_sources'),
-    el('div.set-help', null, t('set_sources_help')),
-    srcRowsBox));
-}
 
-function buildInstallSection() {
-  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
-  if (standalone) {
-    /* v0.8.17 "the install moment deserves design": the installed state stops
-       being a plain text row and wears the v0.8.12 tone-card language
-       (green tint, check glyph, what-installing-means body). */
-    mount.appendChild(section(t('inst_row'),
-      el('div.notif-flow.notif-flow-done', { role: 'status' },
-        el('div.notif-flow-head', null, icon('check', 'notif-flow-ico'),
-          el('b', null, t('inst_done'))),
-        el('div.notif-flow-body', null, t('inst_done_b')))));
-    return;
+  mount.appendChild(zone('pulse', t('set_sources'), t('set_zone_data_d'),
+    rowFull(el('div.set-row-d', null, t('set_sources_help')), srcRowsBox),
+    rowFull(el('div.set-row-t', null, t('set_imd')),
+      el('div.set-row-d', null, t('set_imd_help')),
+      input,
+      el('div.key-actions',
+        el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(input.value); testImd(input.value.trim(), status); } }, t('set_test')),
+        el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(''); input.value = ''; setStatus(status, 'Open-Meteo only', 'ok'); hooks?.onImdChange?.(); } }, t('you_reset')),
+      ),
+      status,
+    ),
+    saverRow,
+  ));
+
+  async function testImd(key, statusNode) {
+    if (!key) { setStatus(statusNode, 'Enter a key first.', 'bad'); return; }
+    setStatus(statusNode, '…', 'busy');
+    const { testImdKey } = await import('../api/imd.js');
+    try {
+      const res = await testImdKey(key);
+      if (res.ok) {
+        setStatus(statusNode, `✓ ${res.message}${res.sample?.max != null ? ` ${res.sample.max}°/${res.sample.min}°` : ''}`, 'ok');
+        hooks?.onImdChange?.();
+      } else {
+        setStatus(statusNode, `✗ ${res.message}${res.hint ? ` ${res.hint}` : ''}`, 'bad');
+      }
+    } catch {
+      setStatus(statusNode, '✗ failed', 'bad');
+    }
   }
-  const kids = [el('div.set-help', null, t('inst_row_t'))];
-  const evt = window.__mausamInstallEvt;
-  if (evt?.prompt) {
-    kids.push(el('div.key-actions',
-      el('button.btn.btn-primary', {
-        type: 'button',
-        onclick: async () => {
-          try {
-            evt.prompt();
-            const { outcome } = await evt.userChoice;
-            if (outcome === 'accepted') window.__mausamInstallEvt = null;
-            renderSettings();
-          } catch { /* ignore */ }
-        },
-      }, icon('download', 'chip-ico'), ' ', t('inst_btn')),
-    ));
-  } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    kids.push(el('div.set-help', null, t('inst_ios_hint')));
-  }
-  mount.appendChild(section(t('inst_row'), ...kids));
 }
 
-function segBtn(active, label, onclick) {
-  return el('button.seg-btn', { type: 'button', class: active ? 'active' : '', onclick }, label);
-}
-
-function toggleRow(title, help, on, onChange) {
-  const knob = el('span.toggle-knob');
-  const btn = el('button.toggle', {
-    type: 'button', role: 'switch', 'aria-checked': String(on), class: on ? 'on' : '',
-    onclick: () => {
-      const next = !btn.classList.contains('on');
-      btn.classList.toggle('on', next);
-      btn.setAttribute('aria-checked', String(next));
-      onChange(next);
-    },
-  }, knob);
-  return el('div.toggle-row', el('div', el('div.toggle-title', null, title), el('div.set-help', null, help)), btn);
-}
-
-/* ---------------- AI section ---------------- */
+/* ================= AI (Mitra) zone ================= */
 
 function buildAiSection() {
   const cfg = aiSettings();
@@ -295,15 +348,16 @@ function buildAiSection() {
     el('button.seg-btn', {
       type: 'button', 'data-provider': p,
       class: (cfg.provider ?? 'auto') === p ? 'active' : '',
-      onclick: () => {
+      onclick: (e) => {
         store.ai.set({ provider: p });
         refreshGeminiZone();
-        [...zone.parentElement.querySelectorAll('[data-provider]')].forEach((b) =>
+        const group = e.currentTarget.closest('.seg-group');
+        [...group.querySelectorAll('[data-provider]')].forEach((b) =>
           b.classList.toggle('active', b.dataset.provider === p));
       },
     }, p === 'auto' ? 'Auto' : p === 'zai' ? 'Z.ai preview' : p === 'gemini' ? 'Gemini' : t('nav_mitra') + ' Core'));
 
-  const aiLangSel = el('select.set-select', {
+  const aiLangSel = el('select.set-select.set-select-sm', {
     onchange: (e) => store.aiLang.set(e.target.value),
   }, ['auto', 'en', 'hi', 'hinglish'].map((v) =>
     el('option', { value: v, selected: (store.aiLang.get() ?? 'auto') === v }, t(`ai_lang_${v}`))));
@@ -311,7 +365,7 @@ function buildAiSection() {
   const keyInput = el('input.set-input', {
     type: 'password', placeholder: 'AIza…', autocomplete: 'off', spellcheck: 'false',
     value: cfg.geminiKey ?? '',
-    oninput: (e) => { store.ai.set({ geminiKey: e.target.value.trim() }); setStatus('', ''); },
+    oninput: (e) => { store.ai.set({ geminiKey: e.target.value.trim() }); setStatus(status, '', ''); },
   });
   const showBtn = el('button.btn.btn-xs', {
     type: 'button',
@@ -328,33 +382,34 @@ function buildAiSection() {
     onchange: (e) => {
       const v = e.target.value.trim() || 'gemini-3.5-flash-lite';
       store.ai.set({ model: v });
-      setStatus(`${t('set_model')}: ${v}`, 'ok');
+      setStatus(status, `${t('set_model')}: ${v}`, 'ok');
     },
   });
 
-  const zone = el('div#ai-gemini-zone',
-    el('div.set-label', null, t('set_gemini_key')),
+  const zoneBody = el('div.set-rowcol', { id: 'ai-gemini-zone' },
+    el('div.set-row-t', null, t('set_gemini_key')),
     el('div.key-row', keyInput, showBtn),
-    el('div.set-help', null, t('set_gemini_help'), ' ',
+    el('div.set-row-d', null, t('set_gemini_help'), ' ',
       el('a', { href: 'https://aistudio.google.com/apikey', target: '_blank', rel: 'noopener' }, 'aistudio.google.com/apikey')),
-    el('div.set-label', null, t('set_model')),
+    el('div.set-row-t', null, t('set_model')),
     modelInput,
     el('datalist', { id: 'model-options' }, MODEL_OPTIONS.map((m) => el('option', { value: m }))),
     el('div.key-actions', el('button.btn', { type: 'button', onclick: () => testGemini(status) }, t('set_test'))),
   );
 
-  mount.appendChild(section(t('set_ai'),
-    el('div.seg-group.set-seg', providerBtns),
-    el('div.set-help', null, t('set_ai_help')),
-    el('div.set-label', null, t('set_ai_lang')),
-    aiLangSel,
-    zone,
+  mount.appendChild(zone('chat', t('set_ai'), t('set_zone_mitra_d'),
+    rowFull(
+      el('div.seg-group.set-seg', providerBtns),
+      el('div.set-row-d', null, t('set_ai_help')),
+    ),
+    rowCtl(t('set_ai_lang'), null, aiLangSel),
+    zoneBody,
     status,
   ));
 
   function refreshGeminiZone() {
     const p = aiSettings().provider ?? 'auto';
-    zone.style.display = (p === 'auto' || p === 'gemini') ? '' : 'none';
+    zoneBody.style.display = (p === 'auto' || p === 'gemini') ? '' : 'none';
   }
   refreshGeminiZone();
 }
@@ -384,44 +439,7 @@ async function testGemini(status) {
   }
 }
 
-/* ---------------- IMD section ---------------- */
-
-function buildImdSection() {
-  const status = el('div.set-status', { role: 'status' });
-  const input = el('input.set-input.mono', {
-    type: 'password', placeholder: 'api.imd.gov.in key (optional)',
-    autocomplete: 'off', spellcheck: 'false', value: store.imdKey.get() ?? '',
-    oninput: () => setStatus(status, '', ''),
-  });
-  mount.appendChild(section(t('set_imd'),
-    el('div.set-help', null, t('set_imd_help')),
-    input,
-    el('div.key-actions',
-      el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(input.value); testImd(input.value.trim(), status); } }, t('set_test')),
-      el('button.btn', { type: 'button', onclick: () => { store.imdKey.set(''); input.value = ''; setStatus(status, 'Open-Meteo only', 'ok'); hooks?.onImdChange?.(); } }, t('you_reset')),
-    ),
-    status,
-  ));
-
-  async function testImd(key, statusNode) {
-    if (!key) { setStatus(statusNode, 'Enter a key first.', 'bad'); return; }
-    setStatus(statusNode, '…', 'busy');
-    const { testImdKey } = await import('../api/imd.js');
-    try {
-      const res = await testImdKey(key);
-      if (res.ok) {
-        setStatus(statusNode, `✓ ${res.message}${res.sample?.max != null ? ` ${res.sample.max}°/${res.sample.min}°` : ''}`, 'ok');
-        hooks?.onImdChange?.();
-      } else {
-        setStatus(statusNode, `✗ ${res.message}${res.hint ? ` ${res.hint}` : ''}`, 'bad');
-      }
-    } catch {
-      setStatus(statusNode, '✗ failed', 'bad');
-    }
-  }
-}
-
-/* ---------------- notifications ---------------- */
+/* ================= alerts zone ================= */
 
 /* v0.8.12 "the ask deserves design": the browser permission prompt is a
    one-shot, trust-heavy moment — it never fires cold from a toggle flip.
@@ -477,7 +495,7 @@ function buildNotifSection() {
   const granted = supported && Notification.permission === 'granted';
   const denied = supported && Notification.permission === 'denied';
   const statusNote = el('div.set-status');
-  const row = toggleRow('', t('set_notif_t'), notif.on && granted, async (on) => {
+  const row = toggleRow(t('set_notif'), t('set_notif_t'), notif.on && granted, async (on) => {
     if (!supported) {
       store.notif.set({ on: false });
       statusNote.textContent = t('set_notif_denied');
@@ -503,18 +521,18 @@ function buildNotifSection() {
     }
   });
   if (notifAsk === 'ask') {
-    mount.appendChild(section(t('set_notif'), row, notifFlowCard('ask')));
+    mount.appendChild(zone('bell', t('set_notif'), null, row, notifFlowCard('ask')));
     return;
   }
   if (notif.on && denied) {
-    mount.appendChild(section(t('set_notif'), row, notifFlowCard('blocked')));
+    mount.appendChild(zone('bell', t('set_notif'), null, row, notifFlowCard('blocked')));
     return;
   }
   if (notif.on && granted) statusNote.textContent = '✓ ' + t('set_notif_on');
-  mount.appendChild(section(t('set_notif'), row, statusNote));
+  mount.appendChild(zone('bell', t('set_notif'), null, row, statusNote));
 }
 
-/* ---------------- data ops ---------------- */
+/* ================= data ops ================= */
 
 function switchLang(l) {
   setLang(l);

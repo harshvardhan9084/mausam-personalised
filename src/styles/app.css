@@ -126,54 +126,144 @@
   .tab-nav { left: 50%; transform: translateX(-50%); max-width: 640px; border-radius: 16px 16px 0 0; border: 1px solid var(--border); border-bottom: none; }
 }
 
-/* ---------------- you — the profile block inside Settings ----------------
-   v0.8.58 redesign: the profile editor drops the foreign gradient intro
-   card and speaks the page's own grammar — a typographic head (eyebrow +
-   live summary line), the settings field rhythm, two-state chips, and a
-   sticky state bar that makes the draft→save model visible. */
+/* ---------------- settings page, designed (v0.8.60) ----------------
+   The page is seven zone cards under sentence-case headers, rows inside
+   each card. The profile zone (the former You tab) opens the page as its
+   first citizen; its signature is the live Mitra preview bubble that
+   re-reads the draft as you edit. Craft notes: no eyebrows, no tracked
+   caps (the header carries its own weight); one elevation voice per card
+   (1px border + the token shadow — offset plus soft blur, no halos);
+   13px row rhythm with dividers; more space above a header than below. */
 
-/* one divider closes the merged section before the settings blocks begin,
-   so the seam reads as a section boundary, not two pages glued together. */
-.you-merged { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-
-/* head: eyebrow + summary that re-reads the draft as you edit */
-.you-head { margin: 2px 2px 6px; }
-.you-head .you-block-title { margin: 0 0 5px; }
-.you-sum {
-  font-size: var(--text-md);
-  font-weight: 600;
+.set-zone { margin: 0 0 26px; }
+.set-zone:last-child { margin-bottom: 6px; }
+.set-zone-h { margin: 0 2px 11px; }
+.set-zone-t {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--text-xl);
+  font-weight: 700;
   color: var(--text);
+  line-height: 1.35;
+}
+.set-zone-ico { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; }
+.set-zone-d {
+  font-size: var(--text-sm);
+  color: var(--muted);
   line-height: 1.5;
-  margin: 0 2px 4px;
+  margin-top: 3px;
 }
 
-/* section eyebrows: the app's muted caps voice (matches .settings-h), now
-   as a flex row so a live count can sit on the right end of the rule. */
-.you-block-title {
+/* the zone card: one elevation voice — 1px border + token shadow. Rows
+   inside carry the dividers; the last row closes cleanly. */
+.set-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 3px 16px;
+}
+.set-card > :last-child { border-bottom: none; }
+
+/* rows: label/description left, control right; full-width stack rows
+   (.set-rowcol) for grid controls — chips, inputs, swatches. */
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.set-rowcol {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+.set-row-tx { min-width: 0; }
+.set-row-t { font-size: var(--text-md); font-weight: 600; color: var(--text); line-height: 1.4; }
+.set-row-d { font-size: var(--text-xs); color: var(--muted); line-height: 1.55; margin-top: 2px; }
+.set-row-ctl { flex-shrink: 0; display: flex; align-items: center; max-width: 62%; }
+.set-row-t-count {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-weight: 700;
-  color: var(--muted);
-  margin: 22px 2px 12px;
 }
+.set-rowcol > .set-row-t { margin-bottom: 8px; }
+.set-rowcol > .set-row-d { margin-top: -3px; margin-bottom: 8px; }
+
+/* live count at the right end of a chip-section title */
 .you-count {
   font-size: var(--text-2xs);
-  letter-spacing: 0.8px;
+  letter-spacing: 0.4px;
   font-weight: 700;
   color: var(--accent);
   white-space: nowrap;
 }
 
-.pack-grid {
+/* compact segmented control for a row's right-hand column */
+.seg-compact { flex-wrap: wrap; justify-content: flex-end; }
+.seg-compact .seg-btn { flex: 0 1 auto; padding: 7px 12px; white-space: nowrap; }
+.set-row .seg-group, .set-rowcol .seg-group { margin: 0; }
+.set-rowcol > .seg-group.set-seg { margin-bottom: 2px; }
+.set-rowcol > .set-row-d { margin-top: 8px; }
+
+/* compact select for row-right slots */
+.set-select-sm { padding: 7px 11px; min-height: 38px; font-size: var(--text-md); border-radius: 9px; }
+
+/* ---------------- the profile zone's signature: the live Mitra preview ----------
+   A quiet chat bubble that re-answers "how will Mitra talk to me?" on every
+   keystroke and tap. The text swap is the page's one authored motion moment:
+   blur-in via WAAPI, fill none — the resting state stays identical to a
+   no-JS load, and prefers-reduced-motion skips the animation entirely. */
+.you-prev {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 12px 0 14px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 7px;
 }
+.you-prev-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--accent);
+}
+.you-prev-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.you-prev-ico { width: 12px; height: 12px; }
+.you-prev-text {
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* quick starts: one-tap packs as a horizontal snap scroller (a wrapped
+   grid spent three rows of height on nine choices) */
+.pack-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.pack-scroll::-webkit-scrollbar { display: none; }
+.pack-scroll .pack-chip { flex: 0 0 auto; scroll-snap-align: start; }
 .pack-chip {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -181,26 +271,20 @@
   border-radius: 18px;
   padding: 8px 14px;
   font-size: var(--text-md);
+  font-family: inherit;
   cursor: pointer;
   min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast), color var(--t-fast);
 }
 .pack-chip:active { transform: var(--press); }
 .pack-chip:hover { border-color: var(--accent); }
 .pack-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-out); }
-.pack-fresh { border-style: dashed; color: var(--muted); }
+.pack-fresh { border-style: dashed; color: var(--muted); background: transparent; }
 
-.you-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-/* both selects fill their cell equally — intrinsic widths made gender
-   ~2× wider than age on desktop (v0.8.10 consistency pass) */
-.you-2col select { width: 100%; }
-
-.custom-tags { margin-top: 10px; }
 .you-own-row {
   display: flex;
   gap: 8px;
@@ -209,73 +293,32 @@
 }
 .you-own-row .set-input { flex: 1; }
 
-.you-notes { resize: vertical; min-height: 74px; line-height: 1.5; }
+/* custom tags under the interests grid */
+.custom-tags { margin-top: 10px; }
+.custom-tags:empty { margin-top: 0; }
 
-/* sticky state bar — the draft→save model made visible. A blurred,
-   bordered surface pinned above the bottom nav: live "unsaved changes"
-   dot or last-saved stamp on the left, Reset + Save on the right. */
-.you-actions {
-  position: sticky;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+/* schedule times: 2×2 grid, calm sentence-case labels (the caps shout is
+   gone from this page entirely) */
+.you-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+.you-time { display: flex; flex-direction: column; gap: 5px; }
+.you-time-l { font-size: var(--text-xs); color: var(--muted); font-weight: 600; }
+.you-select {
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: var(--text-md);
+  width: 100%;
 }
-.you-state {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--text-xs);
-  color: var(--muted);
-  line-height: 1.4;
-}
-.you-state span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.you-state.is-dirty { color: var(--orange); font-weight: 700; }
-.you-dirty-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--orange);
-  flex-shrink: 0;
-}
-.you-actions-btns { display: flex; gap: 8px; flex-shrink: 0; }
-.you-actions-btns .btn { white-space: nowrap; }
-@media (max-width: 359px) {
-  .you-actions { flex-wrap: wrap; }
-  .you-state { flex: 1 1 100%; }
-}
+.you-select:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 
-/* ---------------- settings page ---------------- */
-
-.page-block { border-bottom: 1px solid var(--border); padding: 16px 2px; }
-.page-block:last-child { border-bottom: none; }
-/* v0.8.58: settings headers join the eyebrow voice — they were the app's
-   last sentence-case section headers (--text-lg, dark) sitting directly
-   under the profile block's muted caps questions; now every section
-   header on every surface speaks the same grammar. Canonical rule (the
-   duplicate in sheets.css is retired; this loads later and wins). */
-.settings-h {
-  font-weight: 700;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
+.you-notes { resize: vertical; min-height: 74px; line-height: 1.5; }
 
 .set-select {
   background: var(--surface-2);
@@ -287,13 +330,6 @@
   min-height: 44px;
 }
 
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.toggle-title { font-size: var(--text-lg); font-weight: 600; margin-bottom: 3px; }
 .toggle {
   width: 50px;
   height: 28px;
@@ -1309,6 +1345,35 @@ textarea.chat-input {
   box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .you-actions .btn { flex: 1; white-space: nowrap; }
+.you-state {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+}
+.you-state span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.you-state.is-dirty { color: var(--orange); font-weight: 700; }
+.you-dirty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+  animation: you-dirty-pulse 1.6s ease-in-out infinite;
+}
+@keyframes you-dirty-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .you-dirty-dot { animation: none; } }
+.you-actions-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.you-actions-btns .btn { white-space: nowrap; }
+@media (max-width: 440px) {
+  .you-actions { flex-wrap: wrap; }
+  .you-state { flex: 1 1 100%; min-height: 18px; }
+  .you-actions-btns .btn { flex: 1; }
+}
 
 /* 390px phones: full-size .btn-lg padding pushed both labels to two lines —
    compact the pair instead of wrapping (v0.8.9) */
