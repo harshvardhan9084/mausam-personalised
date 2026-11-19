@@ -51,7 +51,7 @@ function build(target) {
 
   /* ---------- intro ---------- */
   mount.appendChild(el('div.you-intro',
-    el('div.you-hello', null, icon('you', 'you-hello-ico'), draft.name ? ` ${t('nav_you')} · ${draft.name}` : ` ${t('you_title')}`),
+    el('div.you-hello', null, icon('you', 'you-hello-ico'), draft.name ? ` ${t('you_hello')} · ${draft.name}` : ` ${t('you_title')}`),
     el('div.you-intro-text', null, t('you_intro')),
   ));
 
@@ -62,7 +62,7 @@ function build(target) {
       type: 'button',
       onclick: () => { applyPack(p); },
     }, icon(p.glyph ?? 'home', 'chip-ico'), t(p.label))),
-    el('button.pack-chip.pack-fresh', { type: 'button', onclick: () => { draft = emptyProfile(); build(); } }, icon('sparkles', 'chip-ico'), t('pack_fresh')),
+    el('button.pack-chip.pack-fresh', { type: 'button', onclick: () => { draft = emptyProfile(); build(lastTarget); } }, icon('sparkles', 'chip-ico'), t('pack_fresh')),
   ));
 
   /* ---------- name ---------- */

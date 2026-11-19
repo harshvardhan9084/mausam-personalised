@@ -352,8 +352,9 @@ const dict = {
   day_back:      ['Heading back', 'वापसी'],
   day_sleep:     ['Bedtime', 'सोने का समय'],
 
-  /* ---------------- You page ---------------- */
+  /* ---------------- You page (merged into Settings, v0.8.57) ---------------- */
   you_title:     ['Make Mausam yours', 'मौसम को अपना बनाएँ'],
+  you_hello:     ['Your profile', 'आपकी प्रोफ़ाइल'],
   you_intro:     ['Everything stays on this device. Change any time — the app re-shapes instantly. Nothing here blocks the full weather.', 'सब कुछ इसी फ़ोन में रहता है। कभी भी बदलें — ऐप तुरंत ढल जाता है। यहाँ कुछ भी भरना ज़रूरी नहीं।'],
   you_name:      ['What should Mausam call you? (optional)', 'मौसम आपको क्या बुलाए? (मर्ज़ी से)'],
   you_gender:    ['Gender (optional — for clothing tips only)', 'लिंग (मर्ज़ी से — कपड़ों की सलाह के लिए)'],
