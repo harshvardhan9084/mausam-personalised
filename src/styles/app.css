@@ -126,34 +126,47 @@
   .tab-nav { left: 50%; transform: translateX(-50%); max-width: 640px; border-radius: 16px 16px 0 0; border: 1px solid var(--border); border-bottom: none; }
 }
 
-/* ---------------- you page ---------------- */
+/* ---------------- you — the profile block inside Settings ----------------
+   v0.8.58 redesign: the profile editor drops the foreign gradient intro
+   card and speaks the page's own grammar — a typographic head (eyebrow +
+   live summary line), the settings field rhythm, two-state chips, and a
+   sticky state bar that makes the draft→save model visible. */
 
-.you-intro {
-  background: linear-gradient(135deg, var(--accent-dim), transparent 70%);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 16px 14px;
-  margin-bottom: 16px;
-}
-.you-hello { font-size: var(--text-xl); font-weight: 800; margin-bottom: 6px; }
-.you-intro-text { font-size: var(--text-sm); color: var(--muted); line-height: 1.55; }
-
-/* v0.8.58: the profile block (former You page) now lives inside Settings —
-   one divider closes the merged section before the settings blocks begin,
+/* one divider closes the merged section before the settings blocks begin,
    so the seam reads as a section boundary, not two pages glued together. */
 .you-merged { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
 
-/* v0.8.58: one header voice — the app's section language is the muted
-   eyebrow caps (dashboard .sec-title: --text-xs, 1.5px tracking); the
-   profile block's titles join it exactly (was --text-sm / 1.2px / mb10,
-   a size off from the settings headers beside it). */
+/* head: eyebrow + summary that re-reads the draft as you edit */
+.you-head { margin: 2px 2px 6px; }
+.you-head .you-block-title { margin: 0 0 5px; }
+.you-sum {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0 2px 4px;
+}
+
+/* section eyebrows: the app's muted caps voice (matches .settings-h), now
+   as a flex row so a live count can sit on the right end of the rule. */
 .you-block-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-weight: 700;
   color: var(--muted);
-  margin: 20px 2px 12px;
+  margin: 22px 2px 12px;
+}
+.you-count {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 .pack-grid {
@@ -171,10 +184,11 @@
   cursor: pointer;
   min-height: 38px;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color var(--t-fast), background var(--t-fast);
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
 }
-.pack-chip:active { transform: scale(0.97); }
+.pack-chip:active { transform: var(--press); }
 .pack-chip:hover { border-color: var(--accent); }
+.pack-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--ring-out); }
 .pack-fresh { border-style: dashed; color: var(--muted); }
 
 .you-2col {
@@ -197,15 +211,50 @@
 
 .you-notes { resize: vertical; min-height: 74px; line-height: 1.5; }
 
+/* sticky state bar — the draft→save model made visible. A blurred,
+   bordered surface pinned above the bottom nav: live "unsaved changes"
+   dot or last-saved stamp on the left, Reset + Save on the right. */
 .you-actions {
+  position: sticky;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
+  z-index: 40;
   display: flex;
+  align-items: center;
   gap: 10px;
-  margin-top: 26px;
+  margin-top: 22px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 }
-.btn-lg { padding: 13px 22px; font-size: 0.95rem; font-weight: 700; border-radius: 12px; }
-
-.you-saved-at { font-size: var(--text-xs); color: var(--muted); margin-top: 10px; text-align: center; }
-.you-privacy { font-size: var(--text-xs); color: var(--muted); text-align: center; margin: 14px 0 8px; }
+.you-state {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+}
+.you-state span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.you-state.is-dirty { color: var(--orange); font-weight: 700; }
+.you-dirty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
+.you-actions-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.you-actions-btns .btn { white-space: nowrap; }
+@media (max-width: 359px) {
+  .you-actions { flex-wrap: wrap; }
+  .you-state { flex: 1 1 100%; }
+}
 
 /* ---------------- settings page ---------------- */
 

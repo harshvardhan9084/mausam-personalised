@@ -105,40 +105,63 @@
 .notif-flow-done .notif-flow-head { color: var(--green); }
 
 /* ---------- you sheet ----------
-   v0.8.58: the profile block joins the settings rhythm (16px 2px, was
-   13px 2px 15px) and its field labels speak the settings label voice
-   (.set-label grammar: --text-2xs caps muted) — on the merged page the
-   two label languages alternated every few rows. */
-.you-block { padding: 16px 2px; border-bottom: 1px solid var(--border); }
-.you-block:first-child { padding-top: 2px; }
+   v0.8.58 redesign: two label levels, the app's own grammar — section
+   titles are the muted caps eyebrows (.you-block-title), field labels
+   are the sentence-case row voice the settings toggles already speak
+   (.toggle-title: --text-md 600 dark). Caps-on-caps made every field
+   shout; now only sections do, quietly. */
+.you-block { padding: 14px 2px; border-bottom: 1px solid var(--border); }
+.you-block:last-child { border-bottom: none; }
 .you-label {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+/* schedule: a calm 2×2 grid instead of a wrapped inline row — four
+   fields scan as one block, labels stay on one line. */
+.you-times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+.you-time {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   font-size: var(--text-2xs);
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1px;
   font-weight: 700;
-  margin-bottom: 8px;
   color: var(--muted);
 }
-.you-times { display: flex; gap: 12px; flex-wrap: wrap; }
-.you-time { display: flex; align-items: center; gap: 7px; font-size: var(--text-sm); color: var(--muted); }
 .you-select {
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 8px;
-  padding: 7px 9px;
+  padding: 8px 10px;
   font-size: var(--text-sm);
+  width: 100%;
 }
 .you-select:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: var(--ring-field); }
 
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.you-chip { opacity: 0.75; }
-.you-chip.on {
+/* two-state chips: OFF reads as a quiet neutral control, ON carries the
+   accent — the old all-accent-tinted grid had no hierarchy at all. */
+.you-chip {
+  background: var(--surface-2);
+  border-color: var(--border);
   opacity: 1;
+}
+.you-chip.on {
   background: var(--accent-dim);
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 650;
+  opacity: 1;
 }
 .you-note { font-size: var(--text-xs); color: var(--muted); margin-top: 14px; line-height: 1.55; }
 
