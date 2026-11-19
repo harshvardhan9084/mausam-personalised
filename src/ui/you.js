@@ -18,6 +18,7 @@ let mount = null;
 let hooks = null;
 let draft = null;
 let built = false;
+let lastTarget = null;
 
 export function wireYouPage(mountEl, hooksIn) {
   mount = mountEl;
@@ -27,14 +28,25 @@ export function wireYouPage(mountEl, hooksIn) {
 /** Re-render the page (called when the tab opens or profile changed). */
 export function renderYou() {
   if (!mount) return;
+  renderYouInto(mount);
+}
+
+/* v0.8.57: the You tab merged into Settings — renderYouInto lets any
+   container host the profile editor (Settings renders it as its first
+   block). Same draft/hooks lifecycle; callers only pick the target. */
+export function renderYouInto(target) {
+  if (!target) return;
+  lastTarget = target;
   draft = JSON.parse(JSON.stringify(getProfile() ?? emptyProfile()));
-  build();
+  build(target);
   built = true;
 }
 
 export function isYouBuilt() { return built; }
 
-function build() {
+function build(target) {
+  const mount = target ?? null;
+  if (!mount) return;
   clear(mount);
 
   /* ---------- intro ---------- */
@@ -190,7 +202,7 @@ function build() {
   /* ---------- actions ---------- */
   mount.appendChild(el('div.sheet-actions.you-actions',
     el('button.btn.btn-primary.btn-lg', { type: 'button', onclick: save }, t('you_save')),
-    el('button.btn.btn-lg', { type: 'button', onclick: () => { clearProfile(); draft = emptyProfile(); build(); hooks?.onSaved?.(); } }, t('you_reset')),
+    el('button.btn.btn-lg', { type: 'button', onclick: () => { clearProfile(); draft = emptyProfile(); build(lastTarget); hooks?.onSaved?.(); } }, t('you_reset')),
   ));
   if (draft.savedAt) {
     mount.appendChild(el('div.you-saved-at', null,
@@ -232,7 +244,7 @@ function applyPack(pack) {
   draft.sensitive = { heat: false, cold: false, rain: false, air: false, dust: false, humidity: false };
   for (const s of pack.sens ?? []) draft.sensitive[s] = true;
   if (pack.schedule) { draft.schedule = { ...draft.schedule, ...pack.schedule }; draft.scheduleOn = true; }
-  build();
+  build(lastTarget);
 }
 
 function save() {

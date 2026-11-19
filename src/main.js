@@ -1,8 +1,10 @@
 /**
- * main.js — application bootstrap (v0.6: a five-page product).
+ * main.js — application bootstrap (v0.8.57: a three-page product).
  *
- * Pages: Home (generous feed) · Crops (crop calendar engine) · Mitra (AI chat)
- *        You (volatile profile) · Settings (full controls)
+ * Pages: Home (generous feed) · Mitra (AI chat) · Settings (controls +
+ *        the profile editor, merged from the You tab). Crops stays wired
+ *        and hidden (no nav entry, deep links fold to Home) — it returns
+ *        by re-adding 'crops' to PAGES and the tab button.
  * Boot:  theme/accent/lang → router → header → cached paint → live load
  *        (Open-Meteo forecast+air, then optional flood/marine/climate in
  *        parallel — enhancements only, failures never block).
@@ -24,7 +26,7 @@ import { computeAlerts } from './core/insights.js';
 import { wireHeader } from './ui/header.js';
 import { wireSettingsPage, renderSettings } from './ui/settings.js';
 import { pageEnter, settle } from './ui/motion.js';
-import { wireYouPage, renderYou } from './ui/you.js';
+import { wireYouPage } from './ui/you.js';
 import { wireMitraPage, showMitra, focusMitraInput, askMitra } from './ui/mitra.js';
 import { wireCropsPage, showCrops } from './ui/crops.js';
 import { rememberPlace } from './ui/places.js';
@@ -104,16 +106,24 @@ window.addEventListener('load', publishChromeMetrics);
 /* ================= modal history (Android back closes modals) ================= */
 wireModalHistory();
 
-/* ================= router ================= */
-const PAGES = ['home', 'crops', 'mitra', 'you', 'settings'];
+/* ================= router =================
+ * v0.8.57: three pages. 'crops' and 'you' left PAGES — the Crops tab is
+ * temporarily hidden (its module and page section stay wired), and the
+ * You tab lives inside Settings. Stale deep links fold through PAGE_ALIAS
+ * instead of dead-ending or ghost-highlighting the pill. */
+const PAGES = ['home', 'mitra', 'settings'];
+const PAGE_ALIAS = { you: 'settings', crops: 'home' };
 const PAGE_TITLE = {
   home: 'Mausam',
-  crops: 'Crops · Mausam',
   mitra: 'Mitra · Mausam',
-  you: 'You · Mausam',
   settings: 'Settings · Mausam',
 };
 let currentPage = 'home';
+
+function resolvePage(p) {
+  if (PAGES.includes(p)) return p;
+  return PAGE_ALIAS[p] ?? 'home';
+}
 
 /* Sliding tab pill (v0.8.10): one element morphs behind the active tab so
    switching feels physical instead of the highlight teleporting. Widths
@@ -150,9 +160,7 @@ function go(page) {
     // keep the URL in sync so manifest shortcuts (#mitra, #crops…) and back
     // buttons behave; replaceState avoids polluting history on every tab tap
     try { history.replaceState(null, '', `#${page}`); } catch { /* file:// etc. */ }
-    if (page === 'crops') showCrops();
     if (page === 'mitra') showMitra();
-    if (page === 'you') renderYou();
     if (page === 'settings') renderSettings();
     pageEnter(page); // staged entrance for the incoming tab's sections
     moveTabPill();
@@ -168,14 +176,14 @@ for (const p of PAGES) {
   $(`tab-${p}`)?.addEventListener('click', () => go(p));
 }
 window.addEventListener('hashchange', () => {
-  const page = location.hash.slice(1);
-  if (PAGES.includes(page) && page !== currentPage) go(page);
+  const page = resolvePage(location.hash.slice(1));
+  if (page !== currentPage) go(page);
 });
 window.addEventListener('resize', () => moveTabPill(true));
 window.addEventListener('load', () => moveTabPill(true));
 document.fonts?.ready?.then(() => moveTabPill(true)).catch(() => {});
 moveTabPill(true);
-pageEnter(PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+pageEnter(resolvePage(location.hash.slice(1)) || 'home');
 // Visual-regression hooks: screenshots/tests capture the resting state.
 window.__mausamSettle = settle;
 export function navigate(page) { go(page); }
@@ -211,10 +219,6 @@ document.addEventListener('keydown', (e) => {
     return; // modal open but no field → leave focus alone
   }
   if (currentPage === 'mitra') { e.preventDefault(); focusMitraInput(); }
-  else if (currentPage === 'crops') {
-    const filter = document.getElementById('crop-filter');
-    if (filter) { e.preventDefault(); filter.focus(); }
-  }
 });
 
 /* ================= header ================= */
@@ -272,7 +276,9 @@ window.addEventListener('mausam:placename', () => {
 });
 
 /* ================= pages wiring ================= */
-wireYouPage($('you-mount'), {
+/* The profile editor (formerly the You tab) renders inside Settings;
+   you.js keeps its own hooks — saving re-shapes the dashboard + chat. */
+wireYouPage($('settings-mount'), {
   onSaved: () => {
     renderDashboard();
     publishChatState();
@@ -510,7 +516,7 @@ function renderDashboard() {
   try {
     renderDashboardUI(homeScroll, currentSnapshot, currentUnits, {
       location: currentLocation,
-      openYou: () => go('you'),
+      openYou: () => go('settings'),
       rerender: renderDashboard,
       pickLocation: applyLocation,
       openSearch: () => header.openSearch(),
@@ -708,9 +714,10 @@ function handleSharedText() {
 async function boot() {
   store.flags.set('bootedOnce', true);
 
-  // deep link: manifest shortcuts and shared links use #crops / #mitra etc.
+  // deep link: manifest shortcuts and shared links use #mitra / #settings
+  // (stale #crops / #you fold through PAGE_ALIAS)
   const hashPage = location.hash.slice(1);
-  go(PAGES.includes(hashPage) ? hashPage : 'home');
+  go(resolvePage(hashPage));
   handleSharedText();
   renderDashboard(); // instant paint (skeleton or cache)
   loadWeather(false, { silent: false });

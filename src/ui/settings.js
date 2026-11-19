@@ -14,6 +14,7 @@ import { store } from '../core/storage.js';
 import { t, setLang } from '../core/i18n.js';
 import { aiSettings } from '../ai/client.js';
 import { geminiChat } from '../ai/gemini.js';
+import { renderYouInto } from './you.js';
 
 const MODEL_OPTIONS = [
   'gemini-3.5-flash-lite',
@@ -46,6 +47,13 @@ export function renderSettings() {
 function build() {
   clear(mount);
   mount.appendChild(el('div.page-h', null, icon('settings', 'page-ico'), ' ', t('set_title')));
+
+  /* ---------------- you / profile (v0.8.57 — merged from the You tab) ----------------
+   * The volatile profile (starter packs, name, schedule, interests,
+   * sensitivities, tone, notes) now opens the Settings page; its save/reset
+   * hooks stay wired through you.js (renderYouInto keeps the same lifecycle). */
+  mount.appendChild(el('div.you-merged'));
+  renderYouInto(mount.querySelector('.you-merged'));
 
   /* ---------------- language ---------------- */
   mount.appendChild(section(t('set_lang'),
@@ -129,7 +137,7 @@ function build() {
   mount.appendChild(section(t('set_about'),
     el('div.ver-row', null,
       el('span.ver-label', null, t('set_version')),
-      el('span.ver-badge', null, 'v0.8.56'),
+      el('span.ver-badge', null, 'v0.8.57'),
       el('span.ver-note', null, 'zero-dependency PWA · no accounts · no tracking'),
     ),
     el('div.set-help', null, t('set_about_t')),

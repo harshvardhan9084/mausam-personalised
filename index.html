@@ -80,18 +80,13 @@
         </div>
       </section>
 
-      <!-- ============ PAGE · CROPS (crop calendar engine) ============ -->
+      <!-- ============ PAGE · CROPS — temporarily hidden (kept wired, no nav entry) ============ -->
       <section class="page" id="page-crops" aria-label="Crop calendar"></section>
 
       <!-- ============ PAGE · MITRA (AI chat) ============ -->
       <section class="page" id="page-mitra" aria-label="Mausam Mitra — AI weather assistant"></section>
 
-      <!-- ============ PAGE · YOU (profile) ============ -->
-      <section class="page" id="page-you" aria-label="Make Mausam yours">
-        <div class="page-scroll" id="you-mount"></div>
-      </section>
-
-      <!-- ============ PAGE · SETTINGS ============ -->
+      <!-- ============ PAGE · SETTINGS (now hosts the You/profile content) ============ -->
       <section class="page" id="page-settings" aria-label="Settings">
         <div class="page-scroll" id="settings-mount"></div>
       </section>
@@ -103,14 +98,8 @@
       <button class="tab-btn active" id="tab-home" type="button" aria-current="page">
         <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="tab-lbl" data-i18n="nav_home">Home</span>
       </button>
-      <button class="tab-btn" id="tab-crops" type="button" aria-current="false">
-        <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></span><span class="tab-lbl" data-i18n="nav_crops">Crops</span>
-      </button>
       <button class="tab-btn" id="tab-mitra" type="button" aria-current="false">
         <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span><span class="tab-lbl" data-i18n="nav_mitra">Mitra</span>
-      </button>
-      <button class="tab-btn" id="tab-you" type="button" aria-current="false">
-        <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg></span><span class="tab-lbl" data-i18n="nav_you">You</span>
       </button>
       <button class="tab-btn" id="tab-settings" type="button" aria-current="false">
         <span class="tab-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="tab-lbl" data-i18n="nav_settings">Settings</span>
@@ -159,7 +148,7 @@
     (function () {
       try {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
-        if (sessionStorage.getItem('mausam:swcheck') === 'v0.8.56') return;
+        if (sessionStorage.getItem('mausam:swcheck') === 'v0.8.57') return;
         var sw = navigator.serviceWorker.controller;
         var done = false;
         var t = setTimeout(function () {
@@ -169,15 +158,15 @@
         var ch = new MessageChannel();
         ch.port1.onmessage = function (e) {
           if (done) return; done = true; clearTimeout(t);
-          if (e && e.data && e.data.version === 'v0.8.56') {
-            sessionStorage.setItem('mausam:swcheck', 'v0.8.56');
+          if (e && e.data && e.data.version === 'v0.8.57') {
+            sessionStorage.setItem('mausam:swcheck', 'v0.8.57');
           } else {
             hardRefresh();
           }
         };
         sw.postMessage({ type: 'MAUSAM_VERSION' }, [ch.port2]);
         function hardRefresh() {
-          sessionStorage.setItem('mausam:swcheck', 'v0.8.56');
+          sessionStorage.setItem('mausam:swcheck', 'v0.8.57');
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
             if (window.caches && caches.keys) {
